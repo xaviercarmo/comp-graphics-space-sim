@@ -12,7 +12,7 @@ import { OrbitControls } from '../libraries/OrbitControls.js';
 class GameHandler {
     //debug
     get Camera() { return this.#camera; }
-
+    Orbit = false;
     //Privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 10000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -90,7 +90,9 @@ class GameHandler {
         });
         //end physics handler
 
-        this.controls.update();
+        if (this.Orbit){
+            //this.controls.update();
+        }
         this.#renderer.render(this.Scene, this.#camera);
     }
 
@@ -137,9 +139,9 @@ class GameHandler {
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
 
-        this.#camera.position.set(0, 5.5, -21);
-        this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
-        this.controls.update();
+        //this.#camera.position.set(0, 5.5, -21);
+        //this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
+        //this.controls.update();
     }
 
     AddPlayer(object) {

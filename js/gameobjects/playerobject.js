@@ -7,7 +7,6 @@ import GameObject from '../gameobject.js';
 class PlayerObject extends GameObject {
     //privates
     #camera;
-    #cameraGoal = new THREE.Object3D();
 
     #playerGoalOrigin = new THREE.Object3D(); //0, 0, 5
     //#playerGoal = new THREE.Object3D();
@@ -56,23 +55,26 @@ class PlayerObject extends GameObject {
         let matR = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         let matG = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         let matB = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        let matW = new THREE.MeshBasicMaterial({ color: 0xffffff });
         let cubeR = new THREE.Mesh(geo, matR);
         let cubeG = new THREE.Mesh(geo, matG);
         let cubeB = new THREE.Mesh(geo, matB);
+        let cubeW = new THREE.Mesh(geo, matW);
         //this.#cameraPositions.FOLLOW.posnTarg.add(cube);
 
-        this.#cameraPositions.FOLLOW.posnTarg.position.set(0, 5.5, -21);
-        this.#cameraPositions.FOLLOW.lookTarg.position.set(0, 12, 15);
+        let y = 7;
+        this.#cameraPositions.FOLLOW.posnTarg.position.set(0, y, -25);
+        this.#cameraPositions.FOLLOW.posnTarg.add(cubeG);
+        this.#cameraPositions.FOLLOW.lookTarg.position.set(0, y, 15);
+        this.#cameraPositions.FOLLOW.lookTarg.add(cubeW);
         this._objectGroup.add(this.#cameraPositions.FOLLOW.posnTarg);
         this._objectGroup.add(this.#cameraPositions.FOLLOW.lookTarg);
 
-        this.#cameraGoal.position.set(this.#cameraPositions.FOLLOW);
-        this._objectGroup.add(this.#cameraGoal);
         // geo = new THREE.BoxGeometry(10, 10, 1);
         // mat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         // cube = new THREE.Mesh(geo, mat);
         //this._objectGroup.add(this.#playerGoal);
-        this._objectGroup.add(this.#playerGoalOrigin);
+        //this._objectGroup.add(this.#playerGoalOrigin);
         //this.#playerGoal.position.set(0, 0, 20);
         //this.#playerGoal.add(cubeG);
 
@@ -98,7 +100,7 @@ class PlayerObject extends GameObject {
         this.#camera = camera;
 
         //DISABLING THIS TEMPORARILY WHILE DOING TESTING FOR ROTATION
-        //this._objectGroup.add(this.#camera);
+        this._objectGroup.add(this.#camera);
 
         //move the camera to a point above and behind the player
         //this.#cameraPositionOffset = new THREE.Vector3(0, 7.5, -21);
@@ -114,6 +116,8 @@ class PlayerObject extends GameObject {
         this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.position);
 
         this._objectGroup.lookAt(this.#playerGoalOrigin.position);
+
+        this._objectGroup.scale.multiplyScalar(1);
 
         //setup mouse events
         window.addEventListener("wheel", this.#handleScroll);
@@ -154,7 +158,7 @@ class PlayerObject extends GameObject {
         //this.ApplyForce({ name: "THRUST", vector: this.#currentThrustForce });
     }
 
-    #maxMouseOffset = 100;
+    #maxMouseOffset = 150;
     #handleMouseMove = (event) => {
         if (document.pointerLockElement === this.#canvas) {
             this.#mouseOffset.x += event.movementX;
@@ -326,6 +330,9 @@ class PlayerObject extends GameObject {
 
         //console.log(this.#thrustLevel);
 
+        let xPct = this.#mouseOffset.x / this.#maxMouseOffset;
+        let yPct = this.#mouseOffset.y / this.#maxMouseOffset;
+
         if (this._forces.hasOwnProperty("THRUST")) {
             let thrustPct = this.#thrustLevel > 0
                 ? this.#thrustLevel / this.#maxThrustLevel
@@ -337,41 +344,32 @@ class PlayerObject extends GameObject {
 
             var modifiedTarg = this.#cameraPositions.FOLLOW.posnTarg.position.clone();
             modifiedTarg.z -= thrustPct * camZAdjust;
+            modifiedTarg.x += -xPct * 15;
+            modifiedTarg.y += -yPct * 15;
             //DISABLING THIS TEMPORARILY WHILE DOING TESTING FOR ROTATION
-            //this.#camera.position.lerp(modifiedTarg, 0.8 * dt);
+            this.#camera.position.lerp(modifiedTarg, 0.8 * dt);
         }
         else {
             //DISABLING THIS TEMPORARILY WHILE DOING TESTING FOR ROTATION
-            //this.#camera.position.lerp(this.#cameraPositions.FOLLOW.posnTarg.position, 0.8 * dt);
+            this.#camera.position.lerp(this.#cameraPositions.FOLLOW.posnTarg.position, 0.8 * dt);
         }
 
-        //remove spare vector later, this is just testing right now
-        //console.log(this._objectGroup.rotation.x);
-        //console.log(this._mainObject.position, this.#aTestThatWillWork.position);
-        // let lookMatrix = new THREE.Matrix4().lookAt(this._mainObject.position, this.#aTestThatWillWork.position, new THREE.Vector3(0, 1, 0));
-        let xyDir = this.#mouseOffset.clone();
-        //xyDir.normalize();
-        //console.log(xyDir);
-        //console.log(xyDir);
-
-        let xPct = this.#mouseOffset.x / this.#maxMouseOffset;
-        let yPct = this.#mouseOffset.y / this.#maxMouseOffset;
-        //console.log(xPct, yPct);
-
-        let bleh = new THREE.Vector3(xyDir.x, xyDir.y, 0);
         let upVec = new THREE.Vector3(-xPct, 1, 0);
         let lookMatrix = new THREE.Matrix4().lookAt(this.#aTestThatWillWork.position, this._mainObject.position, upVec.normalize());//bleh.normalize());
         let lookQuaternion = new THREE.Quaternion().setFromRotationMatrix(lookMatrix);
 
-        let e = new THREE.Euler();
-        e.setFromQuaternion(lookQuaternion);
+        //let e = new THREE.Euler();
+        //e.setFromQuaternion(lookQuaternion);
         //console.log(e);
 
         //this._objectGroup.quaternion.rotateTowards(lookQuaternion, 0.2 * dt);
-        this._objectGroup.quaternion.slerp(lookQuaternion, 0.8 * dt);
+        this._objectGroup.quaternion.slerp(lookQuaternion, 1 * dt);
         //console.log(this._objectGroup.quaternion.angleTo(lookQuaternion));
 
         //this.#camera.quaternion.slerp(lookQuaternion, 0.2 * dt);
+        let camLookTargWorld = new THREE.Vector3();
+        this.#cameraPositions.FOLLOW.lookTarg.getWorldPosition(camLookTargWorld);
+        this.#camera.lookAt(camLookTargWorld);
         //console.log(this.#camera.rotation);
         this.FlushForces();
     }
