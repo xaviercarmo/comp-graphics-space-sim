@@ -5,6 +5,7 @@ import * as UTILS from './utils.js';
 import PreDownloader from './predownloader.js';
 import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/playerobject.js';
+import PhysicsHandler from './physicshandler.js';
 
 import { OrbitControls } from '../libraries/OrbitControls.js';
 
@@ -14,7 +15,6 @@ class GameHandler {
 
     //Privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 10000);
-    #scene = new THREE.Scene();
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
@@ -33,7 +33,10 @@ class GameHandler {
     }
     #mode = this.#modes.NONE;
 
-    #player = {};
+    #player;
+
+    //publics
+    Scene = new THREE.Scene();
 
     constructor() {
         let assetNames = ["SciFi_Fighter.FBX"];
@@ -58,7 +61,7 @@ class GameHandler {
         requestAnimationFrame(() => { this.#animate(); });
 
         //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
-        let delta = this.#clock.getDelta();
+        let dt = this.#clock.getDelta();
 
         //menu logic here
         //[...]
@@ -66,9 +69,29 @@ class GameHandler {
         //this.controls.update();
 
         //game logic only runs if game isn't paused
-        this.#gameObjects.forEach(g => g.Main());
+        this.#gameObjects.forEach(g => g.Main(dt));
 
-        this.#renderer.render(this.#scene, this.#camera);
+        //this.#camera.position.copy(this.#gameObjects[0].Object.position);
+        //this will be extracted to physics handler probably
+
+        //later this will use the physics handler to run actual physics
+        //for now it will just sum the player's forces and apply them
+        this.#gameObjects.forEach(g => {
+            //console.log(g._forces);
+            let accelDt = g.Acceleration.multiplyScalar(dt);
+            g.Velocity.add(accelDt);
+            g.Object.translateOnAxis(g.Velocity.clone().normalize(), g.Velocity.clone().multiplyScalar(dt).length());
+            //console.log(newPos);
+
+            //later this newPos would be stored, and then a third pass over all objects would
+            //allow for collision detection and stuff. For now just sets pos of player.
+            //g.Position = newPos;
+            g.PostPhysicsCallback(dt);
+        });
+        //end physics handler
+
+        this.controls.update();
+        this.#renderer.render(this.Scene, this.#camera);
     }
 
     //public methods
@@ -80,7 +103,8 @@ class GameHandler {
             {
                 path: "../assets/SciFi_Fighter.FBX",
                 onComplete: (object) => {
-                    object.position.y += 5;
+                    //object.position.y += 5;
+                    //object.scale.multiplyScalar(0.7);
                     gameHandler.AddPlayer(object);
                 }
             }
@@ -91,10 +115,6 @@ class GameHandler {
             gameHandler.InitialiseScene();
             gameHandler.StartGameRunning();
         });
-
-
-
-        //this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
     }
 
     InitialiseScene() {
@@ -103,22 +123,30 @@ class GameHandler {
         window.addEventListener("keyup", INPUT.OnKeyUp);
 
         document.body.appendChild(this.#renderer.domElement);
+        this.#player.SetupPointerLock();
 
-        this.#gameObjects.forEach(g => { this.#scene.add(g.Object); });
+        this.#gameObjects.forEach(g => { this.Scene.add(g.Object); });
 
         let light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 10 );
-        this.#scene.add(light);
+        this.Scene.add(light);
 
-        let gridHelper = new THREE.GridHelper(500, 500);
-        this.#scene.add(gridHelper);
+        let gridHelper = new THREE.GridHelper(50000, 5000);
+        this.Scene.add(gridHelper);
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
+
+        this.#camera.position.set(0, 5.5, -21);
+        this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
+        this.controls.update();
     }
 
     AddPlayer(object) {
-        this.AddObject(new PlayerObject(object, this.#camera));
+        this.#player = new PlayerObject(object, this.#camera);
+        //for debug
+        this.p = this.#player;
+        this.AddObject(this.#player);
     }
 
     AddObject(object) {
@@ -183,7 +211,7 @@ class GameHandler {
 		this.activeCamera = this.player.cameras.back;
 	}
 
-    get Scene() { return this.#scene; }
+    get Scene() { return this.Scene; }
 
     get Player() { return this.#player; }
 }
