@@ -90,9 +90,7 @@ class GameHandler {
         });
         //end physics handler
 
-        if (this.Orbit){
-            //this.controls.update();
-        }
+        this.controls.update();
         this.#renderer.render(this.Scene, this.#camera);
     }
 
@@ -132,16 +130,16 @@ class GameHandler {
         let light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 10 );
         this.Scene.add(light);
 
-        let gridHelper = new THREE.GridHelper(50000, 5000);
+        let gridHelper = new THREE.GridHelper(50000, 1000);
         this.Scene.add(gridHelper);
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
 
-        //this.#camera.position.set(0, 5.5, -21);
-        //this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
-        //this.controls.update();
+        this.#camera.position.set(0, 5.5, -21);
+        this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
+        this.controls.update();
     }
 
     AddPlayer(object) {

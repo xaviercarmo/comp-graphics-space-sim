@@ -23,4 +23,9 @@ function LoadAssets(assets, onCompleteAll) {
     }
 }
 
-export { AddVectors, LoadAssets }
+function VectorToQuaternion(vec1, vec2, upVec) {
+    let matrix = new THREE.Matrix4().lookAt(vec1, vec2, upVec);
+    return new THREE.Quaternion().setFromRotationMatrix(matrix);
+}
+
+export { AddVectors, LoadAssets, VectorToQuaternion }

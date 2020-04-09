@@ -10,7 +10,7 @@ class PlayerObject extends GameObject {
 
     #playerGoalOrigin = new THREE.Object3D(); //0, 0, 5
     //#playerGoal = new THREE.Object3D();
-    #aTestThatWillWork = new THREE.Object3D();
+    #mainObjectTarget = new THREE.Object3D();
 
     #cameraPositions = {};
     #cameraCurrentLookVec = new THREE.Vector3();
@@ -60,12 +60,15 @@ class PlayerObject extends GameObject {
         let cubeG = new THREE.Mesh(geo, matG);
         let cubeB = new THREE.Mesh(geo, matB);
         let cubeW = new THREE.Mesh(geo, matW);
+
+        let geo2 = new THREE.BoxGeometry(1, 1, 10);
+        window.GameHandler.Scene.add(new THREE.Mesh(geo2, matR));
         //this.#cameraPositions.FOLLOW.posnTarg.add(cube);
 
-        let y = 7;
-        this.#cameraPositions.FOLLOW.posnTarg.position.set(0, y, -25);
-        this.#cameraPositions.FOLLOW.posnTarg.add(cubeG);
-        this.#cameraPositions.FOLLOW.lookTarg.position.set(0, y, 15);
+        let y = 8;
+        this.#cameraPositions.FOLLOW.posnTarg.position.set(0, y-1, -18);
+        //this.#cameraPositions.FOLLOW.posnTarg.add(cubeG);
+        this.#cameraPositions.FOLLOW.lookTarg.position.set(0, y - 2, 15);
         this.#cameraPositions.FOLLOW.lookTarg.add(cubeW);
         this._objectGroup.add(this.#cameraPositions.FOLLOW.posnTarg);
         this._objectGroup.add(this.#cameraPositions.FOLLOW.lookTarg);
@@ -82,11 +85,11 @@ class PlayerObject extends GameObject {
         this.#playerGoalOrigin.position.set(0, 0, 30);
         this.#playerGoalOrigin.add(cubeR);
 
-        this.#aTestThatWillWork.position.copy(this.#playerGoalOrigin.position);
-        this.#aTestThatWillWork.add(cubeB);
+        this.#mainObjectTarget.position.copy(this.#playerGoalOrigin.position);
+        this.#mainObjectTarget.add(cubeB);
 
         this._objectGroup.add(this.#playerGoalOrigin);
-        this._objectGroup.add(this.#aTestThatWillWork);
+        this._objectGroup.add(this.#mainObjectTarget);
         //window.GameHandler.Scene.add(this.#playerGoal);
 
         console.log(this._objectGroup.position);
@@ -100,7 +103,8 @@ class PlayerObject extends GameObject {
         this.#camera = camera;
 
         //DISABLING THIS TEMPORARILY WHILE DOING TESTING FOR ROTATION
-        this._objectGroup.add(this.#camera);
+        //this._objectGroup.add(this.#camera);
+        //this._mainObject.add(this.#camera);
 
         //move the camera to a point above and behind the player
         //this.#cameraPositionOffset = new THREE.Vector3(0, 7.5, -21);
@@ -112,12 +116,17 @@ class PlayerObject extends GameObject {
         //this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.getWorldPosition());
 
         //CAMERA AS CHILD VERSIONS
-        this.#camera.position.copy(this.#cameraPositions.FOLLOW.posnTarg.position);
-        this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.position);
+        //DISABLING TEMPORARILY
+        //this.#camera.position.copy(this.#cameraPositions.FOLLOW.posnTarg.position);
+        //this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.position);
 
         this._objectGroup.lookAt(this.#playerGoalOrigin.position);
 
         this._objectGroup.scale.multiplyScalar(1);
+
+        //this._objectGroup.translateX(10);
+        //this._objectGroup.translateY(10);
+        //this._objectGroup.translateZ(10);
 
         //setup mouse events
         window.addEventListener("wheel", this.#handleScroll);
@@ -158,13 +167,26 @@ class PlayerObject extends GameObject {
         //this.ApplyForce({ name: "THRUST", vector: this.#currentThrustForce });
     }
 
-    #maxMouseOffset = 150;
+    #maxMouseOffset = 10000;
+    //#maxMouseOffsetIncrement;
+    //#mousePerfTime = 1000/60;
+    //#theta = 0;
+    //#rad = 0.0174533;
     #handleMouseMove = (event) => {
+        //let delta = performance.now() - this.#mousePerfTime;
+        //this.#mousePerfTime += delta;
+        //this.#maxMouseOffsetIncrement =
+        //console.log(delta);
         if (document.pointerLockElement === this.#canvas) {
             this.#mouseOffset.x += event.movementX;
             this.#mouseOffset.y += event.movementY;
             this.#mouseOffset.clampLength(-this.#maxMouseOffset, this.#maxMouseOffset);
             //console.log(this.#mouseOffset);
+
+            //this.#theta -= event.movementX * this.#rad;
+
+            //this.#mainObjectTarget.position.x = 30 * Math.sin(this.#theta);
+            //this.#mainObjectTarget.position.z = 30 * Math.cos(this.#theta);
         }
     }
 
@@ -192,8 +214,43 @@ class PlayerObject extends GameObject {
         // this.#playerGoal.position.y = -this.#mouseOffset.y / 10;
         // this.#playerGoal.position.y = -this.#mouseOffset.y / 10;
 
-        this.#aTestThatWillWork.position.x = -this.#mouseOffset.x / 10;
-        this.#aTestThatWillWork.position.y = -this.#mouseOffset.y / 10;
+        let xPct = this.#mouseOffset.x / this.#maxMouseOffset;
+        let yPct = this.#mouseOffset.y / this.#maxMouseOffset;
+        //var rotateAxis = new THREE.Vector3(/*xPct*/0, xPct/*yPct*/, 0);
+        //rotateAxis.normalize();
+        //let pctVector = new THREE.Vector2(xPct, yPct);
+        //console.log(pctVector.length());
+        //this._objectGroup.rotateOnWorldAxis(rotateAxis, pctVector.length() * dt); //diagonal will be faster than up/side, but thats ok for now
+        //this._objectGroup.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), 0.2 * dt);
+        //console.log(this._objectGroup.rotation.y);
+
+        //THIS VERSION DOESN'T ALLOW PROPER ROTATION WITH QUATERNIONS
+        //this.#mainObjectTarget.position.x = -xPct * 10;
+        //this.#mainObjectTarget.position.y = -yPct * 10;
+
+        //Cool angle version, spot on a sphere sorta thing
+        let rad = 0.0174533;
+        //let minTheta = -120 * rad;
+        let maxRad = 90 * rad;
+
+        let theta = maxRad * -xPct;
+        let x = 30 * Math.sin(theta);
+        let z = 30 * Math.cos(theta);
+
+        this.#mainObjectTarget.position.x = x;
+
+        let gamma = maxRad * -yPct;
+        let y = 30 * Math.sin(gamma);
+        let z2 = 30 * Math.cos(gamma);
+
+        this.#mainObjectTarget.position.y = y;
+        this.#mainObjectTarget.position.z = z2;
+        //this.#mainObjectTarget.position.z = z2;
+        //console.log(Math.round(this.#mainObjectTarget.position.y));
+
+        //this._objectGroup.rotateX(-0.001);
+
+
 
         let rot = false
         if (INPUT.KeyPressed.w) { //&& this.#playerGoal.position.y < 20) {
@@ -230,7 +287,7 @@ class PlayerObject extends GameObject {
 
         if (this.#currentZThrust != 0) {
             // this.ApplyForce({ name: "THRUST", vector: this.#currentThrustForce });
-            this.ApplyForce({ name: "THRUST", vector: new THREE.Vector3(0, 0, this.#currentZThrust) });
+            this.ApplyForce({ name: "THRUST", vector: new THREE.Vector3(/*-xPct * this.#currentZThrust*/0, 0, this.#currentZThrust) });
         }
         // if (INPUT.KeyPressed.shift) {
         //     this._objectGroup.position.y -= 0.2;
@@ -332,44 +389,93 @@ class PlayerObject extends GameObject {
 
         let xPct = this.#mouseOffset.x / this.#maxMouseOffset;
         let yPct = this.#mouseOffset.y / this.#maxMouseOffset;
+        let thrustPct = this.#thrustLevel / this.#maxThrustLevel;
 
+        let camZAdjust = thrustPct > 0
+            ? 2 //if thrust > 0
+            : thrustPct == 0
+                ? 0 //if thrust == 0
+                : 3; //if thrust < 0
+
+        //this essentially treats "THRUST" as thrust in the z direction, and
+        //mouse displacement as thrust in the x and y directions
+        var modifiedTarg = this.#cameraPositions.FOLLOW.posnTarg.position.clone();
         if (this._forces.hasOwnProperty("THRUST")) {
-            let thrustPct = this.#thrustLevel > 0
-                ? this.#thrustLevel / this.#maxThrustLevel
-                : -this.#thrustLevel / this.#minThrustLevel;
-
-            let camZAdjust = thrustPct > 0
-                ? 7
-                : 3
-
-            var modifiedTarg = this.#cameraPositions.FOLLOW.posnTarg.position.clone();
             modifiedTarg.z -= thrustPct * camZAdjust;
-            modifiedTarg.x += -xPct * 15;
-            modifiedTarg.y += -yPct * 15;
-            //DISABLING THIS TEMPORARILY WHILE DOING TESTING FOR ROTATION
-            this.#camera.position.lerp(modifiedTarg, 0.8 * dt);
-        }
-        else {
-            //DISABLING THIS TEMPORARILY WHILE DOING TESTING FOR ROTATION
-            this.#camera.position.lerp(this.#cameraPositions.FOLLOW.posnTarg.position, 0.8 * dt);
         }
 
-        let upVec = new THREE.Vector3(-xPct, 1, 0);
-        let lookMatrix = new THREE.Matrix4().lookAt(this.#aTestThatWillWork.position, this._mainObject.position, upVec.normalize());//bleh.normalize());
+        modifiedTarg.x += -xPct * 7;
+        modifiedTarg.y += -yPct * 4;
+
+        //DISABLING TEMPORARILY
+        //this.#camera.position.lerp(modifiedTarg, 0.8 * dt);
+
+        //let upVec = new THREE.Vector3(-xPct * Math.abs(thrustPct), 1, 0); //this makes the ship roll nicely, but it also makes turning left/right go down as a result
+        let upVec = new THREE.Vector3(0, 1, 0);
+        let test = new THREE.Vector3(0, 1, 0);
+        this._objectGroup.localToWorld(upVec);
+        this._objectGroup.localToWorld(test);
+        test.normalize();
+        console.log(test.x.toFixed(8), test.y.toFixed(8), test.z.toFixed(8));
+        //this._objectGroup.localToWorld(upVec);
+        // let lookMatrix = new THREE.Matrix4().lookAt(this.#mainObjectTarget.position, this._mainObject.position, upVec.normalize());//bleh.normalize());
+        //let lookMatrix = new THREE.Matrix4().lookAt(this.#mainObjectTarget.position, this._mainObject.position, upVec.normalize());//bleh.normalize());
+        //console.log(this.#mainObjectTarget.position, this._mainObject.position);
+        let targetWorldPos = new THREE.Vector3();
+        this.#mainObjectTarget.getWorldPosition(targetWorldPos);
+        let mainWorldPos = new THREE.Vector3();
+        this._mainObject.getWorldPosition(mainWorldPos);
+        //console.log(targetWorldPos.clone().sub(mainWorldPos));
+        let lookMatrix = new THREE.Matrix4().lookAt(targetWorldPos, mainWorldPos, upVec.sub(this._objectGroup.position).normalize());//bleh.normalize());
         let lookQuaternion = new THREE.Quaternion().setFromRotationMatrix(lookMatrix);
+
+        //this._mainObject.quaternion.slerp(lookQuaternion, 1 * dt)
+        this._objectGroup.quaternion.slerp(lookQuaternion, 1 * dt);
+
+        //
+        // let lookEuler = new THREE.Euler().setFromRotationMatrix(lookMatrix);
+        // let lookEulerAsVec = lookEuler.toVector3();
+        // let currRotationAsVec = this._objectGroup.rotation.toVector3();
+        // currRotationAsVec.lerp(lookEulerAsVec, 1 * dt);
+        // console.log(currRotationAsVec, lookEulerAsVec);
+        // this._objectGroup.rotation.setFromVector3(currRotationAsVec);
+
+        //this._objectGroup.rotation.x += yPct * dt;
+        //this._objectGroup.rotation.y += -xPct * dt;
 
         //let e = new THREE.Euler();
         //e.setFromQuaternion(lookQuaternion);
         //console.log(e);
 
         //this._objectGroup.quaternion.rotateTowards(lookQuaternion, 0.2 * dt);
-        this._objectGroup.quaternion.slerp(lookQuaternion, 1 * dt);
-        //console.log(this._objectGroup.quaternion.angleTo(lookQuaternion));
 
-        //this.#camera.quaternion.slerp(lookQuaternion, 0.2 * dt);
+        // this._mainObject.quaternion.slerp(lookQuaternion, 1 * dt);
+
+        //this kind of works. I think a better solution is that, when this occurs, a pre-set animation should be played
+        //to flip the player over and reverse the current offsets (get opposite vector2 and extrapolate scaled pct from them);
+        // if (this._objectGroup.quaternion.angleTo(lookQuaternion) < 1.5) {
+        //     //at this point, rather than keep rotating (because it will just break...) flip the ship and restart rotation from zero
+        //     // console.log(this._objectGroup.quaternion.angleTo(lookQuaternion));
+        //     // upVec = new THREE.Vector3(0, -1, 0);
+        //     // //this._objectGroup.localToWorld(upVec);
+        //     // lookMatrix = new THREE.Matrix4().lookAt(mainWorldPos, targetWorldPos, upVec.normalize());//bleh.normalize());
+        //     // lookQuaternion = new THREE.Quaternion().setFromRotationMatrix(lookMatrix);
+        //     //this._objectGroup.rotateX(-0.01);
+        //     this._objectGroup.quaternion.slerp(lookQuaternion, 1 * dt);
+        // }
+        // else {
+        //     //this._objectGroup.quaternion.slerp(lookQuaternion, 1 * dt);
+        //     this._objectGroup.rotation.x += yPct * dt;
+        //     this._objectGroup.rotation.y += -xPct * dt;
+        // }
+
+        //this._objectGroup.quaternion.rotateTowards(lookQuaternion, 0.5 * dt);
+
         let camLookTargWorld = new THREE.Vector3();
-        this.#cameraPositions.FOLLOW.lookTarg.getWorldPosition(camLookTargWorld);
-        this.#camera.lookAt(camLookTargWorld);
+        this.#cameraPositions.FOLLOW.lookTarg.getWorldPosition(camLookTargWorld); //converting this to use VectorToQuaternion could help prevent stuttering
+        //DISABLING TEMPORARILY
+        //this.#camera.lookAt(camLookTargWorld);
+
         //console.log(this.#camera.rotation);
         this.FlushForces();
     }
