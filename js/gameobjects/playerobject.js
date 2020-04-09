@@ -521,7 +521,7 @@ class PlayerObject extends GameObject {
         modifiedTarg.y += -yPct * Math.abs(yPct) * 4;
 
         //DISABLING TEMPORARILY
-        this.#camera.position.lerp(modifiedTarg, 0.9 * dt);
+        //this.#camera.position.lerp(modifiedTarg, 0.9 * dt);
 
         //rotate the axis that has a higher pct first
         //+ve rotation.x rotates forward
