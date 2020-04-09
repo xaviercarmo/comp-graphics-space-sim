@@ -40,7 +40,8 @@ class PlayerObject extends GameObject {
     #mouseOffset = new THREE.Vector2();
 
     TESTSPEED = 0;
-    MAXTESTSPEED = 40;
+    MAXTESTSPEED = 1000;
+    TESTSPEEDACCEL = 50;
     TESTVEL = new THREE.Vector3();
 
     constructor(object, camera) {
@@ -159,7 +160,7 @@ class PlayerObject extends GameObject {
         }
         */
 
-        this.TESTSPEED = Math.min(this.TESTSPEED + scrollTicks, this.MAXTESTSPEED);
+        this.TESTSPEED = Math.min(this.TESTSPEED + scrollTicks * this.TESTSPEEDACCEL, this.MAXTESTSPEED);
     }
 
     #maxMouseOffset = 1000;//10000;
@@ -528,16 +529,17 @@ class PlayerObject extends GameObject {
         //+ve rotation.z barrel-rolls clockwise
         //1 * dt is quite fast
         // if (Math.abs(xPct) >= Math.abs(yPct)) {
-            this._objectGroup.rotateX((yPct * Math.abs(yPct)) * 0.5 * dt);
-            this._objectGroup.rotateY(-(xPct * Math.abs(xPct)) * 0.5 * dt);
 
-            if (xPct < 0 && yPct < 0) {
-                //console.log('should barrel roll right');
-                //console.log(xPct, yPct);
-                if (window.barrelRollAdjust) {
-                    this._objectGroup.rotateZ(-xPct * 0.1 * dt);//-(xPct * Math.abs(xPct)) * 0.1 * dt);
-                }
-            }
+        this._objectGroup.rotateX((yPct * Math.abs(yPct)) * 0.5 * dt);
+        this._objectGroup.rotateY(-(xPct * Math.abs(xPct)) * 0.5 * dt);
+
+            // if (xPct < 0 && yPct < 0) {
+            //     //console.log('should barrel roll right');
+            //     //console.log(xPct, yPct);
+            //     if (window.barrelRollAdjust) {
+            //         this._objectGroup.rotateZ(-xPct * 0.1 * dt);//-(xPct * Math.abs(xPct)) * 0.1 * dt);
+            //     }
+            // }
 
             //this._objectGroup.rotateY(-(xPct) * dt);
             //this._objectGroup.rotateX((yPct) * dt);
