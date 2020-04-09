@@ -14,7 +14,7 @@ class GameHandler {
     get Camera() { return this.#camera; }
     Orbit = false;
     //Privates
-    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100000);
+    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 10000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
@@ -77,20 +77,20 @@ class GameHandler {
         //later this will use the physics handler to run actual physics
         //for now it will just sum the player's forces and apply them
         this.#gameObjects.forEach(g => {
-            /* NORMAL PHSICS
+            //console.log(g._forces);
             let accelDt = g.Acceleration.multiplyScalar(dt);
             g.Velocity.add(accelDt);
             g.Object.translateOnAxis(g.Velocity.clone().normalize(), g.Velocity.clone().multiplyScalar(dt).length());
+            //console.log(newPos);
 
-            g.PostPhysicsCallback(dt);
-            */
-
-            g.Object.translateZ(g.TESTSPEED * dt);
+            //later this newPos would be stored, and then a third pass over all objects would
+            //allow for collision detection and stuff. For now just sets pos of player.
+            //g.Position = newPos;
             g.PostPhysicsCallback(dt);
         });
         //end physics handler
 
-        //this.controls.update();
+        this.controls.update();
         this.#renderer.render(this.Scene, this.#camera);
     }
 
@@ -101,7 +101,7 @@ class GameHandler {
         const gameHandler = this;
         let assets = [
             {
-                path: this.#assetPaths[0],
+                path: "../assets/SciFi_Fighter.FBX",
                 onComplete: (object) => {
                     //object.position.y += 5;
                     //object.scale.multiplyScalar(0.7);
@@ -133,17 +133,13 @@ class GameHandler {
         let gridHelper = new THREE.GridHelper(50000, 1000);
         this.Scene.add(gridHelper);
 
-        let gridHelper2 = new THREE.GridHelper(2500, 1000);
-        gridHelper2.translateY(5000);
-        this.Scene.add(gridHelper2);
-
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
 
-        // this.#camera.position.set(0, 5.5, -21);
-        // this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
-        // this.controls.update();
+        this.#camera.position.set(0, 5.5, -21);
+        this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
+        this.controls.update();
     }
 
     AddPlayer(object) {
