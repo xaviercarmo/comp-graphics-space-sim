@@ -50,10 +50,13 @@ class PreDownloader {
 
     #initialiseLoadingBar = () => {
         this.#domPreDownloader = $("body").append($("<div>", { class: "pre-downloader" }));
-        $(".pre-downloader").append('<div class="loading-text">Loading Assets...</div>');
+
         $(".pre-downloader")
-            .append($("<div>", { class: "loading-bar-container" }).append($("<div>", { class: "loading-bar" })))
-            ;
+            .append('<div class="loading-text">Loading Assets...</div>');
+
+        $(".pre-downloader")
+            .append($("<div>", { class: "loading-bar-container" })
+            .append($("<div>", { class: "loading-bar" })));
 
         this.#domLoadingBar = $(".loading-bar");
     }
@@ -74,9 +77,7 @@ class PreDownloader {
 
     get IsComplete() {
         for (const assetPath in this.#assetLoadingStates) {
-            let assetState = this.#assetLoadingStates[assetPath];
-
-            if (!assetState.isComplete) return false;
+            if (!this.#assetLoadingStates[assetPath].isComplete) return false;
         }
 
         return true;

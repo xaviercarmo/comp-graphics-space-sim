@@ -28,4 +28,10 @@ function VectorToQuaternion(vec1, vec2, upVec) {
     return new THREE.Quaternion().setFromRotationMatrix(matrix);
 }
 
-export { AddVectors, LoadAssets, VectorToQuaternion }
+function LimitMagnitude(float, maxMagnitude) {
+    if (float > maxMagnitude) { return maxMagnitude; }
+    if (float < -maxMagnitude) { return -maxMagnitude; }
+    return float;
+}
+
+export { AddVectors, LoadAssets, VectorToQuaternion, LimitMagnitude }

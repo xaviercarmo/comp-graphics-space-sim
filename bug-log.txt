@@ -1,0 +1,4 @@
+//UNFIXED
+
+//FIXED
+ - tilting left-to-right rapidly doesn't trigger the rotation counter to reset, so they can turn faster than intended
