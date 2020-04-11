@@ -66,31 +66,19 @@ class GameHandler {
         //menu logic here
         //[...]
 
-        //this.controls.update();
-
         //game logic only runs if game isn't paused
         this.#gameObjects.forEach(g => g.Main(dt));
 
-        //this.#camera.position.copy(this.#gameObjects[0].Object.position);
-        //this will be extracted to physics handler probably
-
-        //later this will use the physics handler to run actual physics
-        //for now it will just sum the player's forces and apply them
         this.#gameObjects.forEach(g => {
-            /* NORMAL PHSICS
-            let accelDt = g.Acceleration.multiplyScalar(dt);
-            g.Velocity.add(accelDt);
-            g.Object.translateOnAxis(g.Velocity.clone().normalize(), g.Velocity.clone().multiplyScalar(dt).length());
+            //physics logic here (later moved to physics handler probably)
+            //[...]
 
-            g.PostPhysicsCallback(dt);
-            */
-
-            g.Object.translateZ(g.TESTSPEED * dt);
             g.PostPhysicsCallback(dt);
         });
-        //end physics handler
 
+        //orbit controls for debugging
         //this.controls.update();
+
         this.#renderer.render(this.Scene, this.#camera);
     }
 
@@ -98,22 +86,17 @@ class GameHandler {
     Initialise() {
         this.#mode = this.#modes.INITIALISING;
 
-        const gameHandler = this;
         let assets = [
             {
                 path: this.#assetPaths[0],
-                onComplete: (object) => {
-                    //object.position.y += 5;
-                    //object.scale.multiplyScalar(0.7);
-                    gameHandler.AddPlayer(object);
-                }
+                onComplete: object => this.AddPlayer(object)
             }
         ];
 
         UTILS.LoadAssets(assets, () => {
             $(".pre-downloader").remove();
-            gameHandler.InitialiseScene();
-            gameHandler.StartGameRunning();
+            this.InitialiseScene();
+            this.StartGameRunning();
         });
     }
 
@@ -123,6 +106,7 @@ class GameHandler {
         window.addEventListener("keyup", INPUT.OnKeyUp);
 
         document.body.appendChild(this.#renderer.domElement);
+
         this.#player.SetupPointerLock();
 
         this.#gameObjects.forEach(g => { this.Scene.add(g.Object); });
@@ -133,14 +117,15 @@ class GameHandler {
         let gridHelper = new THREE.GridHelper(50000, 1000);
         this.Scene.add(gridHelper);
 
-        let gridHelper2 = new THREE.GridHelper(2500, 1000);
-        gridHelper2.translateY(5000);
+        let gridHelper2 = new THREE.GridHelper(50000, 1000);
+        gridHelper2.translateY(25000);
         this.Scene.add(gridHelper2);
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
 
+        //orbit controls for debugging
         // this.#camera.position.set(0, 5.5, -21);
         // this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
         // this.controls.update();
@@ -148,8 +133,6 @@ class GameHandler {
 
     AddPlayer(object) {
         this.#player = new PlayerObject(object, this.#camera);
-        //for debug
-        this.p = this.#player;
         this.AddObject(this.#player);
     }
 
@@ -187,33 +170,6 @@ class GameHandler {
             console.log("Cannot toggle pause, game is not currently running or paused.");
         }
     }
-
-    //theirs
-    CreateCameras() {
-		const offset = new THREE.Vector3(0, 60, 0);
-		const front = new THREE.Object3D();
-		front.position.set(112, 100, 200);
-		front.quaternion.set(0.07133122876303646, -0.17495722675648318, -0.006135162916936811, -0.9819695435118246);
-		front.parent = this.player.object;
-		const back = new THREE.Object3D();
-		back.position.set(0, 100, -250);
-		back.quaternion.set(-0.001079297317118498, -0.9994228131639347, -0.011748701462123836, -0.031856610911161515);
-		back.parent = this.player.object;
-		const wide = new THREE.Object3D();
-		wide.position.set(178, 139, 465);
-		wide.quaternion.set(0.07133122876303646, -0.17495722675648318, -0.006135162916936811, -0.9819695435118246);
-		wide.parent = this.player.object;
-		const overhead = new THREE.Object3D();
-		overhead.position.set(0, 400, 0);
-		overhead.quaternion.set(0.02806727427333993, 0.7629212874133846, 0.6456029820939627, 0.018977008134915086);
-		overhead.parent = this.player.object;
-		const collect = new THREE.Object3D();
-		collect.position.set(40, 82, 94);
-		collect.quaternion.set(0.07133122876303646, -0.17495722675648318, -0.006135162916936811, -0.9819695435118246);
-		collect.parent = this.player.object;
-		this.player.cameras = { front, back, wide, overhead, collect };
-		this.activeCamera = this.player.cameras.back;
-	}
 
     get Scene() { return this.Scene; }
 

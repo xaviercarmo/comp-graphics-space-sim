@@ -1,5 +1,4 @@
 import * as THREE from '../libraries/three.module.js';
-import * as UTILS from './utils.js';
 
 //base class for all game objects
 //all classes extending this one MUST define their own Main() method and
@@ -13,9 +12,6 @@ class GameObject {
     //physics
     _mass = 0;
     _forces = {};
-
-    //publics
-    Velocity = new THREE.Vector3();
 
     constructor(object) {
         this._objectGroup.add(object);
