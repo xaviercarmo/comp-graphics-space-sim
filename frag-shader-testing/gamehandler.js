@@ -51,7 +51,7 @@ class GameHandler {
             fragmentShader: $("#fragmentShader")[0].text
         });
         this.material.transparent = true;
-        let geometry = new THREE.IcosahedronGeometry(20, 8);
+        let geometry = new THREE.IcosahedronGeometry(20, 5);
         let sphere = new THREE.Mesh(geometry, this.material);
         this.Scene.add(sphere);
 
