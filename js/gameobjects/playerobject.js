@@ -9,6 +9,7 @@ class PlayerObject extends GameObject {
     //camera vars
     #camera;
     #cameraPositions = {};
+    #cameraPosition;
 
     //renderer dom element
     #canvas;
@@ -26,14 +27,19 @@ class PlayerObject extends GameObject {
     #maxMouseOffset = 1000;
     #xPct = 0;
     #yPct = 0;
-    #lastXPct = 0;
-    #lastYPct = 0;
 
     //rotation vars
     #rotAmtX = 0;
     #rotAmtY = 0;
     #rotAmtXTimer = 0;
     #rotAmtYTimer = 0;
+    #baseTargetAngles = {
+        x: UTILS.Constants.degToRad * 10,
+        y: UTILS.Constants.degToRad * 10,
+        z: UTILS.Constants.degToRad * 35
+    };
+    #targetEuler = new THREE.Euler();
+    #targetQuaternion = new THREE.Quaternion();
 
     #mainObjectTarget = new THREE.Object3D();
 
@@ -42,11 +48,42 @@ class PlayerObject extends GameObject {
 
         this._mass = 10;
 
+        this.#setupCameraPositions();
+        this.CameraPosition = "FOLLOW";
+
+        this.#setupDebugHelpers();
+
+        this.#camera = camera;
+        this._objectGroup.add(this.#camera);
+
+        //this will be refactored out into a mthod called every frame
+        this.#camera.position.copy(this.#cameraPositions.FOLLOW.posnTarg.position);
+        this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.position);
+
+        this._objectGroup.scale.multiplyScalar(1);
+
+        //setup mouse events
+        window.addEventListener("wheel", this.#handleScroll);
+    }
+
+    #setupCameraPositions = () => {
         this.#cameraPositions.FOLLOW = {
-            posnTarg: new THREE.Object3D(),
-            lookTarg: new THREE.Object3D()
+            posnTarg: new THREE.Vector3(0, 7.6, -31.9),
+            lookTarg: new THREE.Vector3(0, 15.5, 15)
         }
 
+        this.#cameraPosition.HANGAR = {
+            posnTarg: new THREE.Vector3(0, 7.6, -31.9),
+            lookTarg: new THREE.Vector3(0, 15.5, 15)
+        }
+
+        this.#cameraPositions.HANGAR_GUN_SLOT = {
+            posnTarg: new THREE.Vector3(0, 7.6, -31.9),
+            lookTarg: new THREE.Vector3(0, 15.5, 15)
+        }
+    }
+
+    #setupDebugHelpers = () => {
         let geo = new THREE.BoxGeometry(1, 1, 1);
         let matR = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         let matG = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -57,11 +94,7 @@ class PlayerObject extends GameObject {
         let cubeB = new THREE.Mesh(geo, matB);
         let cubeW = new THREE.Mesh(geo, matW);
 
-        this.#cameraPositions.FOLLOW.posnTarg.position.set(0, 7.6, -31.9);
-        this.#cameraPositions.FOLLOW.lookTarg.position.set(0, 15.5, 15);
         this.#cameraPositions.FOLLOW.lookTarg.add(cubeW);
-        this._objectGroup.add(this.#cameraPositions.FOLLOW.posnTarg);
-        this._objectGroup.add(this.#cameraPositions.FOLLOW.lookTarg);
 
         let centre = new THREE.Object3D();
         centre.position.set(0, 0, 30);
@@ -75,18 +108,6 @@ class PlayerObject extends GameObject {
         this.#mainObjectTarget.position.copy(this.#debugMouseOffset.position);
         this.#mainObjectTarget.add(cubeB);
         this._objectGroup.add(this.#mainObjectTarget);
-
-        this.#camera = camera;
-
-        this._objectGroup.add(this.#camera);
-
-        this.#camera.position.copy(this.#cameraPositions.FOLLOW.posnTarg.position);
-        this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.position);
-
-        this._objectGroup.scale.multiplyScalar(1);
-
-        //setup mouse events
-        window.addEventListener("wheel", this.#handleScroll);
     }
 
     #handleScroll = (event) => {
@@ -110,34 +131,24 @@ class PlayerObject extends GameObject {
         }
     }
 
-    //public methods
-    Main(dt) {
-        super.Main(dt);
-
-        //move forward by current speed
-        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, 1.5 * dt);
-        this._objectGroup.translateZ(this.#currentSpeed * dt);
-
-        //handle all visual effects associated with current movement
-        let speedPct = this.#targetSpeed / this.#maxSpeed;
-
-        this.#lastXPct = this.#xPct;
+    #adjustRotationAmounts = (dt) => {
+        let lastXPct = this.#xPct;
         this.#xPct = this.#mouseOffset.x / this.#maxMouseOffset;
 
-        this.#lastYPct = this.#yPct;
+        let lastYPct = this.#yPct;
         this.#yPct = this.#mouseOffset.y / this.#maxMouseOffset;
 
         let deltaRotAmtX = this.#yPct - this.#rotAmtX;
         let deltaRotAmtY = -this.#xPct - this.#rotAmtY;
 
-        if (deltaRotAmtY == 0 || (-this.#lastXPct > this.#rotAmtY != -this.#xPct > this.#rotAmtY)) {
+        if (deltaRotAmtY == 0 || (-lastXPct > this.#rotAmtY != -this.#xPct > this.#rotAmtY)) {
             this.#rotAmtYTimer = 0;
         }
         else {
             this.#rotAmtYTimer = Math.min(1, this.#rotAmtYTimer + dt);
         }
 
-        if (deltaRotAmtX == 0 || (this.#lastYPct > this.#rotAmtX != this.#yPct > this.#rotAmtX)) {
+        if (deltaRotAmtX == 0 || (lastYPct > this.#rotAmtX != this.#yPct > this.#rotAmtX)) {
             this.#rotAmtXTimer = 0;
         }
         else {
@@ -149,14 +160,25 @@ class PlayerObject extends GameObject {
         this.#rotAmtX += UTILS.LimitMagnitude(deltaRotAmtX, (0.4 + 2 * xTime) * dt);
         this.#rotAmtY += UTILS.LimitMagnitude(deltaRotAmtY, (0.4 + 2 * yTime) * dt);
 
+        this._objectGroup.rotateX(this.#rotAmtX * dt);
+        this._objectGroup.rotateY(this.#rotAmtY * dt);
+
+        let targetXAngle = this.#baseTargetAngles.x * this.#yPct; // back and forth
+        let targetYAngle = this.#baseTargetAngles.y * this.#rotAmtY; // side to side
+        let targetZAngle = this.#baseTargetAngles.z * this.#xPct; //barrel roll
+        this.#targetEuler.set(targetXAngle, targetYAngle, targetZAngle);
+        this.#targetQuaternion.setFromEuler(this.#targetEuler);
+
+        this._mainObject.quaternion.slerp(this.#targetQuaternion, 1.6 * dt);
+    }
+
+    #adjustPositionOffset = (dt) => {
+        let speedPct = this.#targetSpeed / this.#maxSpeed;
         this.#debugMouseOffset.position.x = -this.#xPct * (8 + 16 * speedPct);
         this.#debugMouseOffset.position.y = -this.#yPct * (8 + 16 * speedPct);
 
         this.#mainObjectTarget.position.x = this.#rotAmtY * (8 + 16 * speedPct);
         this.#mainObjectTarget.position.y = -this.#rotAmtX * (8 + 16 * speedPct);
-
-        this._objectGroup.rotateX(this.#rotAmtX * dt);
-        this._objectGroup.rotateY(this.#rotAmtY * dt);
 
         let modifiedTarg = new THREE.Vector3();
 
@@ -166,15 +188,28 @@ class PlayerObject extends GameObject {
         modifiedTarg.x -= 5 * -this.#xPct * xyOffsetPct;
 
         this._mainObject.position.lerp(modifiedTarg, 0.9 * dt);
+    }
 
-        let rad = 0.0174533;
-        let targetXAngle = rad * 10 * this.#yPct; // back and forth
-        let targetZAngle = rad * 35 * this.#xPct; //barrel roll
-        let targetYAngle = rad * 10 * this.#rotAmtY; // side to side
-        let euler = new THREE.Euler(targetXAngle, targetYAngle, targetZAngle);
-        let targetQuaternion = new THREE.Quaternion().setFromEuler(euler);
+    //public methods
+    Main(dt) {
+        super.Main(dt);
 
-        this._mainObject.quaternion.slerp(targetQuaternion, 1.6 * dt);
+        //move forward by current speed
+        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, 1.5 * dt);
+        this._objectGroup.translateZ(this.#currentSpeed * dt);
+
+        //handle all visual effects associated with current movement
+        this.#adjustRotationAmounts(dt);
+        this.#adjustPositionOffset(dt);
+
+        this.#camera.position.lerp();
+        this.#camera.lookAt(this.#cameraPosition.lookTarg.position);
+    }
+
+    PostPhysicsCallback(dt) {
+        super.PostPhysicsCallback(dt);
+
+        this.FlushForces();
     }
 
     SetupPointerLock() {
@@ -197,12 +232,13 @@ class PlayerObject extends GameObject {
         this.#canvas.requestPointerLock();
     }
 
-    PostPhysicsCallback(dt) {
-        super.PostPhysicsCallback(dt);
-
-
-
-        this.FlushForces();
+    set CameraPosition(positionName) {
+        if (this.#cameraPositions[positionName] != undefined) {
+            this.#cameraPosition = this.#cameraPositions[positionName];
+        }
+        else {
+            console.log(`"${positionName}" is an invalid camera position name.`);
+        }
     }
 }
 

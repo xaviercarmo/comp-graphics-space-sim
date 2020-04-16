@@ -14,7 +14,7 @@ class GameHandler {
     get Camera() { return this.#camera; }
     Orbit = false;
     //Privates
-    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100000);
+    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 50000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
@@ -124,6 +124,7 @@ class GameHandler {
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
+        //this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         //orbit controls for debugging
         // this.#camera.position.set(0, 5.5, -21);
@@ -133,6 +134,7 @@ class GameHandler {
 
     AddPlayer(object) {
         this.#player = new PlayerObject(object, this.#camera);
+        //this.Scene.add(this.#camera);
         this.AddObject(this.#player);
     }
 

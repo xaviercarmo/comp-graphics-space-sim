@@ -34,4 +34,8 @@ function LimitMagnitude(float, maxMagnitude) {
     return float;
 }
 
-export { AddVectors, LoadAssets, VectorToQuaternion, LimitMagnitude }
+const Constants = {
+    degToRad: 0.0174533
+}
+
+export { AddVectors, LoadAssets, VectorToQuaternion, LimitMagnitude, Constants }
