@@ -4,15 +4,23 @@ import * as UTILS from '../utils.js';
 
 import GameObject from '../gameobject.js';
 
+import { OrbitControls } from '../../libraries/OrbitControls.js';
+
 class PlayerObject extends GameObject {
     //privates
     //camera vars
     #camera;
     #cameraPositions = {};
+    #oldCameraPosition;
     #cameraPosition;
-
-    //renderer dom element
-    #canvas;
+    #cameraPositionOrder;
+    #cameraCurve;
+    #cameraTransitioning = false;
+    #cameraTransitionDirection = 1;
+    #cameraTransitionProgress = 0;
+    #cameraTransitionCurves = {};
+    #cameraLookTransition = new THREE.Vector3();
+    #orbitControls;
 
     //speed vars
     #currentSpeed = 0;
@@ -45,42 +53,79 @@ class PlayerObject extends GameObject {
 
     constructor(object, camera) {
         super(object);
-
         this._mass = 10;
 
         this.#setupCameraPositions();
-        this.CameraPosition = "FOLLOW";
+        this.#setupCameraTransitionCurves();
 
         this.#setupDebugHelpers();
 
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
+        this.CameraPosition = "FOLLOW";
 
-        //this will be refactored out into a mthod called every frame
-        this.#camera.position.copy(this.#cameraPositions.FOLLOW.posnTarg.position);
-        this.#camera.lookAt(this.#cameraPositions.FOLLOW.lookTarg.position);
-
-        this._objectGroup.scale.multiplyScalar(1);
-
-        //setup mouse events
         window.addEventListener("wheel", this.#handleScroll);
     }
 
     #setupCameraPositions = () => {
+        this.#cameraPositions.ORIGIN = {
+            name: "ORIGIN",
+            posnTarg: new THREE.Vector3(0, 0, 0),
+            lookTarg: new THREE.Vector3(0, 0, 0)
+        }
+
         this.#cameraPositions.FOLLOW = {
+            name: "FOLLOW",
             posnTarg: new THREE.Vector3(0, 7.6, -31.9),
             lookTarg: new THREE.Vector3(0, 15.5, 15)
         }
 
-        this.#cameraPosition.HANGAR = {
-            posnTarg: new THREE.Vector3(0, 7.6, -31.9),
-            lookTarg: new THREE.Vector3(0, 15.5, 15)
+        this.#cameraPositions.HANGAR = {
+            name: "HANGAR",
+            posnTarg: new THREE.Vector3(0, 0, 0),
+            lookTarg: new THREE.Vector3(0, 0, 0)
         }
 
         this.#cameraPositions.HANGAR_GUN_SLOT = {
-            posnTarg: new THREE.Vector3(0, 7.6, -31.9),
-            lookTarg: new THREE.Vector3(0, 15.5, 15)
+            name: "HANGAR_GUN_SLOT",
+            posnTarg: new THREE.Vector3(2, -5, 15),
+            lookTarg: new THREE.Vector3(1, -3, 10)
         }
+
+        this.#cameraPositions.ORBIT = {
+            name: "ORBIT"
+        }
+
+        this.#cameraPositionOrder = ["FOLLOW", "HANGAR", "HANGAR_GUN_SLOT"];
+
+        this.#cameraPosition = this.#cameraPositions.ORIGIN;
+    }
+
+    //Sets up curves between different camera cameraPositions
+    //naming is always POSITION1_POSITION2 to indicate a curve joining
+    //those two positions. Position names must match actual position
+    //names.
+    #setupCameraTransitionCurves = () => {
+        this.#cameraTransitionCurves.ORIGIN_FOLLOW = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 0, -5),
+        	new THREE.Vector3(0, 3, -20),
+        	new THREE.Vector3(0, 7.6, -31.9)
+        ]);
+
+        this.#cameraTransitionCurves.FOLLOW_HANGAR = {
+            //needs to be implemented
+        }
+
+        this.#cameraTransitionCurves.HANGAR_HANGAR_GUN_SLOT = {
+            //needs to be implemented
+        }
+
+        this.#cameraTransitionCurves.FOLLOW_HANGAR_GUN_SLOT = new THREE.CatmullRomCurve3([
+        	new THREE.Vector3(0, 7.6, -31.9),
+        	new THREE.Vector3(15, 0, 0),
+            new THREE.Vector3(10, -3, 12),
+        	new THREE.Vector3(2, -5, 15)
+        ]);
     }
 
     #setupDebugHelpers = () => {
@@ -94,12 +139,12 @@ class PlayerObject extends GameObject {
         let cubeB = new THREE.Mesh(geo, matB);
         let cubeW = new THREE.Mesh(geo, matW);
 
-        this.#cameraPositions.FOLLOW.lookTarg.add(cubeW);
+        cubeW.position.copy(this.#cameraPositions.FOLLOW.lookTarg);
+        this._objectGroup.add(cubeW);
+        //this.#cameraPositions.FOLLOW.lookTarg.add(cubeW);
 
-        let centre = new THREE.Object3D();
-        centre.position.set(0, 0, 30);
-        centre.add(cubeG);
-        this._objectGroup.add(centre);
+        cubeG.position.set(0, 0, 30);
+        this._objectGroup.add(cubeG);
 
         this.#debugMouseOffset.position.set(0, 0, 30);
         this.#debugMouseOffset.add(cubeR);
@@ -123,7 +168,7 @@ class PlayerObject extends GameObject {
     }
 
     #handleMouseMove = (event) => {
-        if (document.pointerLockElement === this.#canvas) {
+        if (document.pointerLockElement === window.GameHandler.Renderer.domElement) {
             this.#mouseOffset.x += event.movementX;
             this.#mouseOffset.y += event.movementY;
 
@@ -165,7 +210,7 @@ class PlayerObject extends GameObject {
 
         let targetXAngle = this.#baseTargetAngles.x * this.#yPct; // back and forth
         let targetYAngle = this.#baseTargetAngles.y * this.#rotAmtY; // side to side
-        let targetZAngle = this.#baseTargetAngles.z * this.#xPct; //barrel roll
+        let targetZAngle = this.#baseTargetAngles.z * this.#xPct; // barrel roll
         this.#targetEuler.set(targetXAngle, targetYAngle, targetZAngle);
         this.#targetQuaternion.setFromEuler(this.#targetEuler);
 
@@ -190,6 +235,40 @@ class PlayerObject extends GameObject {
         this._mainObject.position.lerp(modifiedTarg, 0.9 * dt);
     }
 
+    #handleCameraTransition = (dt) => {
+        if (this.#cameraTransitioning) {
+            this.#cameraTransitionProgress = THREE.MathUtils.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
+            this.#cameraTransitionProgress += 0.015 * dt;
+
+            if (this.#cameraTransitionProgress > 0.9999) {
+                this.#camera.position.copy(this.#cameraPosition.posnTarg);
+                this.#cameraLookTransition.copy(this.#cameraPosition.lookTarg);
+                this.#cameraTransitionProgress = 0;
+                this.#cameraTransitioning = false;
+            }
+            else {
+                if (this.#cameraTransitionDirection == 1) {
+                    this.#cameraCurve.getPointAt(this.#cameraTransitionProgress, this.#camera.position);
+                }
+                else if (this.#cameraTransitionDirection == -1) {
+                    this.#cameraCurve.getPointAt(1 - this.#cameraTransitionProgress, this.#camera.position);
+                }
+
+                this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
+                this.#camera.lookAt(this.#cameraLookTransition);
+
+                //TODO:
+                //NEED TO SLERP TO THE CORRECT ROTATION (0, 0, 0) HERE AS WELL
+                //MAKE SURE TO SLERP AFTER DOING THE LOOK AT
+            }
+            this._objectGroup.localToWorld(this.#cameraLookTransition);
+            this.#camera.lookAt(this.#cameraLookTransition);
+        }
+        else if (this.#cameraPosition.name == "ORBIT") {
+            this.#orbitControls.update();
+        }
+    }
+
     //public methods
     Main(dt) {
         super.Main(dt);
@@ -199,11 +278,12 @@ class PlayerObject extends GameObject {
         this._objectGroup.translateZ(this.#currentSpeed * dt);
 
         //handle all visual effects associated with current movement
-        this.#adjustRotationAmounts(dt);
-        this.#adjustPositionOffset(dt);
+        if (this.#cameraPosition.name != "ORBIT") {
+            this.#adjustRotationAmounts(dt);
+            this.#adjustPositionOffset(dt);
+        }
 
-        this.#camera.position.lerp();
-        this.#camera.lookAt(this.#cameraPosition.lookTarg.position);
+        this.#handleCameraTransition(dt)
     }
 
     PostPhysicsCallback(dt) {
@@ -213,13 +293,12 @@ class PlayerObject extends GameObject {
     }
 
     SetupPointerLock() {
-        this.#canvas = $("canvas")[0];
-
-        this.#canvas.requestPointerLock = this.#canvas.requestPointerLock;
-        this.#canvas.onclick = this.#canvas.requestPointerLock;
+        let canvas = window.GameHandler.Renderer.domElement;
+        canvas.requestPointerLock = canvas.requestPointerLock;
+        canvas.onclick = canvas.requestPointerLock;
 
         document.addEventListener("pointerlockchange", (e) => {
-            if (document.pointerLockElement === this.#canvas) {
+            if (document.pointerLockElement === canvas) {
                 console.log("Pointer Locked");
             }
             else {
@@ -229,15 +308,47 @@ class PlayerObject extends GameObject {
 
         document.addEventListener("mousemove", this.#handleMouseMove);
 
-        this.#canvas.requestPointerLock();
+        canvas.requestPointerLock();
     }
 
     set CameraPosition(positionName) {
-        if (this.#cameraPositions[positionName] != undefined) {
-            this.#cameraPosition = this.#cameraPositions[positionName];
-        }
-        else {
-            console.log(`"${positionName}" is an invalid camera position name.`);
+        if (positionName != this.#cameraPosition.name) {
+            if (this.#cameraPositions[positionName] != undefined) {
+                this.#oldCameraPosition = this.#cameraPosition == undefined
+                    ? this.#cameraPositions.ORIGIN
+                    : this.#cameraPosition;
+
+                this.#cameraPosition = this.#cameraPositions[positionName];
+
+                if (positionName != "ORBIT") {
+                    if (this.#oldCameraPosition.name == "ORBIT") {
+                        this.#orbitControls.enabled = false;
+                        this.#camera.position.copy(this.#cameraPosition.posnTarg);
+                        this.#camera.lookAt(this.#cameraPosition.lookTarg);
+                    }
+                    else {
+                        this.#cameraTransitionDirection = 1;
+                        this.#cameraCurve = this.#cameraTransitionCurves[`${this.#oldCameraPosition.name}_${this.#cameraPosition.name}`];
+                        if (this.#cameraCurve == undefined) {
+                            this.#cameraCurve = this.#cameraTransitionCurves[`${this.#cameraPosition.name}_${this.#oldCameraPosition.name}`];
+                            this.#cameraTransitionDirection = -1;
+                        }
+
+                        this.#cameraTransitioning = true;
+                    }
+                }
+                else {
+                    if (this.#orbitControls == undefined) {
+                        let canvas = window.GameHandler.Renderer.domElement;
+                        this.#orbitControls = new OrbitControls(this.#camera, canvas);
+                    }
+
+                    this.#orbitControls.enabled = true;
+                }
+            }
+            else {
+                console.log(`"${positionName}" is an invalid camera position name.`);
+            }
         }
     }
 }

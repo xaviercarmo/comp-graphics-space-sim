@@ -15,6 +15,8 @@ class GameHandler {
     Orbit = false;
     //Privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 50000);
+    #cameraGroup = new THREE.Group();
+    #debugCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
@@ -35,8 +37,8 @@ class GameHandler {
 
     #player;
 
+    #scene = new THREE.Scene();
     //publics
-    Scene = new THREE.Scene();
 
     constructor() {
         let assetNames = ["SciFi_Fighter.FBX"];
@@ -54,6 +56,10 @@ class GameHandler {
         });
     }
 
+    #timeElapsed = 0;
+    #totalTime = 1;
+    #curveObject;
+    #lookAt = new THREE.Vector3();
     //private methods
     //NOTE: Due to current lack of support in Chrome for private instance methods we will use private fields that hold methods
     #animate = () => {
@@ -76,10 +82,33 @@ class GameHandler {
             g.PostPhysicsCallback(dt);
         });
 
+        // //camera movement testing
+        // if (this.#timeElapsed == this.#totalTime) {
+        //     //this.#timeElapsed = 0;
+        // }
+        // else {
+        //     //this.#timeElapsed = Math.min(this.#timeElapsed + dt, this.#totalTime);
+        //     this.#timeElapsed = THREE.MathUtils.lerp(this.#timeElapsed, this.#totalTime, (1 + this.#timeElapsed / this.#totalTime) * dt);
+        //     this.#timeElapsed += 0.015 * dt;
+        //     if (this.#timeElapsed / this.#totalTime > 0.9999) {
+        //         this.#timeElapsed = this.#totalTime;
+        //     }
+        //     console.log(this.#timeElapsed / this.#totalTime);
+        // }
+        //
+        // let progressPct = this.#timeElapsed / this.#totalTime;
+        //
+        // this.#lookAt.lerpVectors(new THREE.Vector3(0, 15.5, 15),  new THREE.Vector3(1, -3, 10), progressPct);
+        // this.#debugCamera.lookAt(this.#lookAt);
+        // //this.#debugCamera.lookAt(new THREE.Vector3(1, -3, 10));
+        //
+        // this.#curveObject.getPointAt(progressPct, this.#cameraGroup.position);
+
         //orbit controls for debugging
         //this.controls.update();
 
-        this.#renderer.render(this.Scene, this.#camera);
+        //this.#renderer.render(this.#scene, this.#debugCamera);
+        this.#renderer.render(this.#scene, this.#camera);
     }
 
     //public methods
@@ -108,18 +137,25 @@ class GameHandler {
         document.body.appendChild(this.#renderer.domElement);
 
         this.#player.SetupPointerLock();
+        //this.#scene.add(this.#cameraGroup);
+        //this.#cameraGroup.add(this.#debugCamera);
+        //let cameraHelper = new THREE.CameraHelper(this.#debugCamera);
+        //this.#scene.add(cameraHelper);
+        //this.#cameraGroup.position.set(0, 7.6, -31.9);
+        //this.#debugCamera.lookAt(new THREE.Vector3(0, 15.5, 15));
+        //cameraHelper.visible = true;
 
-        this.#gameObjects.forEach(g => { this.Scene.add(g.Object); });
+        this.#gameObjects.forEach(g => { this.#scene.add(g.Object); });
 
         let light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 10 );
-        this.Scene.add(light);
+        this.#scene.add(light);
 
         let gridHelper = new THREE.GridHelper(50000, 1000);
-        this.Scene.add(gridHelper);
+        this.#scene.add(gridHelper);
 
         let gridHelper2 = new THREE.GridHelper(50000, 1000);
         gridHelper2.translateY(25000);
-        this.Scene.add(gridHelper2);
+        this.#scene.add(gridHelper2);
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
@@ -127,20 +163,37 @@ class GameHandler {
         //this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         //orbit controls for debugging
-        // this.#camera.position.set(0, 5.5, -21);
-        // this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
-        // this.controls.update();
+        //this.#camera.position.set(2, -5, 15);
+        //this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
+        //this.controls.update();
+
+        // var curve = new THREE.CatmullRomCurve3( [
+        // 	new THREE.Vector3(0, 7.6, -31.9),
+        // 	new THREE.Vector3( 15, 0, 0 ),
+        //     new THREE.Vector3( 10, -3, 12 ),
+        // 	new THREE.Vector3( 2, -5, 15 )
+        // ] );
+        //
+        // var points = curve.getPoints( 100 );
+        // var geometry = new THREE.BufferGeometry().setFromPoints( points );
+        //
+        // var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+        //
+        // // Create the final object to add to the scene
+        // var curveObject = new THREE.Line( geometry, material );
+        // this.#curveObject = curve;
+        //
+        // this.#scene.add(curveObject);
     }
 
     AddPlayer(object) {
         this.#player = new PlayerObject(object, this.#camera);
-        //this.Scene.add(this.#camera);
+        //this.#scene.add(this.#camera);
         this.AddObject(this.#player);
     }
 
     AddObject(object) {
         if (object instanceof GameObject) {
-
             this.#gameObjects.push(object);
         }
         else {
@@ -173,9 +226,11 @@ class GameHandler {
         }
     }
 
-    get Scene() { return this.Scene; }
+    get Scene() { return this.#scene; }
 
     get Player() { return this.#player; }
+
+    get Renderer() { return this.#renderer; }
 }
 
 export default GameHandler;

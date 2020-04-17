@@ -3,7 +3,14 @@ import { FBXLoader } from '../libraries/FBXLoader.js';
 
 function AddVectors(...vectors) {
     let total = new THREE.Vector3();
-    vectors.forEach(vec => total = total.addVectors(total, vec));
+    vectors.forEach(vec => total.add(vec));
+
+    return total;
+}
+
+function SubVectors(...vectors) {
+    let total = vectors.splice(0, 1)[0].clone();
+    vectors.forEach(vec => total.sub(vec));
 
     return total;
 }
@@ -11,7 +18,6 @@ function AddVectors(...vectors) {
 function LoadAssets(assets, onCompleteAll) {
     let assetsLoadedCount = 0;
     const loader = new FBXLoader();
-
     for (const asset of assets) {
         loader.load(asset.path, (object) => {
             asset.onComplete(object);
@@ -38,4 +44,4 @@ const Constants = {
     degToRad: 0.0174533
 }
 
-export { AddVectors, LoadAssets, VectorToQuaternion, LimitMagnitude, Constants }
+export { AddVectors, SubVectors, LoadAssets, VectorToQuaternion, LimitMagnitude, Constants }
