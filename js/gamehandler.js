@@ -48,11 +48,6 @@ class GameHandler {
 
     #scene = new THREE.Scene();
 
-    #keyPressHistory = {};
-
-    //publics
-    KeyPressedOnce = {};
-
     constructor() {
         let gameHandler = this;
         this.#mode = this.#modes.PRELOADING;
@@ -72,18 +67,7 @@ class GameHandler {
         //regardless of pausing, animation frames should continue for menu logic
         requestAnimationFrame(() => { this.#animate(); });
 
-        //manage inputs so that holding keys down doesn't trigger events more than once per click
-        for (var keyName in INPUT.KeyPressed) {
-            if (INPUT.KeyPressed[keyName] == 0) {
-                //clear from tracking if its there
-                this.#keyPressHistory[keyName] = 0;
-            }
-            else if (INPUT.KeyPressed[keyName] == 1 && !this.#keyPressHistory[keyName]) {
-                //track it, only trigger once
-                this.#keyPressHistory[keyName] = 1;
-                this.KeyPressedOnce[keyName] = 1;
-            }
-        }
+        INPUT.UpdateKeyPressedOnce();
 
         //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
         let dt = this.#clock.getDelta();
@@ -102,7 +86,7 @@ class GameHandler {
         });
 
         //must be done AFTER all other main logic has run
-        this.KeyPressedOnce = {};
+        INPUT.FlushKeyPressedOnce();
 
         this.#renderer.render(this.#scene, this.#camera);
     }
@@ -135,8 +119,6 @@ class GameHandler {
 
     InitialiseScene() {
         window.addEventListener("resize", () => { this.Resize(); });
-        window.addEventListener("keydown", INPUT.OnKeyDown);
-        window.addEventListener("keyup", INPUT.OnKeyUp);
 
         document.body.appendChild(this.#renderer.domElement);
 

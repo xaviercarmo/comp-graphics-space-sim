@@ -301,12 +301,11 @@ class PlayerObject extends GameObject {
         }
 
         this.#handleCameraTransition(dt)
-        let keyPressed = window.GameHandler.KeyPressedOnce;
-        if (keyPressed.ArrowRight) {
+        if (INPUT.KeyPressedOnce("ArrowRight")) {
             this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
             this.CurrentGun = this.#gunNames[this.#gunNameIndex];
         }
-        else if (keyPressed.ArrowLeft) {
+        else if (INPUT.KeyPressedOnce("ArrowLeft")) {
             this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
             this.CurrentGun = this.#gunNames[this.#gunNameIndex];
         }
