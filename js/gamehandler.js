@@ -5,7 +5,9 @@ import * as UTILS from './utils.js';
 import PreDownloader from './predownloader.js';
 import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/playerobject.js';
+import ObstacleObject from './gameobjects/obstacleobject.js'
 import PhysicsHandler from './physicshandler.js';
+
 
 import { OrbitControls } from '../libraries/OrbitControls.js';
 
@@ -156,6 +158,9 @@ class GameHandler {
         let gridHelper2 = new THREE.GridHelper(50000, 1000);
         gridHelper2.translateY(25000);
         this.#scene.add(gridHelper2);
+
+        //instantiate object
+        let obstacle = new ObstacleObject();
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
