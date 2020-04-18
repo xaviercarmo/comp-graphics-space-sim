@@ -12,16 +12,25 @@ import { OrbitControls } from '../libraries/OrbitControls.js';
 class GameHandler {
     //debug
     get Camera() { return this.#camera; }
-    Orbit = false;
+
     //Privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 50000);
-    #cameraGroup = new THREE.Group();
-    #debugCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
-    #assetPaths = [];
-
+    #assetPaths = [
+        "../assets/SciFi_Fighter.FBX",
+        "../assets/gattling_gun_test.fbx",
+        "../assets/railgun_test_2.fbx"
+    ]
+    #meshes = {
+        player: {
+            ship: {},
+            gattling_gun: {},
+            rail_gun: {},
+            plasma_gun: {}
+        }
+    };
     #gameObjects = [];
 
     #modes = {
@@ -38,12 +47,13 @@ class GameHandler {
     #player;
 
     #scene = new THREE.Scene();
+
+    #keyPressHistory = {};
+
     //publics
+    KeyPressedOnce = {};
 
     constructor() {
-        let assetNames = ["SciFi_Fighter.FBX"];
-        assetNames.forEach((name) => { this.#assetPaths.push(`../assets/${name}`); });
-
         let gameHandler = this;
         this.#mode = this.#modes.PRELOADING;
 
@@ -56,15 +66,24 @@ class GameHandler {
         });
     }
 
-    #timeElapsed = 0;
-    #totalTime = 1;
-    #curveObject;
-    #lookAt = new THREE.Vector3();
     //private methods
     //NOTE: Due to current lack of support in Chrome for private instance methods we will use private fields that hold methods
     #animate = () => {
         //regardless of pausing, animation frames should continue for menu logic
         requestAnimationFrame(() => { this.#animate(); });
+
+        //manage inputs so that holding keys down doesn't trigger events more than once per click
+        for (var keyName in INPUT.KeyPressed) {
+            if (INPUT.KeyPressed[keyName] == 0) {
+                //clear from tracking if its there
+                this.#keyPressHistory[keyName] = 0;
+            }
+            else if (INPUT.KeyPressed[keyName] == 1 && !this.#keyPressHistory[keyName]) {
+                //track it, only trigger once
+                this.#keyPressHistory[keyName] = 1;
+                this.KeyPressedOnce[keyName] = 1;
+            }
+        }
 
         //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
         let dt = this.#clock.getDelta();
@@ -82,32 +101,9 @@ class GameHandler {
             g.PostPhysicsCallback(dt);
         });
 
-        // //camera movement testing
-        // if (this.#timeElapsed == this.#totalTime) {
-        //     //this.#timeElapsed = 0;
-        // }
-        // else {
-        //     //this.#timeElapsed = Math.min(this.#timeElapsed + dt, this.#totalTime);
-        //     this.#timeElapsed = THREE.MathUtils.lerp(this.#timeElapsed, this.#totalTime, (1 + this.#timeElapsed / this.#totalTime) * dt);
-        //     this.#timeElapsed += 0.015 * dt;
-        //     if (this.#timeElapsed / this.#totalTime > 0.9999) {
-        //         this.#timeElapsed = this.#totalTime;
-        //     }
-        //     console.log(this.#timeElapsed / this.#totalTime);
-        // }
-        //
-        // let progressPct = this.#timeElapsed / this.#totalTime;
-        //
-        // this.#lookAt.lerpVectors(new THREE.Vector3(0, 15.5, 15),  new THREE.Vector3(1, -3, 10), progressPct);
-        // this.#debugCamera.lookAt(this.#lookAt);
-        // //this.#debugCamera.lookAt(new THREE.Vector3(1, -3, 10));
-        //
-        // this.#curveObject.getPointAt(progressPct, this.#cameraGroup.position);
+        //must be done AFTER all other main logic has run
+        this.KeyPressedOnce = {};
 
-        //orbit controls for debugging
-        //this.controls.update();
-
-        //this.#renderer.render(this.#scene, this.#debugCamera);
         this.#renderer.render(this.#scene, this.#camera);
     }
 
@@ -118,7 +114,15 @@ class GameHandler {
         let assets = [
             {
                 path: this.#assetPaths[0],
-                onComplete: object => this.AddPlayer(object)
+                onComplete: obj => this.#meshes.player.ship = obj//this.AddPlayer(object)
+            },
+            {
+                path: this.#assetPaths[1],
+                onComplete: obj => this.#meshes.player.gattling_gun = obj
+            },
+            {
+                path: this.#assetPaths[2],
+                onComplete: obj => this.#meshes.player.rail_gun = obj
             }
         ];
 
@@ -136,14 +140,9 @@ class GameHandler {
 
         document.body.appendChild(this.#renderer.domElement);
 
+        this.AddPlayer();
+
         this.#player.SetupPointerLock();
-        //this.#scene.add(this.#cameraGroup);
-        //this.#cameraGroup.add(this.#debugCamera);
-        //let cameraHelper = new THREE.CameraHelper(this.#debugCamera);
-        //this.#scene.add(cameraHelper);
-        //this.#cameraGroup.position.set(0, 7.6, -31.9);
-        //this.#debugCamera.lookAt(new THREE.Vector3(0, 15.5, 15));
-        //cameraHelper.visible = true;
 
         this.#gameObjects.forEach(g => { this.#scene.add(g.Object); });
 
@@ -161,38 +160,20 @@ class GameHandler {
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
         //this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        //orbit controls for debugging
-        //this.#camera.position.set(2, -5, 15);
-        //this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
-        //this.controls.update();
-
-        // var curve = new THREE.CatmullRomCurve3( [
-        // 	new THREE.Vector3(0, 7.6, -31.9),
-        // 	new THREE.Vector3( 15, 0, 0 ),
-        //     new THREE.Vector3( 10, -3, 12 ),
-        // 	new THREE.Vector3( 2, -5, 15 )
-        // ] );
-        //
-        // var points = curve.getPoints( 100 );
-        // var geometry = new THREE.BufferGeometry().setFromPoints( points );
-        //
-        // var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
-        //
-        // // Create the final object to add to the scene
-        // var curveObject = new THREE.Line( geometry, material );
-        // this.#curveObject = curve;
-        //
-        // this.#scene.add(curveObject);
     }
 
-    AddPlayer(object) {
-        this.#player = new PlayerObject(object, this.#camera);
-        //this.#scene.add(this.#camera);
-        this.AddObject(this.#player);
+    AddPlayer() {
+        let playerMeshes = {
+            ship: this.#meshes.player.ship.clone(),
+            gattling_gun: this.#meshes.player.gattling_gun.clone(),
+            rail_gun: this.#meshes.player.rail_gun.clone()
+        };
+
+        this.#player = new PlayerObject(playerMeshes, this.#camera);
+        this.AddGameObject(this.#player);
     }
 
-    AddObject(object) {
+    AddGameObject(object) {
         if (object instanceof GameObject) {
             this.#gameObjects.push(object);
         }

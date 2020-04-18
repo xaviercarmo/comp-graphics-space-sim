@@ -29,19 +29,63 @@ function LoadAssets(assets, onCompleteAll) {
     }
 }
 
-function VectorToQuaternion(vec1, vec2, upVec) {
-    let matrix = new THREE.Matrix4().lookAt(vec1, vec2, upVec);
-    return new THREE.Quaternion().setFromRotationMatrix(matrix);
-}
-
 function LimitMagnitude(float, maxMagnitude) {
     if (float > maxMagnitude) { return maxMagnitude; }
     if (float < -maxMagnitude) { return -maxMagnitude; }
     return float;
 }
 
-const Constants = {
-    degToRad: 0.0174533
+function Mod(num1, modNum) {
+    return (num1 % modNum + modNum) % modNum;
 }
 
-export { AddVectors, SubVectors, LoadAssets, VectorToQuaternion, LimitMagnitude, Constants }
+class RedDebugLine {
+    //privates
+    #geometry = new THREE.BufferGeometry();
+    #positions = new Float32Array(2 * 3);
+    #line;
+
+    //publics
+    static LineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+
+    constructor(from = new THREE.Vector3(0, 0, 0), to = new THREE.Vector3(0, 1, 0)) {
+        this.#geometry.setAttribute('position', new THREE.BufferAttribute(this.#positions, 3));
+        this.#line = new THREE.Line(this.#geometry, RedDebugLine.LineMaterial);
+        this.#line.frustumCulled = false;
+        this.From = from;
+        this.To = to;
+
+        window.GameHandler.Scene.add(this.#line);
+    }
+
+    set From(vector) {
+        this.#positions[0] = vector.x;
+        this.#positions[1] = vector.y;
+        this.#positions[2] = vector.z;
+
+        this.#geometry.attributes.position.needsUpdate = true;
+    }
+
+    set To(vector) {
+        this.#positions[3] = vector.x;
+        this.#positions[4] = vector.y;
+        this.#positions[5] = vector.z;
+
+        this.#geometry.attributes.position.needsUpdate = true;
+    }
+}
+
+const Constants = {
+    degToRad: 0.0174533,
+    upVector: new THREE.Vector3(0, 1, 0)
+}
+
+export {
+    AddVectors,
+    SubVectors,
+    LoadAssets,
+    LimitMagnitude,
+    Mod,
+    RedDebugLine,
+    Constants
+}

@@ -20,6 +20,7 @@ class PlayerObject extends GameObject {
     #cameraTransitionProgress = 0;
     #cameraTransitionCurves = {};
     #cameraLookTransition = new THREE.Vector3();
+    #cameraLookMatrix = new THREE.Matrix4();
     #orbitControls;
 
     //speed vars
@@ -51,9 +52,26 @@ class PlayerObject extends GameObject {
 
     #mainObjectTarget = new THREE.Object3D();
 
-    constructor(object, camera) {
-        super(object);
+    //equipment vars
+    #currentGun;
+    #gunNames = ["gattling_gun", "rail_gun"];
+    #gunNameIndex = -1;
+
+    //general
+    #meshes;
+
+    //debug
+    #debugLine = new UTILS.RedDebugLine();
+
+    constructor(meshes, camera) {
+        super(meshes.ship);
+
         this._mass = 10;
+
+        this.#meshes = meshes;
+        this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
+        this.#meshes.rail_gun.scale.multiplyScalar(0.1);
+        //this._mainObject.add(meshes.rail_gun);
 
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
@@ -141,7 +159,6 @@ class PlayerObject extends GameObject {
 
         cubeW.position.copy(this.#cameraPositions.FOLLOW.lookTarg);
         this._objectGroup.add(cubeW);
-        //this.#cameraPositions.FOLLOW.lookTarg.add(cubeW);
 
         cubeG.position.set(0, 0, 30);
         this._objectGroup.add(cubeG);
@@ -238,35 +255,35 @@ class PlayerObject extends GameObject {
     #handleCameraTransition = (dt) => {
         if (this.#cameraTransitioning) {
             this.#cameraTransitionProgress = THREE.MathUtils.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
-            this.#cameraTransitionProgress += 0.015 * dt;
+            this.#cameraTransitionProgress += 0.015 * dt; //minimum amount so it doesn't slow down infinitely
 
             if (this.#cameraTransitionProgress > 0.9999) {
-                this.#camera.position.copy(this.#cameraPosition.posnTarg);
-                this.#cameraLookTransition.copy(this.#cameraPosition.lookTarg);
+                this.#cameraTransitionProgress = 1;
+            }
+
+            let curvePointPct = this.#cameraTransitionDirection == -1
+                ? 1 - this.#cameraTransitionProgress
+                : this.#cameraTransitionProgress;
+
+            this.#cameraCurve.getPointAt(curvePointPct, this.#camera.position);
+
+            this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
+
+            let lookMatrix = this.#cameraLookMatrix.lookAt(this.#camera.position, this.#cameraLookTransition, UTILS.Constants.upVector);
+            this.#camera.quaternion.setFromRotationMatrix(lookMatrix);
+
+            if (this.#cameraTransitionProgress == 1) {
                 this.#cameraTransitionProgress = 0;
                 this.#cameraTransitioning = false;
             }
-            else {
-                if (this.#cameraTransitionDirection == 1) {
-                    this.#cameraCurve.getPointAt(this.#cameraTransitionProgress, this.#camera.position);
-                }
-                else if (this.#cameraTransitionDirection == -1) {
-                    this.#cameraCurve.getPointAt(1 - this.#cameraTransitionProgress, this.#camera.position);
-                }
-
-                this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
-                this.#camera.lookAt(this.#cameraLookTransition);
-
-                //TODO:
-                //NEED TO SLERP TO THE CORRECT ROTATION (0, 0, 0) HERE AS WELL
-                //MAKE SURE TO SLERP AFTER DOING THE LOOK AT
-            }
-            this._objectGroup.localToWorld(this.#cameraLookTransition);
-            this.#camera.lookAt(this.#cameraLookTransition);
         }
         else if (this.#cameraPosition.name == "ORBIT") {
             this.#orbitControls.update();
         }
+    }
+
+    #getWorldUpVector = () => {
+        return new THREE.Vector3(0, 1, 0).transformDirection(this._objectGroup.matrixWorld);
     }
 
     //public methods
@@ -284,6 +301,18 @@ class PlayerObject extends GameObject {
         }
 
         this.#handleCameraTransition(dt)
+        let keyPressed = window.GameHandler.KeyPressedOnce;
+        if (keyPressed.ArrowRight) {
+            this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
+            this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        }
+        else if (keyPressed.ArrowLeft) {
+            this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
+            this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        }
+
+        this.#debugLine.From = this._objectGroup.position;
+        this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
     }
 
     PostPhysicsCallback(dt) {
@@ -304,7 +333,7 @@ class PlayerObject extends GameObject {
             else {
                 console.log("Pointer Unlocked");
             }
-        }, false)
+        }, false);
 
         document.addEventListener("mousemove", this.#handleMouseMove);
 
@@ -349,6 +378,17 @@ class PlayerObject extends GameObject {
             else {
                 console.log(`"${positionName}" is an invalid camera position name.`);
             }
+        }
+    }
+
+    set CurrentGun(gunName) {
+        if (this.#meshes[gunName] != undefined) {
+            this._mainObject.remove(this.#currentGun);
+            this.#currentGun = this.#meshes[gunName];
+            this._mainObject.add(this.#currentGun);
+        }
+        else {
+            console.log(`"${gunName}" is an invalid gun name`);
         }
     }
 }
