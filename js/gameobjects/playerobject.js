@@ -71,7 +71,6 @@ class PlayerObject extends GameObject {
         this.#meshes = meshes;
         this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
         this.#meshes.rail_gun.scale.multiplyScalar(0.1);
-        //this._mainObject.add(meshes.rail_gun);
 
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
@@ -119,10 +118,12 @@ class PlayerObject extends GameObject {
         this.#cameraPosition = this.#cameraPositions.ORIGIN;
     }
 
-    //Sets up curves between different camera cameraPositions
-    //naming is always POSITION1_POSITION2 to indicate a curve joining
-    //those two positions. Position names must match actual position
-    //names.
+    /**
+     * Sets up curves between different camera cameraPositions
+     * naming is always POSITION1_POSITION2 to indicate a curve joining
+     * those two positions. Position names must match actual position
+     * names.
+     */
     #setupCameraTransitionCurves = () => {
         this.#cameraTransitionCurves.ORIGIN_FOLLOW = new THREE.CatmullRomCurve3([
             new THREE.Vector3(0, 0, -5),
@@ -173,23 +174,27 @@ class PlayerObject extends GameObject {
     }
 
     #handleScroll = (event) => {
-        //initialise a scrollDelta so we know how much their mouse wheel is scrolling each time
-        if (this.#scrollDelta == 0) {
-            this.#scrollDelta = Math.abs(event.deltaY);
+        if (!window.GameHandler.IsPaused) {
+            //initialise a scrollDelta so we know how much their mouse wheel is scrolling each time
+            if (this.#scrollDelta == 0) {
+                this.#scrollDelta = Math.abs(event.deltaY);
+            }
+
+            let scrollTicks = -event.deltaY / this.#scrollDelta;
+
+            this.#targetSpeed = Math.min(this.#targetSpeed + scrollTicks * this.#targetSpeedAccel, this.#maxSpeed);
+            if (this.#targetSpeed < 0) { this.#targetSpeed = 0; }
         }
-
-        let scrollTicks = -event.deltaY / this.#scrollDelta;
-
-        this.#targetSpeed = Math.min(this.#targetSpeed + scrollTicks * this.#targetSpeedAccel, this.#maxSpeed);
-        if (this.#targetSpeed < 0) { this.#targetSpeed = 0; }
     }
 
     #handleMouseMove = (event) => {
-        if (document.pointerLockElement === window.GameHandler.Renderer.domElement) {
-            this.#mouseOffset.x += event.movementX;
-            this.#mouseOffset.y += event.movementY;
-
-            this.#mouseOffset.clampLength(-this.#maxMouseOffset, this.#maxMouseOffset);
+        if (!window.GameHandler.IsPaused) {
+            if (document.pointerLockElement === window.GameHandler.Renderer.domElement) {
+                this.#mouseOffset.x += event.movementX;
+                this.#mouseOffset.y += event.movementY;
+    
+                this.#mouseOffset.clampLength(-this.#maxMouseOffset, this.#maxMouseOffset);
+            }
         }
     }
 
@@ -300,6 +305,13 @@ class PlayerObject extends GameObject {
             this.#adjustPositionOffset(dt);
         }
 
+        this.#debugLine.From = this._objectGroup.position;
+        this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
+    }
+
+    MainNoPause(dt) {
+        super.MainNoPause(dt);
+
         this.#handleCameraTransition(dt)
         if (INPUT.KeyPressedOnce("ArrowRight")) {
             this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
@@ -309,9 +321,6 @@ class PlayerObject extends GameObject {
             this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
             this.CurrentGun = this.#gunNames[this.#gunNameIndex];
         }
-
-        this.#debugLine.From = this._objectGroup.position;
-        this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
     }
 
     PostPhysicsCallback(dt) {
@@ -323,7 +332,11 @@ class PlayerObject extends GameObject {
     SetupPointerLock() {
         let canvas = window.GameHandler.Renderer.domElement;
         canvas.requestPointerLock = canvas.requestPointerLock;
-        canvas.onclick = canvas.requestPointerLock;
+        canvas.onclick = () => {
+            if (!window.GameHandler.IsPaused) {
+                canvas.requestPointerLock();
+            }
+        }
 
         document.addEventListener("pointerlockchange", (e) => {
             if (document.pointerLockElement === canvas) {
@@ -339,6 +352,9 @@ class PlayerObject extends GameObject {
         canvas.requestPointerLock();
     }
 
+    /**
+     * @param {string} positionName
+     */
     set CameraPosition(positionName) {
         if (positionName != this.#cameraPosition.name) {
             if (this.#cameraPositions[positionName] != undefined) {
@@ -380,6 +396,9 @@ class PlayerObject extends GameObject {
         }
     }
 
+    /**
+     * @param {string} gunName
+     */
     set CurrentGun(gunName) {
         if (this.#meshes[gunName] != undefined) {
             this._mainObject.remove(this.#currentGun);

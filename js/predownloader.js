@@ -1,6 +1,5 @@
 class PreDownloader {
     //privates
-    #domPreDownloader;
     #assetLoadingStates = {};
     #domLoadingBar;
 
@@ -49,12 +48,14 @@ class PreDownloader {
     }
 
     #initialiseLoadingBar = () => {
-        this.#domPreDownloader = $("body").append($("<div>", { class: "pre-downloader" }));
+        $("body").append($("<div>", { class: "pre-downloader" }));
+        
+        let domPreDownloader = $(".pre-downloader");
 
-        $(".pre-downloader")
+        domPreDownloader
             .append('<div class="loading-text">Loading Assets...</div>');
 
-        $(".pre-downloader")
+        domPreDownloader
             .append($("<div>", { class: "loading-bar-container" })
             .append($("<div>", { class: "loading-bar" })));
 

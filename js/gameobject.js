@@ -18,7 +18,17 @@ class GameObject {
         this._mainObject = object;
     }
 
+    /**
+     * Main operations that will pause when game is paused
+     * @param {number} dt 
+     */
     Main(dt) {}
+
+    /**
+     * Main operations that should continue running when the game is paused
+     * @param {number} dt
+     */
+    MainNoPause(dt) {}
 
     get Object() { return this._objectGroup; }
 
