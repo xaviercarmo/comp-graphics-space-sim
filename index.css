@@ -115,12 +115,12 @@ canvas {
 }
 
 .hangar-sub-menu {
-    padding: 5px;
+    padding: 2.5px;
     display: grid;
     grid-template: repeat(2, 1fr) / repeat(5, 1fr); /* rows / cols */
     overflow-y: hidden;
     height: 140px;
-    width: calc(100% - 26px);
+    width: calc(100% - (16px + 2 * 2.5px));
     background-color: rgba(255, 255, 255, 0.15);
     transition: 300ms;
     clip-path: polygon(0% 0%, 0% 100%, calc(100% - 16px) 100%, 100% calc(100% - 14px), 100% 0%);
@@ -128,9 +128,7 @@ canvas {
 
 .hangar-menu-item {
     width: 90%;
-    height: calc(width);
-    background-color: rgba(45, 45, 45, 0.6);
-    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.2);
     place-self: center;
 }
 
@@ -140,5 +138,10 @@ canvas {
     display: inline-block;
     padding-top: 100%;
     width: 1px;
+    margin-left: -1px;
     position: relative;
+}
+
+.hangar-menu-item:last-child {
+    clip-path: polygon(0% 0%, 0% 100%, calc(100% - 13px) 100%, 100% calc(100% - 11px), 100% 0%);
 }
