@@ -7,6 +7,7 @@ body {
     margin: 0;
     display: flex;
     align-items: center;
+    overflow: hidden;
 }
 
 canvas {
@@ -50,17 +51,57 @@ canvas {
     transition: 0.3s;
 }
 
+.test-old {
+    position: absolute;
+    height: 80%;
+    width: 50%;
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 0, 0, 0.5);
+    transition: 1000ms;
+    transform-origin: right;
+    perspective: 500px;
+    /* transform: rotateY(-60deg) scaleX(-1); */
+}
+
+.hangar-menu-base-container {
+    position: absolute;
+    height: 80%;
+    width: 30%;
+    min-width: 280px;
+    max-width: 384px;
+    display: flex;
+    align-items: center;
+    transition-timing-function: cubic-bezier(0.83, 0.01, 0.25, 1);
+    transition: 800ms;
+    transform: perspective(1500px) translateZ(-100px) translateX(-600px) rotateY(-90deg);
+    transform-origin: right;
+}
+
+.hangar-menu-base-container-expanded {
+    transform: perspective(1500px) translateZ(0px);
+}
+
 .blue-drop-shadow-filter {
     filter: drop-shadow(0px 0px 10px rgb(0, 247, 255));
 }
 
-.hangar-menu-wrapper {
+.hangar-menu-wrapper-old {
     position: absolute;
-    height: 80%;
+    /* height: 80%; */
+    height: 100%;
     min-height: 380px;
-    width: 30%;
+    width: calc((30% * 100 / 50));
     min-width: 280px;
     max-width: 384px;
+    transition: 1000ms;
+    transform: translateZ(100px) rotateY(-90deg);
+}
+
+.hangar-menu-wrapper {
+    position: absolute;
+    height: 100%;
+    width: 100%;
 }
 
 .hangar-menu {

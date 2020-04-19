@@ -224,13 +224,21 @@ class GameHandler {
     TogglePause() {
         if (this.#mode == this.#modes.GAMERUNNING) {
             this.#mode = this.#modes.GAMEPAUSED;
+            
             //release mouse
             document.exitPointerLock();
+
+            //show hangar menu
+            $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
         }
         else if (this.#mode == this.#modes.GAMEPAUSED) {
             this.#mode = this.#modes.GAMERUNNING;
+            
             //reclaim mouse
             this.#renderer.domElement.requestPointerLock();
+
+            //hide hangar menu
+            $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
         }
         else {
             console.log("Cannot toggle pause, game is not currently running or paused.");
