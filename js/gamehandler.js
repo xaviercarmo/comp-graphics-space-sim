@@ -2,7 +2,7 @@ import * as THREE from '../libraries/three.module.js';
 import * as INPUT from './input.js';
 import * as UTILS from './utils.js';
 
-import PreDownloader from './predownloader.js';
+import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/playerobject.js';
 
@@ -11,15 +11,13 @@ class GameHandler {
     get Camera() { return this.#camera; }
 
     //Privates
-    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 50000);
+    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
-    #assetPaths = [
-        "../assets/SciFi_Fighter.FBX",
-        "../assets/gattling_gun_test.fbx",
-        "../assets/railgun_test_2.fbx"
-    ]
+    #assetHandler;
+
+    //later, this meshs loading logic will be moved to the AssetHandler
     #meshes = {
         player: {
             ship: {},
@@ -49,7 +47,9 @@ class GameHandler {
         let gameHandler = this;
         this.#mode = this.#modes.PRELOADING;
 
-        new PreDownloader(this.#assetPaths, () => {
+        this.#assetHandler = new AssetHandler();
+
+        this.#assetHandler.LoadAllAssets(() => {
             $(".loading-text").text("Initialising game...");
             //Allows dom to re-render with initialising text
             setTimeout(() => {
@@ -72,9 +72,16 @@ class GameHandler {
         if (INPUT.KeyPressedOnce("p")) {
             this.TogglePause();
         }
+        
+        if (INPUT.KeyPressedOnce("t")) {
+            this.SkyBox.visible = !this.SkyBox.visible;
+            console.log(this.SkyBox.visible);
+        }
 
         //menu logic here
         //[...]
+
+        let playerOldPosition = this.#player.Object.position.clone();
 
         //game logic only runs if game isn't paused
         if (this.#mode == this.#modes.GAMERUNNING) {
@@ -90,6 +97,9 @@ class GameHandler {
 
         //game logic that runs despite pausing
         this.#gameObjects.forEach(g => g.MainNoPause(dt));
+
+        let playerPositionDelta = UTILS.SubVectors(this.#player.Object.position, playerOldPosition);
+        this.SkyBox.position.addScaledVector(playerPositionDelta, 0.9);
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
@@ -139,23 +149,23 @@ class GameHandler {
 
         let assets = [
             {
-                path: this.#assetPaths[0],
-                onComplete: obj => this.#meshes.player.ship = obj//this.AddPlayer(object)
+                path: this.#assetHandler.AssetPaths3D[0],
+                onComplete: obj => this.#meshes.player.ship = obj
             },
             {
-                path: this.#assetPaths[1],
+                path: this.#assetHandler.AssetPaths3D[1],
                 onComplete: obj => this.#meshes.player.gattling_gun = obj
             },
             {
-                path: this.#assetPaths[2],
+                path: this.#assetHandler.AssetPaths3D[2],
                 onComplete: obj => this.#meshes.player.rail_gun = obj
             }
         ];
 
         UTILS.LoadAssets(assets, () => {
-            $(".pre-downloader").remove();
             this.InitialiseScene();
             this.StartGameRunning();
+            window.setTimeout(() => $(".pre-downloader").remove(), 1000);
         });
     }
 
@@ -173,12 +183,49 @@ class GameHandler {
         let light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 10 );
         this.#scene.add(light);
 
-        let gridHelper = new THREE.GridHelper(50000, 1000);
+        let gridHelper = new THREE.GridHelper(5000, 100);
         this.#scene.add(gridHelper);
 
-        let gridHelper2 = new THREE.GridHelper(50000, 1000);
+        let gridHelper2 = new THREE.GridHelper(5000, 100);
         gridHelper2.translateY(25000);
         this.#scene.add(gridHelper2);
+
+        let randomCubeGeo = new THREE.BoxGeometry(1, 1, 1);
+        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0xff0000, shininess: 100 });
+        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        this.#scene.add(randomCube);
+        randomCube.position.y += 10;
+
+        //this works, but have no control over the background and can't apply shaders
+        //this.#scene.background = this.#assetHandler.LoadedCubeMaps["assets/cube_maps/lightblue/"];
+
+        //this is the alternative, allows me to handle distance to it and also to apply shaders and stuff
+        let t_ft = new THREE.TextureLoader().load("assets/cube_maps/lightblue/front.png");
+        let t_bk = new THREE.TextureLoader().load("assets/cube_maps/lightblue/back.png");
+        let t_up = new THREE.TextureLoader().load("assets/cube_maps/lightblue/top.png");
+        let t_dn = new THREE.TextureLoader().load("assets/cube_maps/lightblue/bot.png");
+        let t_rt = new THREE.TextureLoader().load("assets/cube_maps/lightblue/right.png");
+        let t_lt = new THREE.TextureLoader().load("assets/cube_maps/lightblue/left.png");
+
+        let materials = [
+            new THREE.MeshBasicMaterial({ map: t_rt }),
+            new THREE.MeshBasicMaterial({ map: t_lt }),
+            new THREE.MeshBasicMaterial({ map: t_up }),
+            new THREE.MeshBasicMaterial({ map: t_dn }),
+            new THREE.MeshBasicMaterial({ map: t_ft }),
+            new THREE.MeshBasicMaterial({ map: t_bk }),
+        ];
+
+        for (let material of materials) {
+            material.side = THREE.BackSide;
+            material.depthWrite = false;
+        }
+
+        let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
+        let skyBox = new THREE.Mesh(skyBoxGeo, materials);
+        this.SkyBox = skyBox;
+        this.Scene.add(skyBox);
+        this.SkyBox.visible = true;
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
@@ -186,6 +233,8 @@ class GameHandler {
         //this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         this.#setupMenuEvents();
+
+        this.#renderer.render(this.#scene, this.#camera);
     }
 
     AddPlayer() {

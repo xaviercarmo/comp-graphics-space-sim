@@ -71,6 +71,7 @@ canvas {
 .hangar-menu-background-wrapper {
     position: absolute;
     height: 100%;
+    min-height: 395px;
     width: 100%;
     filter: drop-shadow(0px 0px 10px rgb(0, 247, 255));
 }
@@ -79,6 +80,7 @@ canvas {
     z-index: 0;
     position: absolute;
     height: 100%;
+    min-height: 395px;
     width: 100%;
     min-width: 280px;
     border: none;
@@ -89,6 +91,7 @@ canvas {
 .hangar-menu-wrapper {
     position: absolute;
     height: 100%;
+    min-height: 395px;
     width: 100%;
 }
 

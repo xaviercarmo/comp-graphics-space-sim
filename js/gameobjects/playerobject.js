@@ -26,8 +26,8 @@ class PlayerObject extends GameObject {
     //speed vars
     #currentSpeed = 0;
     #targetSpeed = 0;
-    #maxSpeed = 1000;
-    #targetSpeedAccel = 50;
+    #maxSpeed = 500;
+    #targetSpeedAccel = 25;
 
     //mouse vars
     #scrollDelta = 0;
@@ -69,6 +69,7 @@ class PlayerObject extends GameObject {
         this._mass = 10;
 
         this.#meshes = meshes;
+        this.#meshes.ship.scale.multiplyScalar(0.5)
         this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
         this.#meshes.rail_gun.scale.multiplyScalar(0.1);
 
@@ -81,20 +82,25 @@ class PlayerObject extends GameObject {
         this._objectGroup.add(this.#camera);
         this.CameraPosition = "FOLLOW";
 
+        //this._objectGroup.scale.multiplyScalar(0.5);
+        //this.#camera.scale.multiplyScalar(2);
+
         window.addEventListener("wheel", this.#handleScroll);
     }
 
     #setupCameraPositions = () => {
         this.#cameraPositions.ORIGIN = {
             name: "ORIGIN",
-            posnTarg: new THREE.Vector3(0, 0, 0),
+            posnTarg: new THREE.Vector3(0, 0, -5),
             lookTarg: new THREE.Vector3(0, 0, 0)
         }
 
         this.#cameraPositions.FOLLOW = {
             name: "FOLLOW",
-            posnTarg: new THREE.Vector3(0, 7.6, -31.9),
-            lookTarg: new THREE.Vector3(0, 15.5, 15)
+            // posnTarg: new THREE.Vector3(0, 7.6, -31.9),
+            posnTarg: new THREE.Vector3(0, 3.8, -15.95),
+            //lookTarg: new THREE.Vector3(0, 15.5, 15)
+            lookTarg: new THREE.Vector3(0, 7.75, 7.5)
         }
 
         this.#cameraPositions.HANGAR = {
@@ -105,8 +111,10 @@ class PlayerObject extends GameObject {
 
         this.#cameraPositions.HANGAR_GUN_SLOT = {
             name: "HANGAR_GUN_SLOT",
-            posnTarg: new THREE.Vector3(2, -5, 15),
-            lookTarg: new THREE.Vector3(1, -3, 10)
+            // posnTarg: new THREE.Vector3(2, -5, 15),
+            posnTarg: new THREE.Vector3(1, -2.5, 7.5),
+            // lookTarg: new THREE.Vector3(1, -3, 10)
+            lookTarg: new THREE.Vector3(0.5, -1.5, 5)
         }
 
         this.#cameraPositions.ORBIT = {
@@ -126,9 +134,9 @@ class PlayerObject extends GameObject {
      */
     #setupCameraTransitionCurves = () => {
         this.#cameraTransitionCurves.ORIGIN_FOLLOW = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 0, -5),
-        	new THREE.Vector3(0, 3, -20),
-        	new THREE.Vector3(0, 7.6, -31.9)
+            this.#cameraPositions.ORIGIN.posnTarg,
+        	new THREE.Vector3(0, 1.5, -10),
+        	this.#cameraPositions.FOLLOW.posnTarg
         ]);
 
         this.#cameraTransitionCurves.FOLLOW_HANGAR = {
@@ -140,10 +148,10 @@ class PlayerObject extends GameObject {
         }
 
         this.#cameraTransitionCurves.FOLLOW_HANGAR_GUN_SLOT = new THREE.CatmullRomCurve3([
-        	new THREE.Vector3(0, 7.6, -31.9),
-        	new THREE.Vector3(15, 0, 0),
-            new THREE.Vector3(10, -3, 12),
-        	new THREE.Vector3(2, -5, 15)
+        	this.#cameraPositions.FOLLOW.posnTarg,
+        	new THREE.Vector3(7.5, 0, 0),
+            new THREE.Vector3(5, -1.5, 6),
+        	this.#cameraPositions.HANGAR_GUN_SLOT.posnTarg
         ]);
     }
 
@@ -241,18 +249,18 @@ class PlayerObject extends GameObject {
 
     #adjustPositionOffset = (dt) => {
         let speedPct = this.#targetSpeed / this.#maxSpeed;
-        this.#debugMouseOffset.position.x = -this.#xPct * (8 + 16 * speedPct);
-        this.#debugMouseOffset.position.y = -this.#yPct * (8 + 16 * speedPct);
+        this.#debugMouseOffset.position.x = -this.#xPct * (4 + 8 * speedPct);
+        this.#debugMouseOffset.position.y = -this.#yPct * (4 + 8 * speedPct);
 
-        this.#mainObjectTarget.position.x = this.#rotAmtY * (8 + 16 * speedPct);
-        this.#mainObjectTarget.position.y = -this.#rotAmtX * (8 + 16 * speedPct);
+        this.#mainObjectTarget.position.x = this.#rotAmtY * (4 + 8 * speedPct);
+        this.#mainObjectTarget.position.y = -this.#rotAmtX * (4 + 8 * speedPct);
 
         let modifiedTarg = new THREE.Vector3();
 
         let xyOffsetPct = 0.2 + (1 - 0.2) * speedPct;
-        modifiedTarg.z += 8 * speedPct;
-        modifiedTarg.y += 5 * this.#yPct * xyOffsetPct + 3 * speedPct;
-        modifiedTarg.x -= 5 * -this.#xPct * xyOffsetPct;
+        modifiedTarg.z += 6 * speedPct;
+        modifiedTarg.y += 2.5 * this.#yPct * xyOffsetPct + 0.25 * speedPct;
+        modifiedTarg.x -= 2.5 * -this.#xPct * xyOffsetPct;
 
         this._mainObject.position.lerp(modifiedTarg, 0.9 * dt);
     }
@@ -303,6 +311,9 @@ class PlayerObject extends GameObject {
         if (this.#cameraPosition.name != "ORBIT") {
             this.#adjustRotationAmounts(dt);
             this.#adjustPositionOffset(dt);
+            if (INPUT.KeyPressedOnce("space")) {
+                this.#mouseOffset.set(0, 0);
+            }
         }
 
         this.#debugLine.From = this._objectGroup.position;
@@ -321,6 +332,31 @@ class PlayerObject extends GameObject {
             this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
             this.CurrentGun = this.#gunNames[this.#gunNameIndex];
         }
+
+        let camMoveVec = new THREE.Vector3();
+        if (INPUT.KeyPressed("w")) {
+            camMoveVec.z++;
+        }
+        if (INPUT.KeyPressed("a")) {
+            camMoveVec.x++;
+        }
+        if (INPUT.KeyPressed("s")) {
+            camMoveVec.z--;
+        }
+        if (INPUT.KeyPressed("d")) {
+            camMoveVec.x--;
+        }
+        if (INPUT.KeyPressed("r")) {
+            camMoveVec.y++;
+        }
+        if (INPUT.KeyPressed("f")) {
+            camMoveVec.y--;
+        }
+        if (INPUT.KeyPressed("ShiftLeft")) {
+            camMoveVec.multiplyScalar(0.1);
+        }
+        //console.log(camMoveVec);
+        this.#camera.position.add(camMoveVec);
     }
 
     PostPhysicsCallback(dt) {
@@ -340,10 +376,10 @@ class PlayerObject extends GameObject {
 
         document.addEventListener("pointerlockchange", (e) => {
             if (document.pointerLockElement === canvas) {
-                console.log("Pointer Locked");
+                // console.log("Pointer Locked");
             }
             else {
-                console.log("Pointer Unlocked");
+                // console.log("Pointer Unlocked");
             }
         }, false);
 
@@ -351,6 +387,8 @@ class PlayerObject extends GameObject {
 
         canvas.requestPointerLock();
     }
+
+    get CameraPosition() { return this.#cameraPosition; }
 
     /**
      * @param {string} positionName
