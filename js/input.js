@@ -48,7 +48,7 @@ function OnContextMenu(event) {
 
 function OnKeyDown(event) {
     keyPressed[event.code] = 1;
-    console.log("fuck");
+
     if (event.code[0] != "F") {
         event.preventDefault();
         event.stopPropagation();
