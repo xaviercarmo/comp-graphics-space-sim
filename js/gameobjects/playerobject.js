@@ -34,14 +34,9 @@ class PlayerObject extends GameObject {
     #debugMouseOffset = new THREE.Object3D();
     #mouseOffset = new THREE.Vector2();
     #maxMouseOffset = 1000;
-    #xPct = 0;
-    #yPct = 0;
+    #mouseOffsetPct = new THREE.Vector2();
 
     //rotation vars
-    #rotAmtX = 0;
-    #rotAmtY = 0;
-    #rotAmtXTimer = 0;
-    #rotAmtYTimer = 0;
     #baseTargetAngles = {
         x: UTILS.Constants.degToRad * 10,
         y: UTILS.Constants.degToRad * 10,
@@ -49,6 +44,7 @@ class PlayerObject extends GameObject {
     };
     #targetEuler = new THREE.Euler();
     #targetQuaternion = new THREE.Quaternion();
+    #rotAmt = new THREE.Vector2();
 
     #mainObjectTarget = new THREE.Object3D();
 
@@ -59,6 +55,9 @@ class PlayerObject extends GameObject {
 
     //general
     #meshes;
+    #crosshairSprites = {};
+    #crosshairOrigin = new THREE.Vector3(0, 3, 0);
+    #crosshairHitMarkerVisibility = false;
 
     //debug
     #debugLine = new UTILS.RedDebugLine();
@@ -77,13 +76,11 @@ class PlayerObject extends GameObject {
         this.#setupCameraTransitionCurves();
 
         this.#setupDebugHelpers();
+        this.#setupCrosshair();
 
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
         this.CameraPosition = "FOLLOW";
-
-        //this._objectGroup.scale.multiplyScalar(0.5);
-        //this.#camera.scale.multiplyScalar(2);
 
         window.addEventListener("wheel", this.#handleScroll);
     }
@@ -97,9 +94,7 @@ class PlayerObject extends GameObject {
 
         this.#cameraPositions.FOLLOW = {
             name: "FOLLOW",
-            // posnTarg: new THREE.Vector3(0, 7.6, -31.9),
             posnTarg: new THREE.Vector3(0, 3.8, -15.95),
-            //lookTarg: new THREE.Vector3(0, 15.5, 15)
             lookTarg: new THREE.Vector3(0, 7.75, 7.5)
         }
 
@@ -111,9 +106,7 @@ class PlayerObject extends GameObject {
 
         this.#cameraPositions.HANGAR_GUN_SLOT = {
             name: "HANGAR_GUN_SLOT",
-            // posnTarg: new THREE.Vector3(2, -5, 15),
             posnTarg: new THREE.Vector3(1, -2.5, 7.5),
-            // lookTarg: new THREE.Vector3(1, -3, 10)
             lookTarg: new THREE.Vector3(0.5, -1.5, 5)
         }
 
@@ -181,8 +174,38 @@ class PlayerObject extends GameObject {
         this._objectGroup.add(this.#mainObjectTarget);
     }
 
+    #setupCrosshair = () => {
+        let loadedImages = window.GameHandler.AssetHandler.LoadedImages;
+
+        //setup sprite extraction method
+        let createSpritesFromTextures = (obj) => {
+            for (let key in obj) {
+                let texture = obj[key];
+                let material = new THREE.SpriteMaterial({ map: texture, sizeAttenuation: false, depthWrite: false, depthTest: false });
+                if (key.startsWith("sometimes/")) {
+                    //sprites that are sometimes visible should have transparent set to true and be invisible initially
+                    material.transparent = true;
+                    material.opacity = 0;
+                }
+
+                this.#crosshairSprites[key] = new THREE.Sprite(material)
+            }
+        }
+
+        //create the mobile and stationary sprites from the textures
+        createSpritesFromTextures(loadedImages.crosshairMobile);
+        createSpritesFromTextures(loadedImages.crosshairStationary);
+
+        //add the sprites to the group object and scale them
+        for (let key in this.#crosshairSprites) {
+            let sprite = this.#crosshairSprites[key];
+            sprite.scale.set(0.05, 0.05, 0.05);
+            this._objectGroup.add(sprite);
+        }
+    }
+
     #handleScroll = (event) => {
-        if (!window.GameHandler.IsPaused) {
+        if (!window.GameHandler.IsPaused && event.deltaY != 0) {
             //initialise a scrollDelta so we know how much their mouse wheel is scrolling each time
             if (this.#scrollDelta == 0) {
                 this.#scrollDelta = Math.abs(event.deltaY);
@@ -198,49 +221,30 @@ class PlayerObject extends GameObject {
     #handleMouseMove = (event) => {
         if (!window.GameHandler.IsPaused) {
             if (document.pointerLockElement === window.GameHandler.Renderer.domElement) {
-                this.#mouseOffset.x += event.movementX;
-                this.#mouseOffset.y += event.movementY;
-    
+                this.#mouseOffset.x += -event.movementX; //y movement is positive when going right, the reverse of ThreeJS x axis orientation
+                this.#mouseOffset.y += -event.movementY; //y movement is positive when going down, the reverse of ThreeJS y axis orientation
+
                 this.#mouseOffset.clampLength(-this.#maxMouseOffset, this.#maxMouseOffset);
             }
         }
     }
 
+    
     #adjustRotationAmounts = (dt) => {
-        let lastXPct = this.#xPct;
-        this.#xPct = this.#mouseOffset.x / this.#maxMouseOffset;
+        this.#mouseOffsetPct.set(this.#mouseOffset.x / this.#maxMouseOffset, this.#mouseOffset.y / this.#maxMouseOffset);
 
-        let lastYPct = this.#yPct;
-        this.#yPct = this.#mouseOffset.y / this.#maxMouseOffset;
+        let deltaRotAmt = UTILS.SubVectors(this.#mouseOffsetPct, this.#rotAmt);
 
-        let deltaRotAmtX = this.#yPct - this.#rotAmtX;
-        let deltaRotAmtY = -this.#xPct - this.#rotAmtY;
+        let timePct = Math.sqrt(this.#rotAmt.length());
+        let maxMagnitude = (0.6 + timePct) * dt; //0.04 + 2
+        this.#rotAmt.add(deltaRotAmt.clampLength(-maxMagnitude, maxMagnitude));
 
-        if (deltaRotAmtY == 0 || (-lastXPct > this.#rotAmtY != -this.#xPct > this.#rotAmtY)) {
-            this.#rotAmtYTimer = 0;
-        }
-        else {
-            this.#rotAmtYTimer = Math.min(1, this.#rotAmtYTimer + dt);
-        }
+        this._objectGroup.rotateX(-this.#rotAmt.y * dt);
+        this._objectGroup.rotateY(this.#rotAmt.x * dt);
 
-        if (deltaRotAmtX == 0 || (lastYPct > this.#rotAmtX != this.#yPct > this.#rotAmtX)) {
-            this.#rotAmtXTimer = 0;
-        }
-        else {
-            this.#rotAmtXTimer = Math.min(1, this.#rotAmtXTimer + dt);
-        }
-
-        let yTime = this.#rotAmtYTimer / 1;
-        let xTime = this.#rotAmtXTimer / 1;
-        this.#rotAmtX += UTILS.LimitMagnitude(deltaRotAmtX, (0.4 + 2 * xTime) * dt);
-        this.#rotAmtY += UTILS.LimitMagnitude(deltaRotAmtY, (0.4 + 2 * yTime) * dt);
-
-        this._objectGroup.rotateX(this.#rotAmtX * dt);
-        this._objectGroup.rotateY(this.#rotAmtY * dt);
-
-        let targetXAngle = this.#baseTargetAngles.x * this.#yPct; // back and forth
-        let targetYAngle = this.#baseTargetAngles.y * this.#rotAmtY; // side to side
-        let targetZAngle = this.#baseTargetAngles.z * this.#xPct; // barrel roll
+        let targetXAngle = this.#baseTargetAngles.x * -this.#mouseOffsetPct.y; // back and forth
+        let targetYAngle = this.#baseTargetAngles.y * this.#rotAmt.x; // side to side
+        let targetZAngle = this.#baseTargetAngles.z * UTILS.LimitMagnitude(-this.#rotAmt.x - deltaRotAmt.x / dt / 2, 1); // barrel roll
         this.#targetEuler.set(targetXAngle, targetYAngle, targetZAngle);
         this.#targetQuaternion.setFromEuler(this.#targetEuler);
 
@@ -249,25 +253,46 @@ class PlayerObject extends GameObject {
 
     #adjustPositionOffset = (dt) => {
         let speedPct = this.#targetSpeed / this.#maxSpeed;
-        this.#debugMouseOffset.position.x = -this.#xPct * (4 + 8 * speedPct);
-        this.#debugMouseOffset.position.y = -this.#yPct * (4 + 8 * speedPct);
+        //this.#debugMouseOffset.position.x = this.#mouseOffsetPct.x * (4 + 8 * speedPct);
+        //this.#debugMouseOffset.position.y = this.#mouseOffsetPct.y * (4 + 8 * speedPct);
 
-        this.#mainObjectTarget.position.x = this.#rotAmtY * (4 + 8 * speedPct);
-        this.#mainObjectTarget.position.y = -this.#rotAmtX * (4 + 8 * speedPct);
+        let maxCrosshairOffset = 2 + (2 * speedPct);
+        this.#crosshairSprites["always/arcs"].position.set(
+            this.#crosshairOrigin.x + this.#mouseOffsetPct.x * maxCrosshairOffset,
+            this.#crosshairOrigin.y + this.#mouseOffsetPct.y * maxCrosshairOffset,
+            this.#crosshairOrigin.z
+        );
+        
+        this.#crosshairSprites["sometimes/bt"].position.copy(this.#crosshairSprites["always/arcs"].position);
+        this.#crosshairSprites["sometimes/tl"].position.copy(this.#crosshairSprites["always/arcs"].position);
+        this.#crosshairSprites["sometimes/tr"].position.copy(this.#crosshairSprites["always/arcs"].position);
+        
+        //this.#mainObjectTarget.position.x = this.#rotAmt.x * (4 + 8 * speedPct);
+        //this.#mainObjectTarget.position.y = this.#rotAmt.y * (4 + 8 * speedPct);
+
+        this.#crosshairSprites["halo"].position.set(
+            this.#crosshairOrigin.x + this.#rotAmt.x * maxCrosshairOffset,
+            this.#crosshairOrigin.y + this.#rotAmt.y * maxCrosshairOffset,
+            this.#crosshairOrigin.z
+        );
+
+        this.#crosshairSprites["rim"].position.copy(this.#crosshairOrigin);
 
         let modifiedTarg = new THREE.Vector3();
 
         let xyOffsetPct = 0.2 + (1 - 0.2) * speedPct;
         modifiedTarg.z += 6 * speedPct;
-        modifiedTarg.y += 2.5 * this.#yPct * xyOffsetPct + 0.25 * speedPct;
-        modifiedTarg.x -= 2.5 * -this.#xPct * xyOffsetPct;
+        // modifiedTarg.y += 2.5 * this.#yPct * xyOffsetPct + 0.25 * speedPct;
+        modifiedTarg.y += 2.5 * -this.#mouseOffsetPct.y * xyOffsetPct + 0.25 * speedPct;
+        // modifiedTarg.x -= 2.5 * -this.#xPct * xyOffsetPct;
+        modifiedTarg.x += 2.5 * -this.#mouseOffsetPct.x * xyOffsetPct;
 
         this._mainObject.position.lerp(modifiedTarg, 0.9 * dt);
     }
 
     #handleCameraTransition = (dt) => {
         if (this.#cameraTransitioning) {
-            this.#cameraTransitionProgress = THREE.MathUtils.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
+            this.#cameraTransitionProgress = THREE.Math.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
             this.#cameraTransitionProgress += 0.015 * dt; //minimum amount so it doesn't slow down infinitely
 
             if (this.#cameraTransitionProgress > 0.9999) {
@@ -316,8 +341,16 @@ class PlayerObject extends GameObject {
             }
         }
 
-        this.#debugLine.From = this._objectGroup.position;
-        this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
+        this.#crosshairHitMarkerVisibility = INPUT.KeyPressed("leftMouse")
+            ? THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 1, 15 * dt)
+            : THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 0, 5 * dt);
+
+        this.#crosshairSprites["sometimes/bt"].material.opacity = this.#crosshairHitMarkerVisibility;
+            this.#crosshairSprites["sometimes/tl"].material.opacity = this.#crosshairHitMarkerVisibility;
+            this.#crosshairSprites["sometimes/tr"].material.opacity = this.#crosshairHitMarkerVisibility;
+
+        //this.#debugLine.From = this._objectGroup.position;
+        //this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
     }
 
     MainNoPause(dt) {

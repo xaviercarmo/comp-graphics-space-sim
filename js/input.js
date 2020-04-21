@@ -11,11 +11,48 @@ let keyAliases = {
     caps: ["CapsLock"]
 }
 
-function OnKeyDown(event) {
-    keyPressed[event.code] = 1;
+function OnMouseDown(event) {
+    switch (event.button) {
+        case 0:
+            keyPressed["leftMouse"] = 1;
+            break;
+        case 1:
+            keyPressed["middleMouse"] = 1;
+            break;
+        case 2:
+            keyPressed["rightMouse"] = 1;
+            break;
+        default:
+            console.log(event);
+    }
+}
 
+function OnMouseUp(event) {
+    switch (event.button) {
+        case 0:
+            keyPressed["leftMouse"] = 0;
+            break;
+        case 1:
+            keyPressed["middleMouse"] = 0;
+            break;
+        case 2:
+            keyPressed["rightMouse"] = 0;
+            break;
+    }
+}
+
+function OnContextMenu(event) {
     event.preventDefault();
     event.stopPropagation();
+}
+
+function OnKeyDown(event) {
+    keyPressed[event.code] = 1;
+    console.log("fuck");
+    if (event.code[0] != "F") {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 }
 
 function OnKeyUp(event) {
@@ -23,26 +60,6 @@ function OnKeyUp(event) {
 
     event.preventDefault();
     event.stopPropagation();
-}
-
-//should be called at the start of each frame
-function UpdateKeyPressedOnce() {
-    for (var keyName in keyPressed) {
-        if (keyPressed[keyName] == 0) {
-            //clear from tracking if its there
-            keyPressedHistory[keyName] = 0;
-        }
-        else if (keyPressed[keyName] == 1 && !keyPressedHistory[keyName]) {
-            //track it, only trigger once
-            keyPressedHistory[keyName] = 1;
-            keyPressedOnce[keyName] = 1;
-        }
-    }
-}
-
-//should be called at the end of each frame
-function FlushKeyPressedOnce() {
-    keyPressedOnce = {};
 }
 
 function KeyPressed(keyName) {
@@ -75,6 +92,26 @@ function KeyPressedOnce(keyName) {
     return result;
 }
 
+//should be called at the start of each frame
+function UpdateKeyPressedOnce() {
+    for (var keyName in keyPressed) {
+        if (keyPressed[keyName] == 0) {
+            //clear from tracking if its there
+            keyPressedHistory[keyName] = 0;
+        }
+        else if (keyPressed[keyName] == 1 && !keyPressedHistory[keyName]) {
+            //track it, only trigger once
+            keyPressedHistory[keyName] = 1;
+            keyPressedOnce[keyName] = 1;
+        }
+    }
+}
+
+//should be called at the end of each frame
+function FlushKeyPressedOnce() {
+    keyPressedOnce = {};
+}
+
 function GetKeyCodeFromName(keyName) {
     if (typeof(keyName) == "string" && keyName.length == 1) {
         return `Key${keyName.toUpperCase()}`;
@@ -89,5 +126,8 @@ function GetKeyCodeFromName(keyName) {
 
 window.addEventListener("keydown", OnKeyDown);
 window.addEventListener("keyup", OnKeyUp);
+window.addEventListener("mousedown", OnMouseDown); //moisueupp
+window.addEventListener("mouseup", OnMouseUp); //moisueupp
+window.addEventListener("contextmenu", OnContextMenu);
 
 export { KeyPressed, KeyPressedOnce, UpdateKeyPressedOnce, FlushKeyPressedOnce };

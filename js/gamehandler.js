@@ -10,14 +10,13 @@ class GameHandler {
     //debug
     get Camera() { return this.#camera; }
 
-    //Privates
+    //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
-    #assetHandler;
 
-    //later, this meshs loading logic will be moved to the AssetHandler
+    //later, this meshes loading logic will be moved to the AssetHandler
     #meshes = {
         player: {
             ship: {},
@@ -43,14 +42,16 @@ class GameHandler {
 
     #scene = new THREE.Scene();
 
+    //publics
+    AssetHandler = new AssetHandler();
+
     constructor() {
         let gameHandler = this;
         this.#mode = this.#modes.PRELOADING;
 
-        this.#assetHandler = new AssetHandler();
-
-        this.#assetHandler.LoadAllAssets(() => {
+        this.AssetHandler.LoadAllAssets(() => {
             $(".loading-text").text("Initialising game...");
+
             //Allows dom to re-render with initialising text
             setTimeout(() => {
                 gameHandler.Initialise();
@@ -140,6 +141,26 @@ class GameHandler {
         });
     }
 
+    #initialiseSkyMap = () => {
+        let skyMapTextures = this.AssetHandler.LoadedImages.skymap;
+        let matParams = { side: THREE.BackSide, depthWrite: false };
+        let materials = [
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.rt, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.lt, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.tp, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.bm, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.ft, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.bk, ...matParams }),
+        ];
+
+        let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
+        let skyBox = new THREE.Mesh(skyBoxGeo, materials);
+        this.Scene.add(skyBox);
+        skyBox.visible = true;
+
+        this.SkyBox = skyBox;
+    }
+
     //public methods
     Initialise() {
         this.#mode = this.#modes.INITIALISING;
@@ -149,15 +170,15 @@ class GameHandler {
 
         let assets = [
             {
-                path: this.#assetHandler.AssetPaths3D[0],
+                path: this.AssetHandler.AssetPaths3D[0],
                 onComplete: obj => this.#meshes.player.ship = obj
             },
             {
-                path: this.#assetHandler.AssetPaths3D[1],
+                path: this.AssetHandler.AssetPaths3D[1],
                 onComplete: obj => this.#meshes.player.gattling_gun = obj
             },
             {
-                path: this.#assetHandler.AssetPaths3D[2],
+                path: this.AssetHandler.AssetPaths3D[2],
                 onComplete: obj => this.#meshes.player.rail_gun = obj
             }
         ];
@@ -196,36 +217,7 @@ class GameHandler {
         this.#scene.add(randomCube);
         randomCube.position.y += 10;
 
-        //this works, but have no control over the background and can't apply shaders
-        //this.#scene.background = this.#assetHandler.LoadedCubeMaps["assets/cube_maps/lightblue/"];
-
-        //this is the alternative, allows me to handle distance to it and also to apply shaders and stuff
-        let t_ft = new THREE.TextureLoader().load("assets/cube_maps/lightblue/front.png");
-        let t_bk = new THREE.TextureLoader().load("assets/cube_maps/lightblue/back.png");
-        let t_up = new THREE.TextureLoader().load("assets/cube_maps/lightblue/top.png");
-        let t_dn = new THREE.TextureLoader().load("assets/cube_maps/lightblue/bot.png");
-        let t_rt = new THREE.TextureLoader().load("assets/cube_maps/lightblue/right.png");
-        let t_lt = new THREE.TextureLoader().load("assets/cube_maps/lightblue/left.png");
-
-        let materials = [
-            new THREE.MeshBasicMaterial({ map: t_rt }),
-            new THREE.MeshBasicMaterial({ map: t_lt }),
-            new THREE.MeshBasicMaterial({ map: t_up }),
-            new THREE.MeshBasicMaterial({ map: t_dn }),
-            new THREE.MeshBasicMaterial({ map: t_ft }),
-            new THREE.MeshBasicMaterial({ map: t_bk }),
-        ];
-
-        for (let material of materials) {
-            material.side = THREE.BackSide;
-            material.depthWrite = false;
-        }
-
-        let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
-        let skyBox = new THREE.Mesh(skyBoxGeo, materials);
-        this.SkyBox = skyBox;
-        this.Scene.add(skyBox);
-        this.SkyBox.visible = true;
+        this.#initialiseSkyMap();
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
