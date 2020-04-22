@@ -68,7 +68,7 @@ class PlayerObject extends GameObject {
         this._mass = 10;
 
         this.#meshes = meshes;
-        this.#meshes.ship.scale.multiplyScalar(0.5)
+        this.#meshes.ship.visible = false;
         this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
         this.#meshes.rail_gun.scale.multiplyScalar(0.1);
 
@@ -76,13 +76,14 @@ class PlayerObject extends GameObject {
         this.#setupCameraTransitionCurves();
 
         this.#setupDebugHelpers();
-        this.#setupCrosshair();
+        //this.#setupCrosshair();
 
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
-        this.CameraPosition = "FOLLOW";
+        this.#camera.position.z -= 10;
+        this.CameraPosition = "ORBIT";
 
-        window.addEventListener("wheel", this.#handleScroll);
+        //window.addEventListener("wheel", this.#handleScroll);
     }
 
     #setupCameraPositions = () => {
@@ -329,25 +330,25 @@ class PlayerObject extends GameObject {
         super.Main(dt);
 
         //move forward by current speed
-        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, 1.5 * dt);
-        this._objectGroup.translateZ(this.#currentSpeed * dt);
+        // this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, 1.5 * dt);
+        // this._objectGroup.translateZ(this.#currentSpeed * dt);
 
-        //handle all visual effects associated with current movement
-        if (this.#cameraPosition.name != "ORBIT") {
-            this.#adjustRotationAmounts(dt);
-            this.#adjustPositionOffset(dt);
-            if (INPUT.KeyPressedOnce("space")) {
-                this.#mouseOffset.set(0, 0);
-            }
-        }
+        // //handle all visual effects associated with current movement
+        // if (this.#cameraPosition.name != "ORBIT") {
+        //     this.#adjustRotationAmounts(dt);
+        //     this.#adjustPositionOffset(dt);
+        //     if (INPUT.KeyPressedOnce("space")) {
+        //         this.#mouseOffset.set(0, 0);
+        //     }
+        // }
 
-        this.#crosshairHitMarkerVisibility = INPUT.KeyPressed("leftMouse")
-            ? THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 1, 15 * dt)
-            : THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 0, 5 * dt);
+        // this.#crosshairHitMarkerVisibility = INPUT.KeyPressed("leftMouse")
+        //     ? THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 1, 15 * dt)
+        //     : THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 0, 5 * dt);
 
-        this.#crosshairSprites["sometimes/bt"].material.opacity = this.#crosshairHitMarkerVisibility;
-            this.#crosshairSprites["sometimes/tl"].material.opacity = this.#crosshairHitMarkerVisibility;
-            this.#crosshairSprites["sometimes/tr"].material.opacity = this.#crosshairHitMarkerVisibility;
+        // this.#crosshairSprites["sometimes/bt"].material.opacity = this.#crosshairHitMarkerVisibility;
+        //     this.#crosshairSprites["sometimes/tl"].material.opacity = this.#crosshairHitMarkerVisibility;
+        //     this.#crosshairSprites["sometimes/tr"].material.opacity = this.#crosshairHitMarkerVisibility;
 
         //this.#debugLine.From = this._objectGroup.position;
         //this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
@@ -356,40 +357,42 @@ class PlayerObject extends GameObject {
     MainNoPause(dt) {
         super.MainNoPause(dt);
 
-        this.#handleCameraTransition(dt)
-        if (INPUT.KeyPressedOnce("ArrowRight")) {
-            this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
-            this.CurrentGun = this.#gunNames[this.#gunNameIndex];
-        }
-        else if (INPUT.KeyPressedOnce("ArrowLeft")) {
-            this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
-            this.CurrentGun = this.#gunNames[this.#gunNameIndex];
-        }
+        this.#orbitControls.update();
+        
+        // this.#handleCameraTransition(dt)
+        // if (INPUT.KeyPressedOnce("ArrowRight")) {
+        //     this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
+        //     this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        // }
+        // else if (INPUT.KeyPressedOnce("ArrowLeft")) {
+        //     this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
+        //     this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        // }
 
-        let camMoveVec = new THREE.Vector3();
-        if (INPUT.KeyPressed("w")) {
-            camMoveVec.z++;
-        }
-        if (INPUT.KeyPressed("a")) {
-            camMoveVec.x++;
-        }
-        if (INPUT.KeyPressed("s")) {
-            camMoveVec.z--;
-        }
-        if (INPUT.KeyPressed("d")) {
-            camMoveVec.x--;
-        }
-        if (INPUT.KeyPressed("r")) {
-            camMoveVec.y++;
-        }
-        if (INPUT.KeyPressed("f")) {
-            camMoveVec.y--;
-        }
-        if (INPUT.KeyPressed("ShiftLeft")) {
-            camMoveVec.multiplyScalar(0.1);
-        }
-        //console.log(camMoveVec);
-        this.#camera.position.add(camMoveVec);
+        // let camMoveVec = new THREE.Vector3();
+        // if (INPUT.KeyPressed("w")) {
+        //     camMoveVec.z++;
+        // }
+        // if (INPUT.KeyPressed("a")) {
+        //     camMoveVec.x++;
+        // }
+        // if (INPUT.KeyPressed("s")) {
+        //     camMoveVec.z--;
+        // }
+        // if (INPUT.KeyPressed("d")) {
+        //     camMoveVec.x--;
+        // }
+        // if (INPUT.KeyPressed("r")) {
+        //     camMoveVec.y++;
+        // }
+        // if (INPUT.KeyPressed("f")) {
+        //     camMoveVec.y--;
+        // }
+        // if (INPUT.KeyPressed("ShiftLeft")) {
+        //     camMoveVec.multiplyScalar(0.1);
+        // }
+        // //console.log(camMoveVec);
+        // this.#camera.position.add(camMoveVec);
     }
 
     PostPhysicsCallback(dt) {
