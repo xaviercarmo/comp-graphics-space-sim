@@ -216,7 +216,7 @@ class GameHandler {
 
         this.#setupMenuEvents();
 
-        this.SpecialStuff();
+        this.TheirSpecialStuff();
 
         // let verts = [];
         // for (let i = 0; i < 10000; i++) {
@@ -239,29 +239,59 @@ class GameHandler {
         this.#renderer.render(this.#scene, this.#camera);
     }
 
-    SpecialStuff() {
+    MySpecialStuff() {
+        let particles = 2000;
+        let geometry = new THREE.BufferGeometry();
+        let arrayBuffer = new ArrayBugger(particles * 16); //12 bytes for position, 4 for colour
+        let positionBufferView = new Float32Array(arrayBuffer);
+        let colourBufferView = new Uint8Array(arrayBuffer); //later try doing a float array? shaders use 0-1 so bit weird to pass 255
+
+        let colour = new THREE.Color();
+        let xRange = 7, halfX = xRange / 2;
+        let yRange = 5, halfY = yRange / 2;
+        let zRange = 10, halfZ = zRange / 2;
+
+        let uniforms = {
+            color: { value: new THREE.Color( 0xffff00 ) },
+        };
+
+        let baseShaderMaterial = new THREE.ShaderMaterial({
+            uniforms: { color: { value: new THREE.Color(0x000000) } },
+            vertexShader:   document.getElementById('vertexshader').textContent,
+            fragmentShader: document.getElementById('fragmentshader').textContent,
+            transparent:    true
+        });
+
+        for (let i = 0; i < positionBufferView.length; i += 4) {
+            let x = Math.random() * xRange - halfX;
+            let y = Math.random() * yRange - halfY;
+            let z = Math.random() * zRange - halfZ;
+
+            positionBufferView[i] = x;
+            positionBufferView[i + 1] = y;
+            positionBufferView[i + 2] = z;
+
+            let shaderMaterial = baseShaderMaterial.clone();
+            let r = 255;
+            let g = 50;
+            let b = 0;
+            shaderMaterial.uniforms.color.value.setRGB();
+        }
+    }
+
+    //Don't think passing the alpha in is going to work here. Seems like it just doesn't work...
+    TheirSpecialStuff() {
         var particles = 500000;
-
         var geometry = new THREE.BufferGeometry();
-
-        // create a generic buffer of binary data (a single particle has 16 bytes of data)
-
-        var arrayBuffer = new ArrayBuffer( particles * 16 );
-
-        // the following typed arrays share the same buffer
-
+        var arrayBuffer = new ArrayBuffer( particles * 20 );
         var interleavedFloat32Buffer = new Float32Array( arrayBuffer );
         var interleavedUint8Buffer = new Uint8Array( arrayBuffer );
-
-        //
-
         var color = new THREE.Color();
-
         var n = 1000, n2 = n / 2; // particles spread in the cube
 
-        for ( var i = 0; i < interleavedFloat32Buffer.length; i += 4 ) {
+        for ( var i = 0; i < interleavedFloat32Buffer.length; i += 5 ) { //i += 4 bc 3 taken up by the 3 floats, 1 taken up by the 3 colours + holder
 
-            // position (first 12 bytes)
+            // position (first 12 bytes) (each float32 is 4 bytes, 4 * 3 = 12)
 
             var x = Math.random() * n - n2;
             var y = Math.random() * n - n2;
@@ -271,7 +301,11 @@ class GameHandler {
             interleavedFloat32Buffer[ i + 1 ] = y;
             interleavedFloat32Buffer[ i + 2 ] = z;
 
-            // color (last 4 bytes)
+            // alpha (next 4 bytes)
+            
+            interleavedFloat32Buffer[ i + 3 ] = 0;
+
+            // color (last 4 bytes) (each uInt8 is a byte, 4 * 1 = 4)
 
             var vx = ( x / n ) + 0.5;
             var vy = ( y / n ) + 0.5;
@@ -288,15 +322,16 @@ class GameHandler {
 
         }
 
-        var interleavedBuffer32 = new THREE.InterleavedBuffer( interleavedFloat32Buffer, 4 );
-        var interleavedBuffer8 = new THREE.InterleavedBuffer( interleavedUint8Buffer, 16 );
+        var interleavedBuffer32 = new THREE.InterleavedBuffer( interleavedFloat32Buffer, 5 );
+        var interleavedBuffer8 = new THREE.InterleavedBuffer( interleavedUint8Buffer, 20 );
 
         geometry.setAttribute( 'position', new THREE.InterleavedBufferAttribute( interleavedBuffer32, 3, 0, false ) );
+        geometry.setAttribute( 'alpha', new THREE.InterleavedBufferAttribute( interleavedBuffer32, 1, 3, true ) );
         geometry.setAttribute( 'color', new THREE.InterleavedBufferAttribute( interleavedBuffer8, 3, 12, true ) );
 
         //
 
-        var material = new THREE.PointsMaterial( { size: 15, vertexColors: true } ); //vertex colours makes the color attribute get used i think
+        var material = new THREE.PointsMaterial( { size: 15, vertexColors: true, transparent: true } ); //vertex colours makes the color attribute get used i think
 
         let points = new THREE.Points( geometry, material );
         this.Scene.add( points );
