@@ -40,8 +40,9 @@
             varying float vAlpha;
             varying vec3 vPosition;
             varying vec3 vColor;
+            
             void main() {
-                vec4 colorBias = vec4(1, .2, 0, vAlpha);
+                vec4 colorBias = vec4(vColor, vAlpha);
                 gl_FragColor = colorBias * texture2D(texture, gl_PointCoord);
             }
         </script>

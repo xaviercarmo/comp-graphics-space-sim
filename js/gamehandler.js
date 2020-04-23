@@ -110,6 +110,8 @@ class GameHandler {
         //this.pointsGeometry.attributes.position.needsUpdate = true;
         //this.pointsGeometry.computeBoundingSphere();
 
+        this.particleSystem.Main(dt);
+
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
 
@@ -224,7 +226,7 @@ class GameHandler {
 
         this.#setupMenuEvents();
 
-        this.particleSystem = new ParticleSystem(this.AssetHandler.LoadedImages.sprites.thrusterSprite, 5, 5);
+        this.particleSystem = new ParticleSystem(this.AssetHandler.LoadedImages.sprites.thrusterSprite, 5, 100);
 
         //this.TheirSpecialStuff();
         //this.MySuperSpecialStuff();
