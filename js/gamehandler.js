@@ -345,21 +345,21 @@ class GameHandler {
         let positions = new Float32Array(particles * 1);
         let colours = new Uint8Array(particles * 1);
 
-        let xRange = 7, halfX = xRange / 2;
-        let yRange = 5, halfY = yRange / 2;
-        let zRange = 10, halfZ = zRange / 2;
-
+        let xRange = 3.5;
+        let yRange = 2.5;
+        let zRange = 10;
+        let alpha = 0.5;
         for (let i = 0; i < particles; i += 3) {
-            alphas[i] = 0.5;
-            alphas[i + 1] = 0.5;
-            alphas[i + 2] = 0.5;
+            alphas[i] = alpha;
+            alphas[i + 1] = alpha;
+            alphas[i + 2] = alpha;
 
-            let x = Math.random() * xRange - halfX;
-            let y = Math.random() * yRange - halfY;
-            let z = Math.random() * zRange - halfZ;
+            let x = Math.random() * xRange;
+            let y = Math.random() * yRange;
+            let z = Math.random() * zRange;
 
-            positions[i] = x;
-            positions[i + 1] = y;
+            positions[i] = x * (z / zRange);
+            positions[i + 1] = y * (z / zRange);
             positions[i + 2] = z;
 
             let r = 255;
@@ -372,7 +372,7 @@ class GameHandler {
 
         geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3, true));
 
         let uniforms = {};
         let shaderMaterial = new THREE.ShaderMaterial({
