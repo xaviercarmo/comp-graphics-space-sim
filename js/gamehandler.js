@@ -5,13 +5,14 @@ import * as UTILS from './utils.js';
 import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/playerobject.js';
+import ParticleSystem from './particlesystem.js';
 
 class GameHandler {
     //debug
     get Camera() { return this.#camera; }
 
     //privates
-    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
+    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100_000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
@@ -101,6 +102,13 @@ class GameHandler {
 
         let playerPositionDelta = UTILS.SubVectors(this.#player.Object.position, playerOldPosition);
         this.SkyBox.position.addScaledVector(playerPositionDelta, 0.9);
+
+        // let titties = this.pointsGeometry.attributes.position.array;
+        // for (let i = 0; i < this.numParticles; i += 3) {
+        //     //titties[i + 2] += 2 * dt;
+        // }
+        //this.pointsGeometry.attributes.position.needsUpdate = true;
+        //this.pointsGeometry.computeBoundingSphere();
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
@@ -216,8 +224,10 @@ class GameHandler {
 
         this.#setupMenuEvents();
 
+        this.particleSystem = new ParticleSystem(this.AssetHandler.LoadedImages.sprites.thrusterSprite, 5, 5);
+
         //this.TheirSpecialStuff();
-        this.MySuperSpecialStuff();
+        //this.MySuperSpecialStuff();
 
         // let verts = [];
         // for (let i = 0; i < 10000; i++) {
@@ -339,32 +349,39 @@ class GameHandler {
     }
 
     MySuperSpecialStuff() {
-        let particles = 30000;
+        let numVertices = 3000;
+        let arraySize = numVertices * 3;
         let geometry = new THREE.BufferGeometry();
-        let alphas = new Float32Array(particles * 1);
-        let positions = new Float32Array(particles * 1);
-        let colours = new Uint8Array(particles * 1);
+        let alphas = new Float32Array(arraySize * 1);
+        let positions = new Float32Array(arraySize * 1);
+        let colours = new Uint8Array(arraySize * 1);
 
-        let xRange = 3.5;
-        let yRange = 2.5;
+        let xyVec = new THREE.Vector2();
+
+        let minXRange = 1;
+        let minYRange = 0.5;
+        let xRange = 2.5, halfXRange = xRange / 2;
+        let yRange = 1.5, halfYRange = yRange / 2;
         let zRange = 10;
         let alpha = 0.5;
-        for (let i = 0; i < particles; i += 3) {
+        for (let i = 0; i < arraySize; i += 3) {
             alphas[i] = alpha;
             alphas[i + 1] = alpha;
             alphas[i + 2] = alpha;
 
-            let x = Math.random() * xRange;
-            let y = Math.random() * yRange;
+            let x = Math.random() * xRange - halfXRange;
+            let y = Math.random() * yRange - halfYRange;
             let z = Math.random() * zRange;
 
-            positions[i] = x * (z / zRange);
-            positions[i + 1] = y * (z / zRange);
+            let zPct = z / zRange;
+
+            positions[i] = (x) * Math.min(Math.sqrt(zPct + 0.8), 1.4);
+            positions[i + 1] = (y) * Math.min(zPct + 0.2, 0.6);
             positions[i + 2] = z;
 
-            let r = 255;
-            let g = 50;
-            let b = 0;
+            let r = zPct * 255;
+            let g = (1 - zPct) * (1 - zPct) * 200;
+            let b = (1 - zPct) * 255;
             colours[i] = r;
             colours[i + 1] = g;
             colours[i + 2] = b;
@@ -374,15 +391,21 @@ class GameHandler {
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3, true));
 
-        let uniforms = {};
+        let uniforms = {
+            texture: { value: this.AssetHandler.LoadedImages.sprites.thrusterSprite }
+        };
         let shaderMaterial = new THREE.ShaderMaterial({
             uniforms: uniforms,
-            vertexShader:   document.getElementById( 'transparencyVertexShader' ).textContent,
+            vertexShader: document.getElementById( 'transparencyVertexShader' ).textContent,
             fragmentShader: document.getElementById( 'transparencyFragmentShader' ).textContent,
-            transparent:    true
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthTest: false
         });
 
         let points = new THREE.Points(geometry, shaderMaterial);
+        this.pointsGeometry = geometry;
+        this.numParticles = arraySize;
         this.Scene.add(points);
     }
 

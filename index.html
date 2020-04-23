@@ -28,19 +28,21 @@
         
                 vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
         
-                gl_PointSize = 8.0;
-        
+                //gl_PointSize = 40.0;
+                gl_PointSize = 2. * ( 300.0 / length( mvPosition.xyz ) );
                 gl_Position = projectionMatrix * mvPosition;
             }
         </script>
         
         <script type="x-shader/x-fragment" id="transparencyFragmentShader">
+            uniform sampler2D texture;
+
             varying float vAlpha;
             varying vec3 vPosition;
             varying vec3 vColor;
-        
             void main() {
-                gl_FragColor = vec4( vColor, vAlpha );
+                vec4 colorBias = vec4(1, .2, 0, vAlpha);
+                gl_FragColor = colorBias * texture2D(texture, gl_PointCoord);
             }
         </script>
         
