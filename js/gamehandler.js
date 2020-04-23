@@ -216,7 +216,8 @@ class GameHandler {
 
         this.#setupMenuEvents();
 
-        this.TheirSpecialStuff();
+        //this.TheirSpecialStuff();
+        this.MySuperSpecialStuff();
 
         // let verts = [];
         // for (let i = 0; i < 10000; i++) {
@@ -242,7 +243,7 @@ class GameHandler {
     MySpecialStuff() {
         let particles = 2000;
         let geometry = new THREE.BufferGeometry();
-        let arrayBuffer = new ArrayBugger(particles * 16); //12 bytes for position, 4 for colour
+        let arrayBuffer = new ArrayBuffer(particles * 16); //12 bytes for position, 4 for colour
         let positionBufferView = new Float32Array(arrayBuffer);
         let colourBufferView = new Uint8Array(arrayBuffer); //later try doing a float array? shaders use 0-1 so bit weird to pass 255
 
@@ -335,6 +336,54 @@ class GameHandler {
 
         let points = new THREE.Points( geometry, material );
         this.Scene.add( points );
+    }
+
+    MySuperSpecialStuff() {
+        let particles = 30000;
+        let geometry = new THREE.BufferGeometry();
+        let alphas = new Float32Array(particles * 1);
+        let positions = new Float32Array(particles * 1);
+        let colours = new Uint8Array(particles * 1);
+
+        let xRange = 7, halfX = xRange / 2;
+        let yRange = 5, halfY = yRange / 2;
+        let zRange = 10, halfZ = zRange / 2;
+
+        for (let i = 0; i < particles; i += 3) {
+            alphas[i] = 0.5;
+            alphas[i + 1] = 0.5;
+            alphas[i + 2] = 0.5;
+
+            let x = Math.random() * xRange - halfX;
+            let y = Math.random() * yRange - halfY;
+            let z = Math.random() * zRange - halfZ;
+
+            positions[i] = x;
+            positions[i + 1] = y;
+            positions[i + 2] = z;
+
+            let r = 255;
+            let g = 50;
+            let b = 0;
+            colours[i] = r;
+            colours[i + 1] = g;
+            colours[i + 2] = b;
+        }
+
+        geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(positions, 3));
+
+        let uniforms = {};
+        let shaderMaterial = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader:   document.getElementById( 'transparencyVertexShader' ).textContent,
+            fragmentShader: document.getElementById( 'transparencyFragmentShader' ).textContent,
+            transparent:    true
+        });
+
+        let points = new THREE.Points(geometry, shaderMaterial);
+        this.Scene.add(points);
     }
 
     AddPlayer() {
