@@ -15,10 +15,17 @@ class ObstacleObject extends GameObject {
   constructor(){
     super(obst);
 
-    //create basic object to test
+    //create basic object
     var geo = new THREE.BoxGeometry(11, 11, 11);
     var mat = new THREE.MeshBasicMaterial( { color:	0xff0000 });
-    var obst = new THREE.Mesh( geo, mat);
+    var obst = new THREE.Mesh(geo, mat);
+
+    //random spawn
+    var x, y, z;
+    x=y=z=Math.random();
+    console.log(x, y, z);
+    obst.position.set(x, y, z);
+    
     //add object to scene
     window.GameHandler.Scene.add(obst);
   }
