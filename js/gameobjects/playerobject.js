@@ -3,6 +3,7 @@ import * as INPUT from '../input.js';
 import * as UTILS from '../utils.js';
 
 import GameObject from '../gameobject.js';
+import { ThrusterParticleSystemLocalPos } from '../particlesystems/thrusterparticlesystem.js';
 
 import { OrbitControls } from '../../libraries/OrbitControls.js';
 
@@ -58,6 +59,8 @@ class PlayerObject extends GameObject {
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
     #crosshairHitMarkerVisibility = false;
+    #leftThrusterParticleSystem;
+    #rightThrusterParticleSystem;
 
     //debug
     #debugLine = new UTILS.RedDebugLine();
@@ -76,6 +79,7 @@ class PlayerObject extends GameObject {
         this.#setupCameraTransitionCurves();
 
         this.#setupDebugHelpers();
+        this.#setupThrusters();
         this.#setupCrosshair();
 
         this.#camera = camera;
@@ -165,13 +169,38 @@ class PlayerObject extends GameObject {
         cubeG.position.set(0, 0, 30);
         this._objectGroup.add(cubeG);
 
-        this.#debugMouseOffset.position.set(0, 0, 30);
-        this.#debugMouseOffset.add(cubeR);
-        this._objectGroup.add(this.#debugMouseOffset);
+        this.#debugMouseOffset.position.set(-2.8, 2.48, -8.74);
+        //this.#debugMouseOffset.add(cubeR);
+        this._mainObject.add(this.#debugMouseOffset);
 
-        this.#mainObjectTarget.position.copy(this.#debugMouseOffset.position);
-        this.#mainObjectTarget.add(cubeB);
-        this._objectGroup.add(this.#mainObjectTarget);
+        this.#mainObjectTarget.position.set(2.8, 2.48, -8.74);
+        //this.#mainObjectTarget.add(cubeB);
+        this._mainObject.add(this.#mainObjectTarget);
+    }
+
+    get Testing(){ return this.#mainObjectTarget.getWorldPosition(new THREE.Vector3()); }
+
+    #setupThrusters = () => {
+        let extraOptions = {
+            velSpread: new THREE.Vector3(5, 5, 0),
+            originSpread: new THREE.Vector3(0.5, 0, 0)
+        };
+
+        this.#leftThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
+            this.#mainObjectTarget,
+            new THREE.Vector3(-0.05, 0, -1),
+            0.2,
+            4000,
+            extraOptions
+        );
+
+        this.#rightThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
+            this.#debugMouseOffset,
+            new THREE.Vector3(0.05, 0, -1),
+            0.2,
+            4000,
+            extraOptions
+        );
     }
 
     #setupCrosshair = () => {
@@ -215,6 +244,9 @@ class PlayerObject extends GameObject {
 
             this.#targetSpeed = Math.min(this.#targetSpeed + scrollTicks * this.#targetSpeedAccel, this.#maxSpeed);
             if (this.#targetSpeed < 0) { this.#targetSpeed = 0; }
+            
+            this.#leftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
+            this.#rightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
         }
     }
 
@@ -244,7 +276,7 @@ class PlayerObject extends GameObject {
 
         let targetXAngle = this.#baseTargetAngles.x * -this.#mouseOffsetPct.y; // back and forth
         let targetYAngle = this.#baseTargetAngles.y * this.#rotAmt.x; // side to side
-        let targetZAngle = this.#baseTargetAngles.z * UTILS.LimitMagnitude(-this.#rotAmt.x - deltaRotAmt.x / dt / 2, 1); // barrel roll
+        let targetZAngle = this.#baseTargetAngles.z * -this.#mouseOffsetPct.x;//UTILS.LimitMagnitude(-this.#rotAmt.x - deltaRotAmt.x / dt / 2, 1); // barrel roll
         this.#targetEuler.set(targetXAngle, targetYAngle, targetZAngle);
         this.#targetQuaternion.setFromEuler(this.#targetEuler);
 
@@ -349,6 +381,10 @@ class PlayerObject extends GameObject {
             this.#crosshairSprites["sometimes/tl"].material.opacity = this.#crosshairHitMarkerVisibility;
             this.#crosshairSprites["sometimes/tr"].material.opacity = this.#crosshairHitMarkerVisibility;
 
+        this.Object.updateWorldMatrix(true, true);
+        this.#leftThrusterParticleSystem.Main(dt);
+        this.#rightThrusterParticleSystem.Main(dt);
+        
         //this.#debugLine.From = this._objectGroup.position;
         //this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
     }
@@ -366,27 +402,40 @@ class PlayerObject extends GameObject {
             this.CurrentGun = this.#gunNames[this.#gunNameIndex];
         }
 
+        //red debug, blue main
         let camMoveVec = new THREE.Vector3();
         if (INPUT.KeyPressed("w")) {
-            camMoveVec.z++;
+            //camMoveVec.z++;
+            this.#debugMouseOffset.position.z += 1 * dt;
+            this.#mainObjectTarget.position.z += 1 * dt;
         }
         if (INPUT.KeyPressed("a")) {
-            camMoveVec.x++;
+            //camMoveVec.x++;
+            this.#debugMouseOffset.position.x += 1 * dt;
+            this.#mainObjectTarget.position.x -= 1 * dt;
         }
         if (INPUT.KeyPressed("s")) {
-            camMoveVec.z--;
+            //camMoveVec.z--;
+            this.#debugMouseOffset.position.z -= 1 * dt;
+            this.#mainObjectTarget.position.z -= 1 * dt;
         }
         if (INPUT.KeyPressed("d")) {
-            camMoveVec.x--;
+            //camMoveVec.x--;
+            this.#debugMouseOffset.position.x -= 1 * dt;
+            this.#mainObjectTarget.position.x += 1 * dt;
         }
         if (INPUT.KeyPressed("r")) {
-            camMoveVec.y++;
+            //camMoveVec.y++;
+            this.#debugMouseOffset.position.y += 1 * dt;
+            this.#mainObjectTarget.position.y += 1 * dt;
         }
         if (INPUT.KeyPressed("f")) {
-            camMoveVec.y--;
+            //camMoveVec.y--;
+            this.#debugMouseOffset.position.y -= 1 * dt;
+            this.#mainObjectTarget.position.y -= 1 * dt;
         }
         if (INPUT.KeyPressed("ShiftLeft")) {
-            camMoveVec.multiplyScalar(0.1);
+            //camMoveVec.multiplyScalar(0.1);
         }
         //console.log(camMoveVec);
         this.#camera.position.add(camMoveVec);

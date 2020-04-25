@@ -94,6 +94,12 @@ class GameHandler {
     
                 g.PostPhysicsCallback(dt);
             });
+
+            //let pos = new THREE.Vector3();
+            
+            //this.Player.Object.localToWorld(pos);
+            //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
+            //console.log(this.Player.Object.position.z - this.randomCube.position.z);
         }
 
         //game logic that runs despite pausing
@@ -212,10 +218,11 @@ class GameHandler {
         this.#scene.add(gridHelper2);
 
         let randomCubeGeo = new THREE.BoxGeometry(1, 1, 1);
-        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0xff0000, shininess: 100 });
+        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
         let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
         this.#scene.add(randomCube);
         randomCube.position.y += 10;
+        this.randomCube = randomCube;
 
         this.#initialiseSkyMap();
 

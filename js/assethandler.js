@@ -114,7 +114,7 @@ class AssetHandler {
         let domPreDownloader = $(".pre-downloader");
 
         domPreDownloader
-            .append('<div class="loading-text">Loading Assets...</div>');
+            .append('<div class="loading-text">Loading assets...</div>');
 
         domPreDownloader
             .append($("<div>", { class: "loading-bar-container" })
@@ -146,7 +146,7 @@ class AssetHandler {
         //     25_000_000
         // );
 
-        //manually load the skybox
+        // manually load the skybox
         let skyMapFiles = [
             { name: "front.png", size: 4100000, key: "ft" },
             { name: "back.png", size: 4200000, key: "bk" },
@@ -157,7 +157,7 @@ class AssetHandler {
         ];
         this.#loadImages("assets/cube_maps/lightblue/", "skymap", skyMapFiles);
 
-        //load the crosshair
+        // load the crosshair
         let mobileAlwaysFiles = [{ name: "arcs.png", size: 71000, key: "always/arcs" }];
         this.#loadImages("assets/crosshairs/mobile/always/", "crosshairMobile", mobileAlwaysFiles);
 
@@ -173,6 +173,13 @@ class AssetHandler {
             { name: "rim.png", size: 139000, key: "rim" }
         ];
         this.#loadImages("assets/crosshairs/stationary/", "crosshairStationary", stationaryFiles);
+
+        // load the thruster sprites
+        let spriteFile = [
+            { name: "thruster_sprite.png", size: 12000, key: "thrusterSprite" },
+            { name: "white_square.png", size: 131, key: "whiteSquare" }
+        ];
+        this.#loadImages("assets/sprites/", "sprites", spriteFile);
     }
 
     get Progress() {

@@ -75,6 +75,10 @@ class RedDebugLine {
     }
 }
 
+function RandomFloatInRange(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
 const Constants = {
     degToRad: 0.0174533,
     upVector: new THREE.Vector3(0, 1, 0)
@@ -87,5 +91,6 @@ export {
     LimitMagnitude,
     Mod,
     RedDebugLine,
+    RandomFloatInRange,
     Constants
 }
