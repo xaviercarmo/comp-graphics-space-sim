@@ -5,7 +5,7 @@ import * as UTILS from './utils.js';
 import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/playerobject.js';
-import ParticleSystem from './particlesystem.js';
+import ThrusterParticleSystem from './particlesystems/thrusterparticlesystem.js';
 
 class GameHandler {
     //debug
@@ -95,6 +95,8 @@ class GameHandler {
     
                 g.PostPhysicsCallback(dt);
             });
+
+            this.thrusterParticleSystem.Main(dt);
         }
 
         //game logic that runs despite pausing
@@ -109,8 +111,6 @@ class GameHandler {
         // }
         //this.pointsGeometry.attributes.position.needsUpdate = true;
         //this.pointsGeometry.computeBoundingSphere();
-
-        this.particleSystem.Main(dt);
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
@@ -202,6 +202,11 @@ class GameHandler {
 
     InitialiseScene() {
         window.addEventListener("resize", () => { this.Resize(); });
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                this.Pause();
+            }
+        }, false)
 
         document.body.appendChild(this.#renderer.domElement);
 
@@ -226,28 +231,8 @@ class GameHandler {
 
         this.#setupMenuEvents();
 
-        this.particleSystem = new ParticleSystem(this.AssetHandler.LoadedImages.sprites.thrusterSprite, 5, 100);
-
-        //this.TheirSpecialStuff();
-        //this.MySuperSpecialStuff();
-
-        // let verts = [];
-        // for (let i = 0; i < 10000; i++) {
-        //     var x = THREE.MathUtils.randFloatSpread(50);
-        //     var y = THREE.MathUtils.randFloatSpread(50);
-        //     var z = THREE.MathUtils.randFloatSpread(50);
-
-        //     verts.push(x, y, z);
-        // }
-
-        // var geometry = new THREE.BufferGeometry();
-        // geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( verts, 3 ) );
-
-        // var material = new THREE.PointsMaterial( { color: 0x888888 } );
-
-        // var points = new THREE.Points( geometry, material );
-
-        // this.Scene.add( points );
+        //this.particleSystem = new ParticleSystem(this.AssetHandler.LoadedImages.sprites.thrusterSprite, 0.5, 100);
+        this.thrusterParticleSystem = new ThrusterParticleSystem(new THREE.Vector3());
 
         this.#renderer.render(this.#scene, this.#camera);
     }
@@ -446,26 +431,34 @@ class GameHandler {
     //toggles mode between running and paused. Will do nothing if mode is not currently one of the two.
     TogglePause() {
         if (this.#mode == this.#modes.GAMERUNNING) {
-            this.#mode = this.#modes.GAMEPAUSED;
-            
-            //release mouse
-            document.exitPointerLock();
-
-            //show hangar menu
-            $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
+            this.Pause();
         }
         else if (this.#mode == this.#modes.GAMEPAUSED) {
-            this.#mode = this.#modes.GAMERUNNING;
-            
-            //reclaim mouse
-            this.#renderer.domElement.requestPointerLock();
-
-            //hide hangar menu
-            $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
+            this.Unpause();
         }
         else {
             console.log("Cannot toggle pause, game is not currently running or paused.");
         }
+    }
+
+    Pause() {
+        this.#mode = this.#modes.GAMEPAUSED;
+            
+        //release mouse
+        document.exitPointerLock();
+
+        //show hangar menu
+        $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
+    }
+
+    Unpause() {
+        this.#mode = this.#modes.GAMERUNNING;
+            
+        //reclaim mouse
+        this.#renderer.domElement.requestPointerLock();
+
+        //hide hangar menu
+        $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
     }
 
     get Scene() { return this.#scene; }

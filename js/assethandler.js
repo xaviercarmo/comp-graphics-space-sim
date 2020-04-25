@@ -114,7 +114,7 @@ class AssetHandler {
         let domPreDownloader = $(".pre-downloader");
 
         domPreDownloader
-            .append('<div class="loading-text">Loading Assets...</div>');
+            .append('<div class="loading-text">Loading assets...</div>');
 
         domPreDownloader
             .append($("<div>", { class: "loading-bar-container" })
