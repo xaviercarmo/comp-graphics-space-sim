@@ -96,6 +96,31 @@ class GameHandler {
                 g.PostPhysicsCallback(dt);
             });
 
+            if (INPUT.KeyPressed("w")) {
+                this.cubeR.translateZ(-1 * dt);
+            }
+            if (INPUT.KeyPressed("a")) {
+                this.cubeR.translateX(-1 * dt);
+            }
+            if (INPUT.KeyPressed("s")) {
+                this.cubeR.translateZ(1 * dt);
+            }
+            if (INPUT.KeyPressed("d")) {
+                this.cubeR.translateX(1 * dt);
+            }
+            if (INPUT.KeyPressed("r")) {
+                this.cubeR.position.y += 1 * dt;
+            }
+            if (INPUT.KeyPressed("f")) {
+                this.cubeR.position.y -= 1 * dt;
+            }
+            if (INPUT.KeyPressed("z")) {
+                this.cubeR.rotation.y += 1 * dt;
+            }
+            if (INPUT.KeyPressed("x")) {
+                this.cubeR.rotation.y -= 1 * dt;
+            }
+
             this.thrusterParticleSystem.Main(dt);
         }
 
@@ -232,7 +257,12 @@ class GameHandler {
         this.#setupMenuEvents();
 
         //this.particleSystem = new ParticleSystem(this.AssetHandler.LoadedImages.sprites.thrusterSprite, 0.5, 100);
-        this.thrusterParticleSystem = new ThrusterParticleSystem(new THREE.Vector3());
+        let geo = new THREE.BoxGeometry(1, 1, 1);
+        let matR = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        this.cubeR = new THREE.Mesh(geo, matR);
+        this.#scene.add(this.cubeR);
+        this.thrusterParticleSystem = new ThrusterParticleSystem(this.cubeR, new THREE.Vector3(0, 0, 1), new THREE.Vector2(), 8, 1.5, 100);
+        //this.cubeR.add(this.thrusterParticleSystem.Object);
 
         this.#renderer.render(this.#scene, this.#camera);
     }

@@ -6,6 +6,8 @@ import * as THREE from '../libraries/three.module.js';
  */
 class ParticleSystem {
     //privates
+    _parent;
+
     _texture;
 
     _numParticles;
@@ -24,10 +26,12 @@ class ParticleSystem {
     //publics
 
     //will need to take max num particles, particles per second, origin for spawn (or area for origin of spawn)
-    constructor(texture, particleAgeLimit, particlesPerSecond) {
+    constructor(parent, texture, particleAgeLimit, particlesPerSecond) {
+        this._parent = parent;
         this._texture = texture;
         this._particleAgeLimit = particleAgeLimit;
         this._numParticles = Math.ceil(particleAgeLimit * particlesPerSecond); //rounds up in case of fractional pps
+        this._numParticles += Math.ceil(this._numParticles * 0.1); //10% buffer for mistimings 
         this._spawnTimeInterval = 1 / particlesPerSecond;
 
         this.#initialise();
@@ -47,6 +51,7 @@ class ParticleSystem {
         let material = this._getMaterial();
 
         this._points = new THREE.Points(this._geometry, material);
+        //this._points.renderOrder = 9999;
         window.GameHandler.Scene.add(this._points);
     }
 
@@ -61,8 +66,12 @@ class ParticleSystem {
             fragmentShader: document.getElementById( 'transparencyFragmentShader' ).textContent,
             blending: THREE.AdditiveBlending,
             transparent: true,
-            depthTest: false
+            depthWrite: false
         });
+    }
+
+    get Object() {
+        return this._points;
     }
 }
 
@@ -76,7 +85,7 @@ class Particle {
     Index;
     IsActive = false;
 
-    _positionStore = new THREE.Vector3();
+    PositionStore = new THREE.Vector3();
 
     constructor(colour, ageLimit, origin, velocity, attributes, index) {
         this.Attributes = attributes;
@@ -93,7 +102,7 @@ class Particle {
 
     Main(dt) {
         this.Age += dt;
-        this.Position = this._positionStore.add(this.Velocity.clone().multiplyScalar(dt));
+        this.Position = this.PositionStore.add(this.Velocity.clone().multiplyScalar(dt));
 
         // if (this.IsExpired) {
         //     this.Age = 0;
@@ -108,11 +117,11 @@ class Particle {
 
     Activate() {
         this.Alpha = 1;
+        this.Position = this.Origin;
         this.IsActive = true;
     }
 
     Deactivate() {
-        this.Position = this.Origin;
         this.Age = 0;
         this.Alpha = 0;
         this.IsActive = false;
@@ -135,7 +144,7 @@ class Particle {
      * @param {THREE.Vector3} position
      */
     set Position(position) {
-        this._positionStore.copy(position);
+        this.PositionStore.copy(position);
 
         this.Attributes.position.array[this.Index * 3] = position.x;
         this.Attributes.position.array[this.Index * 3 + 1] = position.y;
