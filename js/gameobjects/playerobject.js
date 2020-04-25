@@ -32,11 +32,10 @@ class PlayerObject extends GameObject {
 
     //mouse vars
     #scrollDelta = 0;
-    #debugMouseOffset = new THREE.Object3D();
     #mouseOffset = new THREE.Vector2();
     #maxMouseOffset = 1000;
     #mouseOffsetPct = new THREE.Vector2();
-
+    
     //rotation vars
     #baseTargetAngles = {
         x: UTILS.Constants.degToRad * 10,
@@ -46,22 +45,24 @@ class PlayerObject extends GameObject {
     #targetEuler = new THREE.Euler();
     #targetQuaternion = new THREE.Quaternion();
     #rotAmt = new THREE.Vector2();
-
-    #mainObjectTarget = new THREE.Object3D();
-
+    
     //equipment vars
     #currentGun;
     #gunNames = ["gattling_gun", "rail_gun"];
     #gunNameIndex = -1;
+    
+    //thrusters
+    #leftThrusterParticleSystem;
+    #rightThrusterParticleSystem;
+    #rightThrusterTarget = new THREE.Object3D();
+    #leftThrusterTarget = new THREE.Object3D();
 
     //general
     #meshes;
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
     #crosshairHitMarkerVisibility = false;
-    #leftThrusterParticleSystem;
-    #rightThrusterParticleSystem;
-
+    
     //debug
     #debugLine = new UTILS.RedDebugLine();
 
@@ -169,36 +170,38 @@ class PlayerObject extends GameObject {
         cubeG.position.set(0, 0, 30);
         this._objectGroup.add(cubeG);
 
-        this.#debugMouseOffset.position.set(-2.8, 2.48, -8.74);
-        //this.#debugMouseOffset.add(cubeR);
-        this._mainObject.add(this.#debugMouseOffset);
-
-        this.#mainObjectTarget.position.set(2.8, 2.48, -8.74);
-        //this.#mainObjectTarget.add(cubeB);
-        this._mainObject.add(this.#mainObjectTarget);
+        
     }
 
-    get Testing(){ return this.#mainObjectTarget.getWorldPosition(new THREE.Vector3()); }
+    get Testing(){ return this.#leftThrusterTarget.getWorldPosition(new THREE.Vector3()); }
 
     #setupThrusters = () => {
+        this.#rightThrusterTarget.position.set(-2.8, 2.48, -8.74);
+        this._mainObject.add(this.#rightThrusterTarget);
+
+        this.#leftThrusterTarget.position.set(2.8, 2.48, -8.74);
+        this._mainObject.add(this.#leftThrusterTarget);
+
         let extraOptions = {
             velSpread: new THREE.Vector3(5, 5, 0),
             originSpread: new THREE.Vector3(0.5, 0, 0)
         };
 
         this.#leftThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
-            this.#mainObjectTarget,
+            this.#leftThrusterTarget,
             new THREE.Vector3(-0.05, 0, -1),
             0.2,
             4000,
+            1,
             extraOptions
         );
 
         this.#rightThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
-            this.#debugMouseOffset,
+            this.#rightThrusterTarget,
             new THREE.Vector3(0.05, 0, -1),
             0.2,
             4000,
+            1,
             extraOptions
         );
     }
@@ -406,33 +409,33 @@ class PlayerObject extends GameObject {
         let camMoveVec = new THREE.Vector3();
         if (INPUT.KeyPressed("w")) {
             //camMoveVec.z++;
-            this.#debugMouseOffset.position.z += 1 * dt;
-            this.#mainObjectTarget.position.z += 1 * dt;
+            this.#rightThrusterTarget.position.z += 1 * dt;
+            this.#leftThrusterTarget.position.z += 1 * dt;
         }
         if (INPUT.KeyPressed("a")) {
             //camMoveVec.x++;
-            this.#debugMouseOffset.position.x += 1 * dt;
-            this.#mainObjectTarget.position.x -= 1 * dt;
+            this.#rightThrusterTarget.position.x += 1 * dt;
+            this.#leftThrusterTarget.position.x -= 1 * dt;
         }
         if (INPUT.KeyPressed("s")) {
             //camMoveVec.z--;
-            this.#debugMouseOffset.position.z -= 1 * dt;
-            this.#mainObjectTarget.position.z -= 1 * dt;
+            this.#rightThrusterTarget.position.z -= 1 * dt;
+            this.#leftThrusterTarget.position.z -= 1 * dt;
         }
         if (INPUT.KeyPressed("d")) {
             //camMoveVec.x--;
-            this.#debugMouseOffset.position.x -= 1 * dt;
-            this.#mainObjectTarget.position.x += 1 * dt;
+            this.#rightThrusterTarget.position.x -= 1 * dt;
+            this.#leftThrusterTarget.position.x += 1 * dt;
         }
         if (INPUT.KeyPressed("r")) {
             //camMoveVec.y++;
-            this.#debugMouseOffset.position.y += 1 * dt;
-            this.#mainObjectTarget.position.y += 1 * dt;
+            this.#rightThrusterTarget.position.y += 1 * dt;
+            this.#leftThrusterTarget.position.y += 1 * dt;
         }
         if (INPUT.KeyPressed("f")) {
             //camMoveVec.y--;
-            this.#debugMouseOffset.position.y -= 1 * dt;
-            this.#mainObjectTarget.position.y -= 1 * dt;
+            this.#rightThrusterTarget.position.y -= 1 * dt;
+            this.#leftThrusterTarget.position.y -= 1 * dt;
         }
         if (INPUT.KeyPressed("ShiftLeft")) {
             //camMoveVec.multiplyScalar(0.1);

@@ -14,6 +14,7 @@ class ParticleSystem {
     _particleAgeLimit;
     _availableParticles = [];
     _activeParticles = [];
+    _particleSize;
 
     _spawnTimeInterval;
 
@@ -26,13 +27,14 @@ class ParticleSystem {
     //publics
 
     //will need to take max num particles, particles per second, origin for spawn (or area for origin of spawn)
-    constructor(parent, texture, particleAgeLimit, particlesPerSecond) {
+    constructor(parent, texture, particleAgeLimit, particlesPerSecond, particleSize) {
         this._parent = parent;
         this._texture = texture;
         this._particleAgeLimit = particleAgeLimit;
         this._numParticles = Math.ceil(particleAgeLimit * particlesPerSecond); //rounds up in case of fractional pps
         this._numParticles += Math.ceil(this._numParticles * 0.5); //10% buffer for mistimings 
         this._spawnTimeInterval = 1 / particlesPerSecond;
+        this._particleSize = particleSize;
 
         this.#initialise();
     }
@@ -58,7 +60,7 @@ class ParticleSystem {
     _getMaterial() {
         let uniforms = {
             texture: { value: this._texture },
-            pointSize: { value: 1.25 }
+            pointSize: { value: this._particleSize }
         };
 
         return new THREE.ShaderMaterial({

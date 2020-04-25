@@ -25,7 +25,7 @@ class ThrusterParticleSystemGlobalPos extends ParticleSystem {
      * @param {number} duration 
      */
     constructor(parent, direction, spread, speed, particleAgeLimit, particlesPerSecond) {
-        super(parent, window.GameHandler.AssetHandler.LoadedImages.sprites.thrusterSprite, particleAgeLimit, particlesPerSecond);
+        super(parent, window.GameHandler.AssetHandler.LoadedImages.sprites.thrusterSprite, particleAgeLimit, particlesPerSecond, 1);
         
         this.#parentOldPos = this._parent.position.clone();
         this.#direction = direction;
@@ -220,8 +220,8 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
      *     particleSize: Number
      * }
      */
-    constructor(parent, direction, particleAgeLimit, particlesPerSecond, extraOptions) {
-        super(parent, window.GameHandler.AssetHandler.LoadedImages.sprites.thrusterSprite, particleAgeLimit, particlesPerSecond);
+    constructor(parent, direction, particleAgeLimit, particlesPerSecond, particleSize, extraOptions) {
+        super(parent, window.GameHandler.AssetHandler.LoadedImages.sprites.thrusterSprite, particleAgeLimit, particlesPerSecond, particleSize);
         
         this._parent.add(this._points);
 

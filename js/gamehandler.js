@@ -198,6 +198,12 @@ class GameHandler {
 
     InitialiseScene() {
         window.addEventListener("resize", () => { this.Resize(); });
+        
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                this.Pause();
+            }
+        }, false)
 
         document.body.appendChild(this.#renderer.domElement);
 
@@ -271,26 +277,34 @@ class GameHandler {
     //toggles mode between running and paused. Will do nothing if mode is not currently one of the two.
     TogglePause() {
         if (this.#mode == this.#modes.GAMERUNNING) {
-            this.#mode = this.#modes.GAMEPAUSED;
-            
-            //release mouse
-            document.exitPointerLock();
-
-            //show hangar menu
-            $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
+            this.Pause();
         }
         else if (this.#mode == this.#modes.GAMEPAUSED) {
-            this.#mode = this.#modes.GAMERUNNING;
-            
-            //reclaim mouse
-            this.#renderer.domElement.requestPointerLock();
-
-            //hide hangar menu
-            $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
+            this.Unpause();
         }
         else {
             console.log("Cannot toggle pause, game is not currently running or paused.");
         }
+    }
+
+    Pause() {
+        this.#mode = this.#modes.GAMEPAUSED;
+            
+        //release mouse
+        document.exitPointerLock();
+
+        //show hangar menu
+        $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
+    }
+
+    Unpause() {
+        this.#mode = this.#modes.GAMERUNNING;
+            
+        //reclaim mouse
+        this.#renderer.domElement.requestPointerLock();
+
+        //hide hangar menu
+        $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
     }
 
     get Scene() { return this.#scene; }
