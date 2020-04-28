@@ -3,9 +3,10 @@ import * as INPUT from '../input.js';
 import * as UTILS from '../utils.js';
 
 import GameObject from '../gameobject.js';
-import { ThrusterParticleSystemLocalPos } from '../particlesystems/thrusterparticlesystem.js';
 
 import { OrbitControls } from '../../libraries/OrbitControls.js';
+import { ThrusterParticleSystemLocalPos } from '../particlesystems/thrusterparticlesystem.js';
+import { Gun } from '../gun.js';
 
 class PlayerObject extends GameObject {
     //privates
@@ -48,8 +49,9 @@ class PlayerObject extends GameObject {
     
     //equipment vars
     #currentGun;
+    #currentGunObject;
     #gunNames = ["gattling_gun", "rail_gun"];
-    #gunNameIndex = -1;
+    #gunNameIndex = 0;
     
     //thrusters
     #leftThrusterParticleSystem;
@@ -86,6 +88,14 @@ class PlayerObject extends GameObject {
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
         this.CameraPosition = "FOLLOW";
+
+        
+        let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
+        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+
+        this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
 
         window.addEventListener("wheel", this.#handleScroll);
     }
@@ -164,13 +174,11 @@ class PlayerObject extends GameObject {
         let cubeB = new THREE.Mesh(geo, matB);
         let cubeW = new THREE.Mesh(geo, matW);
 
-        cubeW.position.copy(this.#cameraPositions.FOLLOW.lookTarg);
-        this._objectGroup.add(cubeW);
+        // cubeW.position.copy(this.#cameraPositions.FOLLOW.lookTarg);
+        // this._objectGroup.add(cubeW);
 
-        cubeG.position.set(0, 0, 30);
-        this._objectGroup.add(cubeG);
-
-        
+        // cubeG.position.set(0, 0, 30);
+        // this._objectGroup.add(cubeG);
     }
 
     get Testing(){ return this.#leftThrusterTarget.getWorldPosition(new THREE.Vector3()); }
@@ -191,8 +199,8 @@ class PlayerObject extends GameObject {
             this.#leftThrusterTarget,
             new THREE.Vector3(-0.05, 0, -1),
             0.2,
-            4000,
-            1,
+            1000,
+            1.75,
             extraOptions
         );
 
@@ -200,8 +208,8 @@ class PlayerObject extends GameObject {
             this.#rightThrusterTarget,
             new THREE.Vector3(0.05, 0, -1),
             0.2,
-            4000,
-            1,
+            1000,
+            1.75,
             extraOptions
         );
     }
@@ -317,9 +325,7 @@ class PlayerObject extends GameObject {
 
         let xyOffsetPct = 0.2 + (1 - 0.2) * speedPct;
         modifiedTarg.z += 6 * speedPct;
-        // modifiedTarg.y += 2.5 * this.#yPct * xyOffsetPct + 0.25 * speedPct;
         modifiedTarg.y += 2.5 * -this.#mouseOffsetPct.y * xyOffsetPct + 0.25 * speedPct;
-        // modifiedTarg.x -= 2.5 * -this.#xPct * xyOffsetPct;
         modifiedTarg.x += 2.5 * -this.#mouseOffsetPct.x * xyOffsetPct;
 
         this._mainObject.position.lerp(modifiedTarg, 0.9 * dt);
@@ -376,6 +382,8 @@ class PlayerObject extends GameObject {
             }
         }
 
+        this.#currentGun.Firing = INPUT.KeyPressed("leftMouse");
+
         this.#crosshairHitMarkerVisibility = INPUT.KeyPressed("leftMouse")
             ? THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 1, 15 * dt)
             : THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 0, 5 * dt);
@@ -387,6 +395,8 @@ class PlayerObject extends GameObject {
         this.Object.updateWorldMatrix(true, true);
         this.#leftThrusterParticleSystem.Main(dt);
         this.#rightThrusterParticleSystem.Main(dt);
+
+        this.#currentGun.Main(dt);
         
         //this.#debugLine.From = this._objectGroup.position;
         //this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
@@ -395,17 +405,31 @@ class PlayerObject extends GameObject {
     MainNoPause(dt) {
         super.MainNoPause(dt);
 
-        this.#handleCameraTransition(dt)
-        if (INPUT.KeyPressedOnce("ArrowRight")) {
-            this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
-            this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        this.#handleCameraTransition(dt);
+
+        if (window.GameHandler.IsPaused) {
+            if (INPUT.KeyPressedOnce("ArrowRight")) {
+                this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
+                this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+            }
+            else if (INPUT.KeyPressedOnce("ArrowLeft")) {
+                this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
+                this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+            }
+
+            this.#crosshairSprites["always/arcs"].material.opacity = 0;
+            this.#crosshairSprites["sometimes/bt"].material.opacity = 0;
+            this.#crosshairSprites["sometimes/tl"].material.opacity = 0;
+            this.#crosshairSprites["sometimes/tr"].material.opacity = 0;
+            this.#crosshairSprites["halo"].material.opacity = 0;
+            this.#crosshairSprites["rim"].material.opacity = 0;
         }
-        else if (INPUT.KeyPressedOnce("ArrowLeft")) {
-            this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex - 1, this.#gunNames.length);
-            this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        else {
+            this.#crosshairSprites["always/arcs"].material.opacity = 1;
+            this.#crosshairSprites["halo"].material.opacity = 1;
+            this.#crosshairSprites["rim"].material.opacity = 1;
         }
 
-        //red debug, blue main
         let camMoveVec = new THREE.Vector3();
         if (INPUT.KeyPressed("w")) {
             //camMoveVec.z++;
@@ -440,6 +464,7 @@ class PlayerObject extends GameObject {
         if (INPUT.KeyPressed("ShiftLeft")) {
             //camMoveVec.multiplyScalar(0.1);
         }
+
         //console.log(camMoveVec);
         this.#camera.position.add(camMoveVec);
     }
@@ -524,9 +549,9 @@ class PlayerObject extends GameObject {
      */
     set CurrentGun(gunName) {
         if (this.#meshes[gunName] != undefined) {
-            this._mainObject.remove(this.#currentGun);
-            this.#currentGun = this.#meshes[gunName];
-            this._mainObject.add(this.#currentGun);
+            this._mainObject.remove(this.#currentGunObject);
+            this.#currentGunObject = this.#meshes[gunName];
+            this._mainObject.add(this.#currentGunObject);
         }
         else {
             console.log(`"${gunName}" is an invalid gun name`);

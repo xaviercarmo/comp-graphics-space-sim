@@ -22,7 +22,12 @@ class GameHandler {
             ship: {},
             gattling_gun: {},
             rail_gun: {},
-            plasma_gun: {}
+            plasma_gun: {},
+            gattling_gun_new: {
+                base_plate: {},
+                struts: {},
+                gun: {}
+            }
         }
     };
     #gameObjects = [];
@@ -186,6 +191,10 @@ class GameHandler {
             {
                 path: this.AssetHandler.AssetPaths3D[2],
                 onComplete: obj => this.#meshes.player.rail_gun = obj
+            },
+            {
+                path: this.AssetHandler.AssetPaths3D[3],
+                onComplete: obj => this.#meshes.player.gattling_gun_new
             }
         ];
 

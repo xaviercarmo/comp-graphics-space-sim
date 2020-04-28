@@ -11,7 +11,10 @@ class AssetHandler {
     AssetPaths3D = [
         "../assets/SciFi_Fighter.FBX",
         "../assets/gattling_gun.fbx",
-        "../assets/rail_gun.fbx"
+        "../assets/rail_gun.fbx",
+        "../assets/guns/gattling_gun/base_plate.fbx",
+        "../assets/guns/gattling_gun/struts.fbx",
+        "../assets/guns/gattling_gun/gun.fbx"
     ]
     LoadedCubeMaps = {};
     LoadedImages = {};
