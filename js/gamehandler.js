@@ -15,21 +15,6 @@ class GameHandler {
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
 
-
-    //later, this meshes loading logic will be moved to the AssetHandler
-    #meshes = {
-        player: {
-            ship: {},
-            gattling_gun: {},
-            rail_gun: {},
-            plasma_gun: {},
-            gattling_gun_new: {
-                base_plate: {},
-                struts: {},
-                gun: {}
-            }
-        }
-    };
     #gameObjects = [];
 
     #modes = {
@@ -51,17 +36,8 @@ class GameHandler {
     AssetHandler = new AssetHandler();
 
     constructor() {
-        let gameHandler = this;
         this.#mode = this.#modes.PRELOADING;
-
-        this.AssetHandler.LoadAllAssets(() => {
-            $(".loading-text").text("Initialising game...");
-
-            //Allows dom to re-render with initialising text
-            setTimeout(() => {
-                gameHandler.Initialise();
-            }, 0);
-        });
+        this.AssetHandler.LoadAllAssets(() => this.Initialise.call(this));
     }
 
     //private methods
@@ -178,31 +154,9 @@ class GameHandler {
 
         //later can extend this to animate the cursor
         $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
-
-        let assets = [
-            {
-                path: this.AssetHandler.AssetPaths3D[0],
-                onComplete: obj => this.#meshes.player.ship = obj
-            },
-            {
-                path: this.AssetHandler.AssetPaths3D[1],
-                onComplete: obj => this.#meshes.player.gattling_gun = obj
-            },
-            {
-                path: this.AssetHandler.AssetPaths3D[2],
-                onComplete: obj => this.#meshes.player.rail_gun = obj
-            },
-            {
-                path: this.AssetHandler.AssetPaths3D[3],
-                onComplete: obj => this.#meshes.player.gattling_gun_new
-            }
-        ];
-
-        UTILS.LoadAssets(assets, () => {
-            this.InitialiseScene();
-            this.StartGameRunning();
-            window.setTimeout(() => $(".pre-downloader").remove(), 1000);
-        });
+        this.InitialiseScene();
+        this.StartGameRunning();
+        window.setTimeout(() => $(".pre-downloader").remove(), 1000);
     }
 
     InitialiseScene() {
@@ -244,7 +198,6 @@ class GameHandler {
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
-        //this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         this.#setupMenuEvents();
 
@@ -253,9 +206,9 @@ class GameHandler {
 
     AddPlayer() {
         let playerMeshes = {
-            ship: this.#meshes.player.ship.clone(),
-            gattling_gun: this.#meshes.player.gattling_gun.clone(),
-            rail_gun: this.#meshes.player.rail_gun.clone()
+            ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
+            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone()
         };
 
         this.#player = new PlayerObject(playerMeshes, this.#camera);
