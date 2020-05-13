@@ -77,6 +77,18 @@ class PlayerObject extends GameObject {
         this.#meshes.ship.scale.multiplyScalar(0.5)
         this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
         this.#meshes.rail_gun.scale.multiplyScalar(0.1);
+        
+        let gattlingGunGroup = new THREE.Group();
+        gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
+        gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
+        gattlingGunGroup.add(this.#meshes.gattling_gun_new.barrel);
+        gattlingGunGroup.scale.multiplyScalar(0.1);
+        gattlingGunGroup.position.set(0, -1.88, 4.29);
+        gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
+        console.log(gattlingGunGroup);
+        // this.#meshes.gattling_gun_new.base_plate.scale.multiplyScalar(0.1);
+        // this.#meshes.gattling_gun_new.struts.scale.multiplyScalar(0.1);
+        // this.#meshes.gattling_gun_new.barrel.scale.multiplyScalar(0.1);
 
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
@@ -87,14 +99,19 @@ class PlayerObject extends GameObject {
 
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
-        this.CameraPosition = "FOLLOW";
+        // this.CameraPosition = "FOLLOW";
+        this.CameraPosition = "ORBIT";
 
         
         let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
         let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
         let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
 
-        this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        //this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        // this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
+
+        this.#currentGunObject = gattlingGunGroup;
+        this._mainObject.add(this.#currentGunObject);
         this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
 
         window.addEventListener("wheel", this.#handleScroll);
@@ -104,7 +121,7 @@ class PlayerObject extends GameObject {
         this.#cameraPositions.ORIGIN = {
             name: "ORIGIN",
             posnTarg: new THREE.Vector3(0, 0, -5),
-            lookTarg: new THREE.Vector3(0, 0, 0)
+            lookTarg: new THREE.Vector3()
         }
 
         this.#cameraPositions.FOLLOW = {
@@ -115,8 +132,8 @@ class PlayerObject extends GameObject {
 
         this.#cameraPositions.HANGAR = {
             name: "HANGAR",
-            posnTarg: new THREE.Vector3(0, 0, 0),
-            lookTarg: new THREE.Vector3(0, 0, 0)
+            posnTarg: new THREE.Vector3(),
+            lookTarg: new THREE.Vector3()
         }
 
         this.#cameraPositions.HANGAR_GUN_SLOT = {
@@ -126,7 +143,9 @@ class PlayerObject extends GameObject {
         }
 
         this.#cameraPositions.ORBIT = {
-            name: "ORBIT"
+            name: "ORBIT",
+            posnTarg: new THREE.Vector3(0, 0, -5),
+            lookTarg: new THREE.Vector3()
         }
 
         this.#cameraPositionOrder = ["FOLLOW", "HANGAR", "HANGAR_GUN_SLOT"];
@@ -333,26 +352,34 @@ class PlayerObject extends GameObject {
 
     #handleCameraTransition = (dt) => {
         if (this.#cameraTransitioning) {
-            this.#cameraTransitionProgress = THREE.Math.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
-            this.#cameraTransitionProgress += 0.015 * dt; //minimum amount so it doesn't slow down infinitely
-
-            if (this.#cameraTransitionProgress > 0.9999) {
-                this.#cameraTransitionProgress = 1;
+            if (this.#cameraCurve) {
+                this.#cameraTransitionProgress = THREE.Math.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
+                this.#cameraTransitionProgress += 0.015 * dt; //minimum amount so it doesn't slow down infinitely
+    
+                if (this.#cameraTransitionProgress > 0.9999) {
+                    this.#cameraTransitionProgress = 1;
+                }
+    
+                let curvePointPct = this.#cameraTransitionDirection == -1
+                    ? 1 - this.#cameraTransitionProgress
+                    : this.#cameraTransitionProgress;
+    
+                this.#cameraCurve.getPointAt(curvePointPct, this.#camera.position);
+    
+                this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
+    
+                let lookMatrix = this.#cameraLookMatrix.lookAt(this.#camera.position, this.#cameraLookTransition, UTILS.Constants.upVector);
+                this.#camera.quaternion.setFromRotationMatrix(lookMatrix);
+    
+                if (this.#cameraTransitionProgress == 1) {
+                    this.#cameraTransitionProgress = 0;
+                    this.#cameraTransitioning = false;
+                }
             }
-
-            let curvePointPct = this.#cameraTransitionDirection == -1
-                ? 1 - this.#cameraTransitionProgress
-                : this.#cameraTransitionProgress;
-
-            this.#cameraCurve.getPointAt(curvePointPct, this.#camera.position);
-
-            this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
-
-            let lookMatrix = this.#cameraLookMatrix.lookAt(this.#camera.position, this.#cameraLookTransition, UTILS.Constants.upVector);
-            this.#camera.quaternion.setFromRotationMatrix(lookMatrix);
-
-            if (this.#cameraTransitionProgress == 1) {
-                this.#cameraTransitionProgress = 0;
+            else {
+                //if no curve was found, just move to the new position
+                this.#camera.position.copy(this.#cameraPosition.posnTarg);
+                this.#camera.lookAt(this.#cameraPosition.lookTarg);
                 this.#cameraTransitioning = false;
             }
         }
@@ -430,43 +457,40 @@ class PlayerObject extends GameObject {
             this.#crosshairSprites["rim"].material.opacity = 1;
         }
 
-        let camMoveVec = new THREE.Vector3();
+        let moveVec = new THREE.Vector3();
+        let rotVec = new THREE.Vector3();
         if (INPUT.KeyPressed("w")) {
-            //camMoveVec.z++;
-            this.#rightThrusterTarget.position.z += 1 * dt;
-            this.#leftThrusterTarget.position.z += 1 * dt;
+            moveVec.z = 0.1;
         }
         if (INPUT.KeyPressed("a")) {
-            //camMoveVec.x++;
-            this.#rightThrusterTarget.position.x += 1 * dt;
-            this.#leftThrusterTarget.position.x -= 1 * dt;
+            moveVec.x = 0.1;
         }
         if (INPUT.KeyPressed("s")) {
-            //camMoveVec.z--;
-            this.#rightThrusterTarget.position.z -= 1 * dt;
-            this.#leftThrusterTarget.position.z -= 1 * dt;
+            moveVec.z = -0.1;
         }
         if (INPUT.KeyPressed("d")) {
-            //camMoveVec.x--;
-            this.#rightThrusterTarget.position.x -= 1 * dt;
-            this.#leftThrusterTarget.position.x += 1 * dt;
+            moveVec.x = -0.1;
         }
         if (INPUT.KeyPressed("r")) {
-            //camMoveVec.y++;
-            this.#rightThrusterTarget.position.y += 1 * dt;
-            this.#leftThrusterTarget.position.y += 1 * dt;
+            moveVec.y = 0.1;
         }
         if (INPUT.KeyPressed("f")) {
-            //camMoveVec.y--;
-            this.#rightThrusterTarget.position.y -= 1 * dt;
-            this.#leftThrusterTarget.position.y -= 1 * dt;
+            moveVec.y = -0.1;
+        }
+        if (INPUT.KeyPressed("t")) {
+            rotVec.x = 0.05;
+        }
+        if (INPUT.KeyPressed("g")) {
+            rotVec.x = -0.05;
         }
         if (INPUT.KeyPressed("ShiftLeft")) {
-            //camMoveVec.multiplyScalar(0.1);
+            moveVec.multiplyScalar(0.1);
+            rotVec.multiplyScalar(0.1);
         }
 
-        //console.log(camMoveVec);
-        this.#camera.position.add(camMoveVec);
+        //console.log(moveVec);
+        this.#currentGunObject.position.add(moveVec);
+        this.#currentGunObject.rotateX(rotVec.x);
     }
 
     PostPhysicsCallback(dt) {
@@ -535,6 +559,8 @@ class PlayerObject extends GameObject {
                         this.#orbitControls = new OrbitControls(this.#camera, canvas);
                     }
 
+                    this.#cameraCurve = undefined;
+                    this.#cameraTransitioning = true;
                     this.#orbitControls.enabled = true;
                 }
             }

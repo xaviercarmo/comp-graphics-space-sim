@@ -208,7 +208,12 @@ class GameHandler {
         let playerMeshes = {
             ship: this.AssetHandler.LoadedAssets.ship.clone(),
             gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
-            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone()
+            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
+            gattling_gun_new: {
+                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
+                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
+                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+            }
         };
 
         this.#player = new PlayerObject(playerMeshes, this.#camera);
@@ -226,6 +231,7 @@ class GameHandler {
 
     StartGameRunning() {
         this.#mode = this.#modes.GAMERUNNING;
+        this.TogglePause();
         this.#animate();
     }
 

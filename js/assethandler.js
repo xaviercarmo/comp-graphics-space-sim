@@ -10,9 +10,9 @@ class AssetHandler {
         ship: "../assets/SciFi_Fighter.FBX",
         gattling_gun: "../assets/gattling_gun.fbx",
         rail_gun: "../assets/rail_gun.fbx",
-        gattling_gun_base_plate: "../assets/guns/gattling_gun/base_plate.fbx",
-        gattling_gun_struts: "../assets/guns/gattling_gun/struts.fbx",
-        gattling_gun_barrel: "../assets/guns/gattling_gun/gun.fbx"
+        gattling_gun_base_plate: "../assets/guns/gattling_gun/base_plate_origin.fbx",
+        gattling_gun_struts: "../assets/guns/gattling_gun/struts_origin.fbx",
+        gattling_gun_barrel: "../assets/guns/gattling_gun/barrel_origin.fbx"
     }
 
     
@@ -211,8 +211,6 @@ class AssetHandler {
             loader.load(this.#fbxAssetPaths[key], (object) => {
                 onAssetLoaded(key, object);
                 
-                console.log(object);
-
                 if (++assetsLoadedCount == Object.keys(this.#fbxAssetPaths).length) {
                     onComplete();
                 }
