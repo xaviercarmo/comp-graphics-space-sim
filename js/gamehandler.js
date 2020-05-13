@@ -176,8 +176,32 @@ class GameHandler {
 
         this.#gameObjects.forEach(g => { this.#scene.add(g.Object); });
 
-        let light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 10 );
-        this.#scene.add(light);
+        // var pointLight = new THREE.PointLight( 0xffffff, 10, 1000 );
+        // pointLight.position.set( 0, 5, 0 );
+        // this.#scene.add(pointLight);
+
+        // var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.3 );
+        // this.#scene.add( directionalLight );
+
+        // let ambientLight = new THREE.AmbientLight( 0xffffff, 1.0 ); // soft white light
+        // this.#scene.add(ambientLight);
+
+        // let light = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2.0 );
+        // this.#scene.add(light);
+
+        var hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+        hemiLight.color.setHSL( 0.63, 61, 31 );
+        hemiLight.groundColor.setHSL( 4.2, 34, 37 );
+        hemiLight.position.set( 0, 500, 0 );
+        this.#scene.add( hemiLight );
+
+        var dirLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
+        dirLight.position.set( -1, 0.75, 1 );
+        dirLight.position.multiplyScalar( 50);
+        dirLight.name = "dirlight";
+        dirLight.castShadow = true;
+        this.#scene.add( dirLight );
+
 
         let gridHelper = new THREE.GridHelper(5000, 100);
         this.#scene.add(gridHelper);
@@ -231,7 +255,7 @@ class GameHandler {
 
     StartGameRunning() {
         this.#mode = this.#modes.GAMERUNNING;
-        this.TogglePause();
+        // this.TogglePause();
         this.#animate();
     }
 

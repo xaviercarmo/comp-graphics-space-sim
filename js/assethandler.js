@@ -1,6 +1,7 @@
 import * as THREE from '../libraries/three.module.js';
 import { FBXLoader } from '../libraries/FBXLoader.js';
 import { GLTFLoader } from '../libraries/GLTFLoader.js';
+import { OBJLoader } from '../../libraries/OBJLoader.js';
 
 class AssetHandler {
     //privates
@@ -15,7 +16,6 @@ class AssetHandler {
         gattling_gun_barrel: "../assets/guns/gattling_gun/barrel_origin.fbx"
     }
 
-    
     //publics
     OnComplete;
     LoadedAssets = {};
@@ -205,8 +205,14 @@ class AssetHandler {
             this.LoadedAssets[key] = obj;
         }
 
+        
         const loader = new FBXLoader();
         let assetsLoadedCount = 0;
+        // let assetsLoadedCount = -1;
+
+        //let objLoader = new OBJLoader();
+        //objLoader.load('../../assets/killme.obj', (object) => { onAssetLoaded('ship', object); assetsLoadedCount++; });
+
         for (let key in this.#fbxAssetPaths) {
             loader.load(this.#fbxAssetPaths[key], (object) => {
                 onAssetLoaded(key, object);

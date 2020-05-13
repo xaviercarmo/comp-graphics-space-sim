@@ -64,12 +64,32 @@ class PlayerObject extends GameObject {
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
     #crosshairHitMarkerVisibility = false;
+
+    //appearance
+    #colour = "default";
     
     //debug
     #debugLine = new UTILS.RedDebugLine();
 
     constructor(meshes, camera) {
         super(meshes.ship);
+
+        let testTexture = new THREE.TextureLoader().load('../../assets/test_original_green.jpg');
+        meshes.ship.traverse(function (child) {
+            if (child.isMesh) {
+                // apply texture
+                child.material.map = testTexture;
+                child.material.shininess = 20;
+                console.log(child.material);
+
+                child.material.needsUpdate = true;
+            }
+        });
+
+        // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+        // var material = new THREE.MeshBasicMaterial( {map: testTexture} );
+        // var cube = new THREE.Mesh( geometry, material );
+        // window.GameHandler.Scene.add( cube );
 
         this._mass = 10;
 
@@ -85,7 +105,7 @@ class PlayerObject extends GameObject {
         gattlingGunGroup.scale.multiplyScalar(0.1);
         gattlingGunGroup.position.set(0, -1.88, 4.29);
         gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
-        console.log(gattlingGunGroup);
+        //console.log(gattlingGunGroup);
         // this.#meshes.gattling_gun_new.base_plate.scale.multiplyScalar(0.1);
         // this.#meshes.gattling_gun_new.struts.scale.multiplyScalar(0.1);
         // this.#meshes.gattling_gun_new.barrel.scale.multiplyScalar(0.1);
@@ -99,8 +119,8 @@ class PlayerObject extends GameObject {
 
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
-        // this.CameraPosition = "FOLLOW";
-        this.CameraPosition = "ORBIT";
+        this.CameraPosition = "FOLLOW";
+        // this.CameraPosition = "ORBIT";
 
         
         let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
@@ -416,8 +436,8 @@ class PlayerObject extends GameObject {
             : THREE.MathUtils.lerp(this.#crosshairSprites["sometimes/bt"].material.opacity, 0, 5 * dt);
 
         this.#crosshairSprites["sometimes/bt"].material.opacity = this.#crosshairHitMarkerVisibility;
-            this.#crosshairSprites["sometimes/tl"].material.opacity = this.#crosshairHitMarkerVisibility;
-            this.#crosshairSprites["sometimes/tr"].material.opacity = this.#crosshairHitMarkerVisibility;
+        this.#crosshairSprites["sometimes/tl"].material.opacity = this.#crosshairHitMarkerVisibility;
+        this.#crosshairSprites["sometimes/tr"].material.opacity = this.#crosshairHitMarkerVisibility;
 
         this.Object.updateWorldMatrix(true, true);
         this.#leftThrusterParticleSystem.Main(dt);
@@ -459,34 +479,34 @@ class PlayerObject extends GameObject {
 
         let moveVec = new THREE.Vector3();
         let rotVec = new THREE.Vector3();
-        if (INPUT.KeyPressed("w")) {
-            moveVec.z = 0.1;
-        }
-        if (INPUT.KeyPressed("a")) {
-            moveVec.x = 0.1;
-        }
-        if (INPUT.KeyPressed("s")) {
-            moveVec.z = -0.1;
-        }
-        if (INPUT.KeyPressed("d")) {
-            moveVec.x = -0.1;
-        }
-        if (INPUT.KeyPressed("r")) {
-            moveVec.y = 0.1;
-        }
-        if (INPUT.KeyPressed("f")) {
-            moveVec.y = -0.1;
-        }
-        if (INPUT.KeyPressed("t")) {
-            rotVec.x = 0.05;
-        }
-        if (INPUT.KeyPressed("g")) {
-            rotVec.x = -0.05;
-        }
-        if (INPUT.KeyPressed("ShiftLeft")) {
-            moveVec.multiplyScalar(0.1);
-            rotVec.multiplyScalar(0.1);
-        }
+        // if (INPUT.KeyPressed("w")) {
+        //     moveVec.z = 0.1;
+        // }
+        // if (INPUT.KeyPressed("a")) {
+        //     moveVec.x = 0.1;
+        // }
+        // if (INPUT.KeyPressed("s")) {
+        //     moveVec.z = -0.1;
+        // }
+        // if (INPUT.KeyPressed("d")) {
+        //     moveVec.x = -0.1;
+        // }
+        // if (INPUT.KeyPressed("r")) {
+        //     moveVec.y = 0.1;
+        // }
+        // if (INPUT.KeyPressed("f")) {
+        //     moveVec.y = -0.1;
+        // }
+        // if (INPUT.KeyPressed("t")) {
+        //     rotVec.x = 0.05;
+        // }
+        // if (INPUT.KeyPressed("g")) {
+        //     rotVec.x = -0.05;
+        // }
+        // if (INPUT.KeyPressed("ShiftLeft")) {
+        //     moveVec.multiplyScalar(0.1);
+        //     rotVec.multiplyScalar(0.1);
+        // }
 
         //console.log(moveVec);
         this.#currentGunObject.position.add(moveVec);
