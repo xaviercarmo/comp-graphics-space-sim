@@ -126,6 +126,11 @@ class GameHandler {
                 $(this).addClass("hangar-sub-menu-heading-selected");
             }
         });
+
+        //bind hue slider to player's hue
+        $('#shipHueSlider').on('input', (event) => {
+            this.#player.ShipHue = event.target.value;
+        })
     }
 
     #initialiseSkyMap = () => {
@@ -202,7 +207,6 @@ class GameHandler {
         dirLight.name = "dirlight";
         dirLight.castShadow = true;
         this.#scene.add( dirLight );
-
 
         let gridHelper = new THREE.GridHelper(5000, 100);
         this.#scene.add(gridHelper);

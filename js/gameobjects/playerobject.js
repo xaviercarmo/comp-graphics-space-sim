@@ -59,6 +59,12 @@ class PlayerObject extends GameObject {
     #rightThrusterTarget = new THREE.Object3D();
     #leftThrusterTarget = new THREE.Object3D();
 
+    //bottom
+    #botLeftThrusterParticleSystem;
+    #botRightThrusterParticleSystem;
+    #botRightThrusterTarget = new THREE.Object3D();
+    #botLeftThrusterTarget = new THREE.Object3D();
+
     //general
     #meshes;
     #crosshairSprites = {};
@@ -66,26 +72,88 @@ class PlayerObject extends GameObject {
     #crosshairHitMarkerVisibility = false;
 
     //appearance
-    #colour = "default";
+    #shipShaders = [];
+    #shipHue = 0.08;
     
     //debug
     #debugLine = new UTILS.RedDebugLine();
 
     constructor(meshes, camera) {
         super(meshes.ship);
+        
+        this.#meshes = meshes;
 
+        this.#setupShipMaterials();
+
+        // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+        // var material = new THREE.MeshBasicMaterial( {map: testTexture} );
+        // var cube = new THREE.Mesh( geometry, material );
+        // window.GameHandler.Scene.add( cube );
+
+        this._mass = 10;
+
+        this.#meshes.ship.scale.multiplyScalar(0.5)
+        this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
+        this.#meshes.rail_gun.scale.multiplyScalar(0.1);
+        
+        let gattlingGunGroup = new THREE.Group();
+        gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
+        gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
+        gattlingGunGroup.add(this.#meshes.gattling_gun_new.barrel);
+        gattlingGunGroup.scale.multiplyScalar(0.1);
+        gattlingGunGroup.position.set(0, -1.88, 4.29);
+        gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
+        //console.log(gattlingGunGroup);
+        // this.#meshes.gattling_gun_new.base_plate.scale.multiplyScalar(0.1);
+        // this.#meshes.gattling_gun_new.struts.scale.multiplyScalar(0.1);
+        // this.#meshes.gattling_gun_new.barrel.scale.multiplyScalar(0.1);
+
+        this.#setupCameraPositions();
+        this.#setupCameraTransitionCurves();
+
+        this.#setupDebugHelpers();
+        this.#setupThrusters();
+        this.#setupCrosshair();
+
+        this.#camera = camera;
+        this._objectGroup.add(this.#camera);
+        this.CameraPosition = "FOLLOW";
+        // this.CameraPosition = "ORBIT";
+
+        
+        let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
+        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+
+        //this.CurrentGun = this.#gunNames[this.#gunNameIndex];
+        // this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
+
+        this.#currentGunObject = gattlingGunGroup;
+        this._mainObject.add(this.#currentGunObject);
+        this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
+
+        window.addEventListener("wheel", this.#handleScroll);
+    }
+
+    #setupShipMaterials = () => {
         let testTexture = new THREE.TextureLoader().load('../../assets/test_original_green.jpg');
-        meshes.ship.traverse(function (child) {
+
+        const initialHue = this.#shipHue;
+        const shipShaders = this.#shipShaders;
+        this.#meshes.ship.traverse(function (child) {
             if (child.isMesh) {
                 // apply texture
                 child.material.map = testTexture;
-                child.material.shininess = 100;
-                child.material.specular.set(0x1616);
-                
-                child.material.onBeforeCompile = function(shader) {
-                    shader.uniforms.shipColourHue = { value: 0.8 };
 
-                    //add rgb to hsv/hsv to rgb methods
+                child.material.shininess = 100;
+                child.material.specular.set(0x63cfff);
+                
+                //shipMaterials.push(child.material);
+
+                child.material.onBeforeCompile = function(shader) {
+                    shipShaders.push(shader);
+                    shader.uniforms.shipColourHue = { value: initialHue };
+                    //rgb to hsv/hsv to rgb methods
                     //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
                     shader.fragmentShader = shader.fragmentShader.replace(
                       'void main() {',
@@ -130,64 +198,11 @@ class PlayerObject extends GameObject {
                             '\t#endif'
                         ].join('\n')
                     );
-
-                    //var map_fragment = "#ifdef USE_MAP\n\tvec4 texelColor = texture2D( map, vUv );\n\ttexelColor = mapTexelToLinear( texelColor );\n\tdiffuseColor *= texelColor;\n#endif";
-                    console.log(shader.fragmentShader);
                 }
 
                 child.material.needsUpdate = true;
             }
         });
-
-        // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-        // var material = new THREE.MeshBasicMaterial( {map: testTexture} );
-        // var cube = new THREE.Mesh( geometry, material );
-        // window.GameHandler.Scene.add( cube );
-
-        this._mass = 10;
-
-        this.#meshes = meshes;
-        this.#meshes.ship.scale.multiplyScalar(0.5)
-        this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
-        this.#meshes.rail_gun.scale.multiplyScalar(0.1);
-        
-        let gattlingGunGroup = new THREE.Group();
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.barrel);
-        gattlingGunGroup.scale.multiplyScalar(0.1);
-        gattlingGunGroup.position.set(0, -1.88, 4.29);
-        gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
-        //console.log(gattlingGunGroup);
-        // this.#meshes.gattling_gun_new.base_plate.scale.multiplyScalar(0.1);
-        // this.#meshes.gattling_gun_new.struts.scale.multiplyScalar(0.1);
-        // this.#meshes.gattling_gun_new.barrel.scale.multiplyScalar(0.1);
-
-        this.#setupCameraPositions();
-        this.#setupCameraTransitionCurves();
-
-        this.#setupDebugHelpers();
-        this.#setupThrusters();
-        this.#setupCrosshair();
-
-        this.#camera = camera;
-        this._objectGroup.add(this.#camera);
-        this.CameraPosition = "FOLLOW";
-        // this.CameraPosition = "ORBIT";
-
-        
-        let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
-        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-
-        //this.CurrentGun = this.#gunNames[this.#gunNameIndex];
-        // this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
-
-        this.#currentGunObject = gattlingGunGroup;
-        this._mainObject.add(this.#currentGunObject);
-        this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
-
-        window.addEventListener("wheel", this.#handleScroll);
     }
 
     #setupCameraPositions = () => {
@@ -281,6 +296,13 @@ class PlayerObject extends GameObject {
 
         this.#leftThrusterTarget.position.set(2.8, 2.48, -8.74);
         this._mainObject.add(this.#leftThrusterTarget);
+        
+        //bottom
+        this.#botRightThrusterTarget.position.set(-2.8, -2.48, -8.74);
+        this._mainObject.add(this.#botRightThrusterTarget);
+
+        this.#botLeftThrusterTarget.position.set(2.8, -2.48, -8.74);
+        this._mainObject.add(this.#botLeftThrusterTarget);
 
         let extraOptions = {
             velSpread: new THREE.Vector3(5, 5, 0),
@@ -298,6 +320,25 @@ class PlayerObject extends GameObject {
 
         this.#rightThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
             this.#rightThrusterTarget,
+            new THREE.Vector3(0.05, 0, -1),
+            0.2,
+            1000,
+            1.75,
+            extraOptions
+        );
+
+        //bottom
+        this.#botLeftThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
+            this.#botLeftThrusterTarget,
+            new THREE.Vector3(-0.05, 0, -1),
+            0.2,
+            1000,
+            1.75,
+            extraOptions
+        );
+
+        this.#botRightThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
+            this.#botRightThrusterTarget,
             new THREE.Vector3(0.05, 0, -1),
             0.2,
             1000,
@@ -350,6 +391,10 @@ class PlayerObject extends GameObject {
             
             this.#leftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
             this.#rightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
+            
+            //bottom
+            this.#botLeftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
+            this.#botRightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
         }
     }
 
@@ -495,6 +540,10 @@ class PlayerObject extends GameObject {
         this.Object.updateWorldMatrix(true, true);
         this.#leftThrusterParticleSystem.Main(dt);
         this.#rightThrusterParticleSystem.Main(dt);
+
+        //bottom
+        this.#botLeftThrusterParticleSystem.Main(dt);
+        this.#botRightThrusterParticleSystem.Main(dt);
 
         this.#currentGun.Main(dt);
         
@@ -655,6 +704,18 @@ class PlayerObject extends GameObject {
         else {
             console.log(`"${gunName}" is an invalid gun name`);
         }
+    }
+
+    get ShipHue() {
+        return this.#shipHue;
+    }
+
+    set ShipHue(hue) {
+        hue = Math.max(0, hue);
+        hue = Math.min(hue, 1);
+
+        this.#shipHue = hue;
+        this.#shipShaders.forEach(shader => shader.uniforms.shipColourHue.value = this.#shipHue);
     }
 }
 
