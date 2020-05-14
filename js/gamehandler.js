@@ -196,7 +196,8 @@ class GameHandler {
         this.#scene.add( hemiLight );
 
         var dirLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
-        dirLight.position.set( -1, 0.75, 1 );
+        // dirLight.position.set( -1, 0.75, 1 );
+        dirLight.position.set( 0, 0.75, 0 );
         dirLight.position.multiplyScalar( 50);
         dirLight.name = "dirlight";
         dirLight.castShadow = true;

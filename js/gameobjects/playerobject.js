@@ -79,8 +79,61 @@ class PlayerObject extends GameObject {
             if (child.isMesh) {
                 // apply texture
                 child.material.map = testTexture;
-                child.material.shininess = 20;
-                console.log(child.material);
+                child.material.shininess = 100;
+                child.material.specular.set(0x1616);
+                
+                child.material.onBeforeCompile = function(shader) {
+                    shader.uniforms.shipColourHue = { value: 0.8 };
+
+                    //add rgb to hsv/hsv to rgb methods
+                    //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                      'void main() {',
+                      [
+                          'uniform float shipColourHue;',
+                          '',
+                          'vec3 rgbToHsv(vec3 c)',
+                          '{',
+                              '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
+                              '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
+                              '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
+                          
+                              '\tfloat d = q.x - min(q.w, q.y);',
+                              '\tfloat e = 1.0e-10;',
+                              '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
+                          '}',
+                          '',
+                          'vec3 hsvToRgb(vec3 c)',
+                          '{',
+                              '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
+                              '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
+                              '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
+                          '}',
+                          '',
+                          'void main() {'
+                      ].join('\n')
+                    );
+
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        '\t#include <map_fragment>',
+                        [
+                            '\t#ifdef USE_MAP',
+                                '\t\tvec4 texelColor = texture2D( map, vUv );',
+                                '\t\ttexelColor = mapTexelToLinear( texelColor );',
+                                '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
+                                '\t\tif (hsvColor.x >= 0.16 && hsvColor.x <= 0.375)',
+                                '\t\t{',
+                                    '\t\t\thsvColor.x = shipColourHue;',
+                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                '\t\t}',
+                                '\t\tdiffuseColor *= texelColor;',
+                            '\t#endif'
+                        ].join('\n')
+                    );
+
+                    //var map_fragment = "#ifdef USE_MAP\n\tvec4 texelColor = texture2D( map, vUv );\n\ttexelColor = mapTexelToLinear( texelColor );\n\tdiffuseColor *= texelColor;\n#endif";
+                    console.log(shader.fragmentShader);
+                }
 
                 child.material.needsUpdate = true;
             }
