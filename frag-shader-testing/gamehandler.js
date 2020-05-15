@@ -27,7 +27,7 @@ class GameHandler {
 
         this.controls.update();
 
-        this.material.uniforms["time"].value = .25 * this.#clock.elapsedTime;
+        this.material.uniforms.time.value = .004 * this.#clock.elapsedTime;
 
         this.#renderer.render(this.Scene, this.#camera);
     }
