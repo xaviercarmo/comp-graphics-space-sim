@@ -7,6 +7,7 @@ class AssetHandler {
     //privates
     #assetLoadingStates = {};
     #domLoadingBar;
+
     #fbxAssetPaths = {
         ship: "../assets/SciFi_Fighter.FBX",
         gattling_gun: "../assets/gattling_gun.fbx",
@@ -15,12 +16,23 @@ class AssetHandler {
         gattling_gun_struts: "../assets/guns/gattling_gun/struts_origin.fbx",
         gattling_gun_barrel: "../assets/guns/gattling_gun/barrel_origin.fbx"
     }
+    #shaderPaths = {
+        vert: {
+            sun: "sun",
+            particle: "particle"
+        },
+        frag: {
+            sun: "sun",
+            particle: "particle"
+        }
+    }
 
     //publics
     OnComplete;
     LoadedAssets = {};
     LoadedCubeMaps = {};
     LoadedImages = {};
+    LoadedShaders = { vert: {}, frag: {} };
 
     constructor() {}
 
@@ -94,23 +106,48 @@ class AssetHandler {
             this.#assetLoadingStates[rootPath + files[i].name] = assetState;
 
             this.LoadedImages[rootKey ?? rootPath][files[i].key ?? files[i].name] = 
-            new THREE.TextureLoader().load(rootPath + files[i].name,
-                () => {
-                    //on finished
-                    assetState.loaded = assetState.total;
-                    assetState.isComplete = true;
-                    this.#domLoadingBar.width(`${this.Progress * 100}%`);
+                new THREE.TextureLoader().load(rootPath + files[i].name,
+                    () => {
+                        //on finished
+                        assetState.loaded = assetState.total;
+                        assetState.isComplete = true;
+                        this.#domLoadingBar.width(`${this.Progress * 100}%`);
 
-                    if (this.IsComplete) {
-                        setTimeout(this.OnComplete, 500);
+                        if (this.IsComplete) {
+                            setTimeout(this.OnComplete, 500);
+                        }
+                    },
+                    undefined,
+                    (e) => {
+                        //on error
+                        console.log(`ERROR LOADING ${rootPath + files[i].name}: ${e}`);
                     }
-                },
-                undefined,
-                (e) => {
-                    //on error
-                    console.log(`ERROR LOADING ${rootPath + files[i].name}: ${e}`);
-                }
-            );
+                );
+        }
+    }
+
+    #downloadShaders = () => {
+        for (let shaderType in this.#shaderPaths) {
+            for (let fileName in this.#shaderPaths[shaderType]) {
+                let url = `../shaders/${shaderType}/${fileName}.${shaderType}`;
+
+                const assetState = { loaded: 0, total: 1, isComplete: false };
+                this.#assetLoadingStates[url] = assetState;
+
+                fetch(url)
+                    .then(response => response.text())
+                    .then(shader => {
+                        this.LoadedShaders[shaderType][fileName] = shader;
+
+                        assetState.loaded = assetState.total;
+                        assetState.isComplete = true;
+                        this.#domLoadingBar.width(`${this.Progress * 100}%`);
+
+                        if (this.IsComplete) {
+                            setTimeout(this.OnComplete, 500);
+                        }
+                    });
+            }
         }
     }
 
@@ -132,6 +169,7 @@ class AssetHandler {
     #downloadAllAssets = (onComplete) => {
         this.#initialiseLoadingBar();
         this.OnComplete = onComplete;
+
         // download all 3d models
         for (let key in this.#fbxAssetPaths) {
             this.#download3DAsset(this.#fbxAssetPaths[key]);
@@ -172,6 +210,9 @@ class AssetHandler {
         ];
         this.#downloadImages("assets/sprites/", "sprites", spriteFile);
 
+        // download all shaders
+        this.#downloadShaders();
+
         // let loader = new GLTFLoader();
 
         // loader.load(
@@ -204,7 +245,6 @@ class AssetHandler {
         let onAssetLoaded = (key, obj) => {
             this.LoadedAssets[key] = obj;
         }
-
         
         const loader = new FBXLoader();
         let assetsLoadedCount = 0;

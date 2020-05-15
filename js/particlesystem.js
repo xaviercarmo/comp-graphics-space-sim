@@ -65,8 +65,8 @@ class ParticleSystem {
 
         return new THREE.ShaderMaterial({
             uniforms: uniforms,
-            vertexShader: document.getElementById( 'transparencyVertexShader' ).textContent,
-            fragmentShader: document.getElementById( 'transparencyFragmentShader' ).textContent,
+            vertexShader: window.GameHandler.AssetHandler.LoadedShaders.vert.particle,
+            fragmentShader: window.GameHandler.AssetHandler.LoadedShaders.frag.particle,
             blending: THREE.AdditiveBlending,
             transparent: true,
             depthWrite: false
