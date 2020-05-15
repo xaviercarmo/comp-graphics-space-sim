@@ -4,43 +4,51 @@ import * as UTILS from '../utils.js';
 import GameObject from '../gameobject.js';
 import GameHandler from '../gamehandler.js';
 
-class ObstacleObject extends GameObject {
+class ObstacleObject extends GameObject { 
 
-  //characteristics
-  xpos;
-  ypos;
   //no parameter as object is being created here.
+  obstacle;
+  obstaclePosition;
+  
+
   constructor(){
     super(obst); 
-
     //create basic object
     //randomise size
-    var det, rad;
-    det = THREE.MathUtils.randInt(1, 3);
-    rad = THREE.MathUtils.randInt(1, 20);
-    
+    let rad = THREE.MathUtils.randInt(5, 20);
+    let det = THREE.MathUtils.randInt(1, 3);
+  
     var geo = new THREE.IcosahedronGeometry(rad, det);
     var mat = new THREE.MeshBasicMaterial( { color:	0xff0000 });
     var obst = new THREE.Mesh(geo, mat);
+    this.obstacle = obst; 
 
     //random spawn
-    var x, y, z;
-    //x=y=z=Math.random();
+    //Random int per axis  (range of +/- 100)
+    let x = THREE.MathUtils.randFloat(-100, 100);
+    let y = THREE.MathUtils.randFloat(-100, 100);
+    let z = THREE.MathUtils.randFloat(-100, 100);
+    let ranPos = new THREE.Vector3(x, y, z);
 
-    //Random int per axis
-    x = THREE.MathUtils.randInt(0, 100);
-    y = THREE.MathUtils.randInt(0, 100);
-    z = THREE.MathUtils.randInt(0, 100);
-    console.log(this._mass);
-    console.log( x, y , z);
-    obst.position.set( x, y, z); 
-   
-    //add object to scene
-    window.GameHandler.Scene.add(obst);
+    
+    ranPos.clampLength(0, 100);
+    console.log("Position", ranPos);
+    //Setting spawn range around player position.
+    //add the position onto existing player position?
+    //var newPos = window.GameHandler.Player.Object.position.clone().add(ranPos); //vector3
+    this.obstaclePosition = this.ranPos;
+    //Set new position and add object to scene
+    this.obstacle.position.add(ranPos);
+    window.GameHandler.Scene.add(this.obstacle);
   }
+  
 
   Main(dt){
     super.Main();
+  }
+
+  ChangePos(x, y, z) {
+    this.obstacle.position.set(x, y, z);
   }
 
 }
