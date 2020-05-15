@@ -121,7 +121,7 @@ void main() {
     vTime = time;
 
     vNoise = turbulence(.5 * normal + time);
-    float displacement = 2. * vNoise;
+    float displacement = 500. * vNoise;
 
     vPos = position + normal * displacement;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(vPos, 1.0);

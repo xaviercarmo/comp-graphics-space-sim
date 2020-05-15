@@ -1,14 +1,14 @@
-import * as THREE from '../../libraries/three.module.js';
-import * as INPUT from '../input.js';
-import * as UTILS from '../utils.js';
+import * as THREE from '../../../libraries/three.module.js';
+import * as INPUT from '../../input.js';
+import * as UTILS from '../../utils.js';
 
-import GameObject from '../gameobject.js';
+import PhysicsObject from '../physics.js';
 
-import { OrbitControls } from '../../libraries/OrbitControls.js';
-import { ThrusterParticleSystemLocalPos } from '../particlesystems/thrusterparticlesystem.js';
-import { Gun } from '../gun.js';
+import { OrbitControls } from '../../../libraries/OrbitControls.js';
+import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
+import { Gun } from '../../gun.js';
 
-class PlayerObject extends GameObject {
+class PlayerObject extends PhysicsObject {
     //privates
     //camera vars
     #camera;
@@ -119,7 +119,6 @@ class PlayerObject extends GameObject {
         this._objectGroup.add(this.#camera);
         this.CameraPosition = "FOLLOW";
         // this.CameraPosition = "ORBIT";
-
         
         let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
         let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });

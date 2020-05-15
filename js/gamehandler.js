@@ -4,7 +4,9 @@ import * as UTILS from './utils.js';
 
 import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
-import PlayerObject from './gameobjects/playerobject.js';
+import PhysicsObject from './gameobjects/physics.js';
+import PlayerObject from './gameobjects/physicsobjects/player.js';
+import SunObject from './gameobjects/sun.js';
 
 class GameHandler {
     //debug
@@ -29,6 +31,7 @@ class GameHandler {
     #mode = this.#modes.NONE;
 
     #player;
+    #sun;
 
     #scene = new THREE.Scene();
 
@@ -63,7 +66,7 @@ class GameHandler {
         //menu logic here
         //[...]
 
-        let playerOldPosition = this.#player.Object.position.clone();
+        let playerOldPosition = this.#player.Position;
 
         //game logic only runs if game isn't paused
         if (this.#mode == this.#modes.GAMERUNNING) {
@@ -72,8 +75,10 @@ class GameHandler {
             this.#gameObjects.forEach(g => {
                 //physics logic here (later moved to physics handler probably)
                 //[...]
-    
-                g.PostPhysicsCallback(dt);
+
+                if (g instanceof PhysicsObject) {
+                    g.PostPhysicsCallback(dt);
+                }
             });
 
             //let pos = new THREE.Vector3();
@@ -86,8 +91,13 @@ class GameHandler {
         //game logic that runs despite pausing
         this.#gameObjects.forEach(g => g.MainNoPause(dt));
 
-        let playerPositionDelta = UTILS.SubVectors(this.#player.Object.position, playerOldPosition);
-        this.SkyBox.position.addScaledVector(playerPositionDelta, 0.9);
+        let playerPositionDelta = UTILS.SubVectors(this.#player.Position, playerOldPosition);
+        if (this.#player.Position.length() < 400_000) {
+            this.SkyBox.position.addScaledVector(playerPositionDelta, 0.95);
+        }
+        else {
+            this.SkyBox.position.addScaledVector(playerPositionDelta, 1.0);
+        }
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
@@ -133,7 +143,7 @@ class GameHandler {
         })
     }
 
-    #initialiseSkyMap = () => {
+    #initialiseSkyBox = () => {
         let skyMapTextures = this.AssetHandler.LoadedImages.skymap;
         let matParams = { side: THREE.BackSide, depthWrite: false };
         let materials = [
@@ -151,20 +161,35 @@ class GameHandler {
         skyBox.visible = true;
 
         this.SkyBox = skyBox;
+
+        this.#initialiseSun();
     }
 
-    //public methods
-    Initialise() {
-        this.#mode = this.#modes.INITIALISING;
+    #initialiseSun = () => {
+        this.#sun = new SunObject();
+        this.AddGameObject(this.#sun);
 
-        //later can extend this to animate the cursor
-        $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
-        this.InitialiseScene();
-        this.StartGameRunning();
-        window.setTimeout(() => $(".pre-downloader").remove(), 1000);
+        this.SkyBox.add(this.#sun.Object);
+        this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
     }
 
-    InitialiseScene() {
+    #initialisePlayer = () => {
+        let playerMeshes = {
+            ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
+            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
+            gattling_gun_new: {
+                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
+                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
+                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+            }
+        };
+
+        this.#player = new PlayerObject(playerMeshes, this.#camera);
+        this.AddGameObject(this.#player);
+    }
+
+    #initialiseScene = () => {
         window.addEventListener("resize", () => { this.Resize(); });
         
         document.addEventListener("visibilitychange", () => {
@@ -175,21 +200,20 @@ class GameHandler {
 
         document.body.appendChild(this.#renderer.domElement);
 
-        this.AddPlayer();
+        this.#initialisePlayer();
 
         this.#player.SetupPointerLock();
 
-        this.#gameObjects.forEach(g => { this.#scene.add(g.Object); });
-
-        // var pointLight = new THREE.PointLight( 0xffffff, 10, 1000 );
-        // pointLight.position.set( 0, 5, 0 );
-        // this.#scene.add(pointLight);
+        var pointLight = new THREE.PointLight( 0xffffff, 1.5, 18 );
+        pointLight.position.set( 0, 10, 10 );
+        pointLight.castShadow = true;
+        this.#scene.add(pointLight);
 
         // var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.3 );
         // this.#scene.add( directionalLight );
 
-        // let ambientLight = new THREE.AmbientLight( 0xffffff, 1.0 ); // soft white light
-        // this.#scene.add(ambientLight);
+        let ambientLight = new THREE.AmbientLight( 0xffffff, 1.0 ); // soft white light
+        this.#scene.add(ambientLight);
 
         // let light = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2.0 );
         // this.#scene.add(light);
@@ -211,18 +235,18 @@ class GameHandler {
         let gridHelper = new THREE.GridHelper(5000, 100);
         this.#scene.add(gridHelper);
 
-        let gridHelper2 = new THREE.GridHelper(5000, 100);
-        gridHelper2.translateY(25000);
-        this.#scene.add(gridHelper2);
+        // let gridHelper2 = new THREE.GridHelper(5000, 100);
+        // gridHelper2.translateY(25000);
+        // this.#scene.add(gridHelper2);
 
-        let randomCubeGeo = new THREE.BoxGeometry(1, 1, 1);
-        let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
-        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-        this.#scene.add(randomCube);
-        randomCube.position.y += 10;
-        this.randomCube = randomCube;
+        // let randomCubeGeo = new THREE.BoxGeometry(1, 1, 1);
+        // let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
+        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        // this.#scene.add(randomCube);
+        // randomCube.position.y += 10;
+        // this.randomCube = randomCube;
 
-        this.#initialiseSkyMap();
+        this.#initialiseSkyBox();
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
@@ -230,23 +254,29 @@ class GameHandler {
 
         this.#setupMenuEvents();
 
+        this.#gameObjects.forEach(g => {
+            if (!g.Object.parent) {
+                this.#scene.add(g.Object);
+            }
+        });
         this.#renderer.render(this.#scene, this.#camera);
     }
 
-    AddPlayer() {
-        let playerMeshes = {
-            ship: this.AssetHandler.LoadedAssets.ship.clone(),
-            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
-            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
-            gattling_gun_new: {
-                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
-                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
-                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
-            }
-        };
+    #startGameRunning = () => {
+        this.#mode = this.#modes.GAMERUNNING;
+        // this.TogglePause();
+        this.#animate();
+    }
 
-        this.#player = new PlayerObject(playerMeshes, this.#camera);
-        this.AddGameObject(this.#player);
+    //public methods
+    Initialise() {
+        this.#mode = this.#modes.INITIALISING;
+
+        //later can extend this to animate the cursor
+        $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
+        this.#initialiseScene();
+        this.#startGameRunning();
+        window.setTimeout(() => $(".pre-downloader").remove(), 1000);
     }
 
     AddGameObject(object) {
@@ -256,12 +286,6 @@ class GameHandler {
         else {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
         }
-    }
-
-    StartGameRunning() {
-        this.#mode = this.#modes.GAMERUNNING;
-        // this.TogglePause();
-        this.#animate();
     }
 
     //resizes the renderer to fit the screen
@@ -311,6 +335,8 @@ class GameHandler {
     get Renderer() { return this.#renderer; }
 
     get IsPaused() { return this.#mode == this.#modes.GAMEPAUSED; }
+
+    get Clock() { return this.#clock; }
 }
 
 export default GameHandler;

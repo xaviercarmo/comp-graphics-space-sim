@@ -203,12 +203,13 @@ class AssetHandler {
         ];
         this.#downloadImages("assets/crosshairs/stationary/", "crosshairStationary", stationaryFiles);
 
-        // download the thruster sprites
-        let spriteFile = [
+        // download the thruster sprites and sun texture
+        let spriteFiles = [
             { name: "thruster_sprite.png", size: 12000, key: "thrusterSprite" },
-            { name: "white_square.png", size: 131, key: "whiteSquare" }
+            { name: "white_square.png", size: 131, key: "whiteSquare" },
+            { name: "sun_texture.png", size: 395, key: "sunTexture" }
         ];
-        this.#downloadImages("assets/sprites/", "sprites", spriteFile);
+        this.#downloadImages("assets/sprites/", "sprites", spriteFiles);
 
         // download all shaders
         this.#downloadShaders();
