@@ -39,6 +39,9 @@ class GameHandler {
 
     #player;
     #obstacle = {}; 
+    #distance = 0; 
+    #prev = new THREE.Vector3;
+    #checkPoint = 200;  
 
     #scene = new THREE.Scene();
     //publics
@@ -91,6 +94,8 @@ class GameHandler {
         //test obst spawn
         //console.log("ob pos", this.#obstacle[0].obstaclePosition);
         this.SpawnNewObstacles(); 
+        this.DistanceCalculation();
+        //console.log(this.#player.Acceleration);
        
          
 
@@ -171,7 +176,6 @@ class GameHandler {
 
         //spawn
         this.SpawnMultipleObstacles(1);
-        this.GenerateRandomPoint();
         this.SpawnNewObstacles(); 
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
@@ -257,44 +261,34 @@ class GameHandler {
             this.#obstacle[i] = new ObstacleObject(); 
         } 
     }
+    SpawnNewObstacles(){
+        //alternatively create distance travelled and every X units create the obstacles. 
+       
+        //+ 5 or number, because so many checks occurs every second that too many,
+        //obstacles spawn at once, so if you reach 200, by the 
+        // so if the distance is between 200 and 205
+        //only a certain number can spawn 
 
-    GenerateRandomPoint(){
-        var x = Math.random();
-        var y = Math.random();
-        var z = Math.random();
-        var point = new THREE.Vector3(x, y, z);
-        return point; 
+        if (this.#distance > this.#checkPoint) {
+            this.SpawnMultipleObstacles(5);
+
+            //every 200 units, add obstacle.
+            this.#checkPoint += 200;  
+        }
+        
     }
 
-    SpawnNewObstacles(){
-        let ranPoint = THREE.Vector3; 
-        ranPoint = this.GenerateRandomPoint();
-        //current player location
-        let currX = this.#player.Object.position.x;
-        let currY = this.#player.Object.position.y;
-        let currZ = this.#player.Object.position.z; 
-
-        //position total
-        //as play moves more and more obstacles will spawn??
-        var posX = 500;
-        var posY = 500;
-        var posZ = 500;
-        var negX = -500;
-        var negY = -500;
-        var negZ = -500;
-        console.log(this.#player.Object.position);
-
-        if ((currX > posX || posY > posY || posZ > posZ) ||
-            (currX < negX || currY < negY || currZ < negZ)) {
-                
-
-                let newObst = new ObstacleObject(); 
-                newObst.obstacle.position.add(ranPoint);
-
+    DistanceCalculation(){
+        //seems like not using clone() can affect the actual object when using ceil()
+        var currPos = this.#player.Object.position.clone().ceil();
+        //if player moves, then add to distance
+        //even if two vectors are same, if statement still goes off, so using length instead.
+        if (currPos.length() != this.#prev.ceil().length()) { 
+            this.#distance += 1; 
+            this.#prev = currPos; 
+            //console.log("distance", this.#distance);      
         }
-        //console.log(this.#player.Object.position);
 
-        //console.log(ranPoint);
     }
 
     get Scene() { return this.#scene; }

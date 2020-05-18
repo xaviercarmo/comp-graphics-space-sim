@@ -5,9 +5,7 @@ import GameObject from '../gameobject.js';
 import GameHandler from '../gamehandler.js';
 
 class ObstacleObject extends GameObject { 
-
-  //no parameter as object is being created here.
-  obstacle;
+  obstacle; //public variable to enable changes to position.
   obstaclePosition;
   
 
@@ -25,20 +23,20 @@ class ObstacleObject extends GameObject {
 
     //random spawn
     //Random int per axis  (range of +/- 100)
-    let x = THREE.MathUtils.randFloat(-100, 100);
-    let y = THREE.MathUtils.randFloat(-100, 100);
-    let z = THREE.MathUtils.randFloat(-100, 100);
+    let x = THREE.MathUtils.randFloat(-400, 400);
+    let y = THREE.MathUtils.randFloat(-400, 400);
+    let z = THREE.MathUtils.randFloat(-400, 400);
     let ranPos = new THREE.Vector3(x, y, z);
 
     
-    ranPos.clampLength(0, 100);
+    ranPos.clampLength(0, 400);
     console.log("Position", ranPos);
     //Setting spawn range around player position.
     //add the position onto existing player position?
-    //var newPos = window.GameHandler.Player.Object.position.clone().add(ranPos); //vector3
+    var newPos = window.GameHandler.Player.Object.position.clone().add(ranPos); //vector3
     this.obstaclePosition = this.ranPos;
     //Set new position and add object to scene
-    this.obstacle.position.add(ranPos);
+    this.obstacle.position.add(newPos);
     window.GameHandler.Scene.add(this.obstacle);
   }
   
