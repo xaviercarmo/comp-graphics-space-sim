@@ -290,6 +290,7 @@ class PlayerObject extends PhysicsObject {
     get Testing(){ return this.#leftThrusterTarget.getWorldPosition(new THREE.Vector3()); }
 
     #setupThrusters = () => {
+        //top
         this.#rightThrusterTarget.position.set(-2.8, 2.48, -8.74);
         this._mainObject.add(this.#rightThrusterTarget);
 
@@ -308,6 +309,7 @@ class PlayerObject extends PhysicsObject {
             originSpread: new THREE.Vector3(0.5, 0, 0)
         };
 
+        //top
         this.#leftThrusterParticleSystem = new ThrusterParticleSystemLocalPos(
             this.#leftThrusterTarget,
             new THREE.Vector3(-0.05, 0, -1),
@@ -344,6 +346,27 @@ class PlayerObject extends PhysicsObject {
             1.75,
             extraOptions
         );
+
+        //the orange-y colour: 0xff1000
+        //the blue-y colour
+        this.testLight = new THREE.PointLight(0x70eaff, 1, 5);
+        this.testLight.position.set(2.8, 2.48, -10);
+        this._mainObject.add(this.testLight);
+
+        this.testLightR = new THREE.PointLight(0xff1000, 1, 5);
+        this.testLightR.position.set(2.8, 2.48, -10);
+        this._mainObject.add(this.testLightR);
+
+        this.testLight.castShadow = true;
+        this.testLightR.castShadow = true;
+        //debug
+        var sphereSize = 0.75;
+        var pointLightHelper = new THREE.PointLightHelper(this.testLight, sphereSize);
+        window.GameHandler.Scene.add(pointLightHelper);
+
+        sphereSize = 0.75;
+        pointLightHelper = new THREE.PointLightHelper(this.testLightR, sphereSize);
+        window.GameHandler.Scene.add(pointLightHelper);
     }
 
     #setupCrosshair = () => {
@@ -578,40 +601,62 @@ class PlayerObject extends PhysicsObject {
             this.#crosshairSprites["rim"].material.opacity = 1;
         }
 
+        //debugging stuff
         let moveVec = new THREE.Vector3();
         let rotVec = new THREE.Vector3();
-        // if (INPUT.KeyPressed("w")) {
-        //     moveVec.z = 0.1;
-        // }
-        // if (INPUT.KeyPressed("a")) {
-        //     moveVec.x = 0.1;
-        // }
-        // if (INPUT.KeyPressed("s")) {
-        //     moveVec.z = -0.1;
-        // }
-        // if (INPUT.KeyPressed("d")) {
-        //     moveVec.x = -0.1;
-        // }
-        // if (INPUT.KeyPressed("r")) {
-        //     moveVec.y = 0.1;
-        // }
-        // if (INPUT.KeyPressed("f")) {
-        //     moveVec.y = -0.1;
-        // }
-        // if (INPUT.KeyPressed("t")) {
-        //     rotVec.x = 0.05;
-        // }
-        // if (INPUT.KeyPressed("g")) {
-        //     rotVec.x = -0.05;
-        // }
-        // if (INPUT.KeyPressed("ShiftLeft")) {
-        //     moveVec.multiplyScalar(0.1);
-        //     rotVec.multiplyScalar(0.1);
-        // }
+        let intensity = 0;
+        if (INPUT.KeyPressed("w")) {
+            moveVec.z = 0.1;
+        }
+        if (INPUT.KeyPressed("a")) {
+            moveVec.x = 0.1;
+        }
+        if (INPUT.KeyPressed("s")) {
+            moveVec.z = -0.1;
+        }
+        if (INPUT.KeyPressed("d")) {
+            moveVec.x = -0.1;
+        }
+        if (INPUT.KeyPressed("r")) {
+            //moveVec.y = 0.1;
+            intensity = 0.1;
+        }
+        if (INPUT.KeyPressed("f")) {
+            //moveVec.y = -0.1;
+            intensity = -0.1;
+        }
+        if (INPUT.KeyPressed("t")) {
+            rotVec.x = 0.05;
+        }
+        if (INPUT.KeyPressed("g")) {
+            rotVec.x = -0.05;
+        }
+        if (INPUT.KeyPressed("shift")) {
+            //moveVec.multiplyScalar(0.1);
+            //rotVec.multiplyScalar(0.1);
+        }
 
-        //console.log(moveVec);
-        this.#currentGunObject.position.add(moveVec);
-        this.#currentGunObject.rotateX(rotVec.x);
+        moveVec.multiplyScalar(0.5);
+        
+        if (INPUT.KeyPressed("alt")) {
+            this.testLight.position.add(moveVec);
+            this.testLight.intensity += intensity;
+            this.testLightR.position.add(moveVec);
+            this.testLightR.intensity += intensity;
+        }
+        else if (INPUT.KeyPressed("shift")) {
+            this.testLight.position.add(moveVec);
+            this.testLight.intensity += intensity;
+        }
+        else {
+            this.testLightR.position.add(moveVec);
+            this.testLightR.intensity += intensity;
+        }
+
+        this.testLight.intensity = Math.max(0, this.testLight.intensity);
+        this.testLightR.intensity = Math.max(0, this.testLightR.intensity);
+        //this.#currentGunObject.position.add(moveVec);
+        ///this.#currentGunObject.rotateX(rotVec.x);
     }
 
     PostPhysicsCallback(dt) {

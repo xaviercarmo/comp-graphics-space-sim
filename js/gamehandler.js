@@ -171,6 +171,15 @@ class GameHandler {
 
         this.SkyBox.add(this.#sun.Object);
         this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
+        
+        let ambientLight = new THREE.AmbientLight( 0xabfff8, 0.7 );
+        this.#scene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
+        dirLight.position.copy(this.#sun.Position)
+        dirLight.name = "dirlight";
+        dirLight.castShadow = true;
+        this.#scene.add(dirLight);
     }
 
     #initialisePlayer = () => {
@@ -204,33 +213,24 @@ class GameHandler {
 
         this.#player.SetupPointerLock();
 
-        var pointLight = new THREE.PointLight( 0xffffff, 1.5, 18 );
-        pointLight.position.set( 0, 10, 10 );
-        pointLight.castShadow = true;
-        this.#scene.add(pointLight);
+        // var pointLight = new THREE.PointLight( 0xffffff, 1.5, 18 );
+        // pointLight.position.set( 0, 10, 10 );
+        // pointLight.castShadow = true;
+        // this.#scene.add(pointLight);
 
         // var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.3 );
         // this.#scene.add( directionalLight );
 
-        let ambientLight = new THREE.AmbientLight( 0xffffff, 1.0 ); // soft white light
-        this.#scene.add(ambientLight);
+        
 
         // let light = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2.0 );
         // this.#scene.add(light);
 
-        var hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
-        hemiLight.color.setHSL( 0.63, 61, 31 );
-        hemiLight.groundColor.setHSL( 4.2, 34, 37 );
-        hemiLight.position.set( 0, 500, 0 );
-        this.#scene.add( hemiLight );
-
-        var dirLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
-        // dirLight.position.set( -1, 0.75, 1 );
-        dirLight.position.set( 0, 0.75, 0 );
-        dirLight.position.multiplyScalar( 50);
-        dirLight.name = "dirlight";
-        dirLight.castShadow = true;
-        this.#scene.add( dirLight );
+        // var hemiLight = new THREE.HemisphereLight( 0xff0000, 0x0000ff, 0.6 );
+        // // hemiLight.color.setHSL( 0.63, 61, 31 );
+        // // hemiLight.groundColor.setHSL( 4.2, 34, 37 );
+        // hemiLight.position.set( 0, 1000, 0 );
+        // this.#scene.add( hemiLight );
 
         let gridHelper = new THREE.GridHelper(5000, 100);
         this.#scene.add(gridHelper);
