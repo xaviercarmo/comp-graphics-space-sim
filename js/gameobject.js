@@ -9,22 +9,24 @@ class GameObject {
     _objectGroup = new THREE.Group();
     _mainObject;
 
-    //physics
-    _mass = 0;
-    _forces = {};
-
     constructor(object) {
         this._objectGroup.add(object);
         this._mainObject = object;
     }
 
+    /**
+     * Main operations that will pause when game is paused
+     * @param {number} dt 
+     */
     Main(dt) {}
 
+    /**
+     * Main operations that should continue running when the game is paused
+     * @param {number} dt
+     */
+    MainNoPause(dt) {}
+
     get Object() { return this._objectGroup; }
-
-    get Mass() { return this._mass; }
-
-    get Acceleration() { return this.CalcNetForce().divideScalar(this._mass); }
 
     get Position() { return this._objectGroup.position.clone(); }
 
@@ -36,28 +38,6 @@ class GameObject {
             console.log("Cannot set position to something other than a vector3", value);
         }
     }
-
-    ApplyForce(force) {
-        this._forces[force.name] = force.vector;
-    }
-
-    FlushForces() {
-        this._forces = {};
-    }
-
-    CalcNetForce() {
-        //all forces start from the origin, they are 3-element vectors
-        //so they represent both direction and magnitude. Adding
-        //these vectors together produces a net direction and magnitude
-        let result = new THREE.Vector3();
-        for (const forceName in this._forces) {
-            result.add(this._forces[forceName]);
-        }
-
-        return result;
-    }
-
-    PostPhysicsCallback(dt) {}
 }
 
 export default GameObject;

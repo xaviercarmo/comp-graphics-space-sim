@@ -2,27 +2,21 @@ import * as THREE from '../libraries/three.module.js';
 import * as INPUT from './input.js';
 import * as UTILS from './utils.js';
 
-import PreDownloader from './predownloader.js';
+import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
-import PlayerObject from './gameobjects/playerobject.js';
-import ObstacleObject from './gameobjects/obstacleobject.js'
-import PhysicsHandler from './physicshandler.js';
-
-
-import { OrbitControls } from '../libraries/OrbitControls.js';
+import PhysicsObject from './gameobjects/physics.js';
+import PlayerObject from './gameobjects/physicsobjects/player.js';
+import ObstacleObject from './gameobjects/physicsobjects/obstacleobject.js'
+import SunObject from './gameobjects/sun.js';
 
 class GameHandler {
     //debug
     get Camera() { return this.#camera; }
-    Orbit = false;
-    //Privates
-    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 50000);
-    #cameraGroup = new THREE.Group();
-    #debugCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+
+    //privates
+    #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #clock = new THREE.Clock();
-
-    #assetPaths = [];
 
     #gameObjects = [];
 
@@ -38,193 +32,274 @@ class GameHandler {
     #mode = this.#modes.NONE;
 
     #player;
+    #sun;
     #obstacle = {}; 
     #distance = 0; 
     #prev = new THREE.Vector3;
-    #checkPoint = 200;  
+    #checkPoint = 200; 
 
     #scene = new THREE.Scene();
+
     //publics
+    AssetHandler = new AssetHandler();
 
     constructor() {
-        let assetNames = ["SciFi_Fighter.FBX"];
-        assetNames.forEach((name) => { this.#assetPaths.push(`../assets/${name}`); });
-
-        let gameHandler = this;
         this.#mode = this.#modes.PRELOADING;
-
-        let preDownloader = new PreDownloader(this.#assetPaths, () => {
-            $(".loading-text").text("Initialising game...");
-            //Allows dom to re-render with initialising text
-            setTimeout(() => {
-                gameHandler.Initialise();
-            }, 0);
-        });
+        this.AssetHandler.LoadAllAssets(() => this.Initialise.call(this));
     }
 
-    #timeElapsed = 0;
-    #totalTime = 1;
-    #curveObject;
-    #lookAt = new THREE.Vector3();
     //private methods
     //NOTE: Due to current lack of support in Chrome for private instance methods we will use private fields that hold methods
     #animate = () => {
         //regardless of pausing, animation frames should continue for menu logic
         requestAnimationFrame(() => { this.#animate(); });
 
+        INPUT.UpdateKeyPressedOnce();
+
         //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
         let dt = this.#clock.getDelta();
+
+        if (INPUT.KeyPressedOnce("p")) {
+            this.TogglePause();
+        }
+        
+        if (INPUT.KeyPressedOnce("t")) {
+            this.SkyBox.visible = !this.SkyBox.visible;
+            console.log(this.SkyBox.visible);
+        }
 
         //menu logic here
         //[...]
 
+        let playerOldPosition = this.#player.Position;
+
         //game logic only runs if game isn't paused
-        this.#gameObjects.forEach(g => g.Main(dt));
+        if (this.#mode == this.#modes.GAMERUNNING) {
+            this.#gameObjects.forEach(g => g.Main(dt));
+    
+            this.#gameObjects.forEach(g => {
+                //physics logic here (later moved to physics handler probably)
+                //[...]
+
+                if (g instanceof PhysicsObject) {
+                    g.PostPhysicsCallback(dt);
+                }
+            });
+
+            //test obst spawn
+            //console.log("ob pos", this.#obstacle[0].obstaclePosition);
+            this.SpawnNewObstacles(); 
+            this.DistanceCalculation();
+            //console.log(this.#player.Acceleration);
+
+            //let pos = new THREE.Vector3();
+            
+            //this.Player.Object.localToWorld(pos);
+            //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
+            //console.log(this.Player.Object.position.z - this.randomCube.position.z);
+        }
+
+        //game logic that runs despite pausing
+        this.#gameObjects.forEach(g => g.MainNoPause(dt));
+
+        let playerPositionDelta = UTILS.SubVectors(this.#player.Position, playerOldPosition);
+        if (this.#player.Position.length() < 400_000) {
+            this.SkyBox.position.addScaledVector(playerPositionDelta, 0.95);
+        }
+        else {
+            this.SkyBox.position.addScaledVector(playerPositionDelta, 1.0);
+        }
+
+        //must be done AFTER all other main logic has run
+        INPUT.FlushKeyPressedOnce();
+
+        this.#renderer.render(this.#scene, this.#camera);
+    }
+
+    #setupMenuEvents = () => {
+        $(".hangar-sub-menu-heading").hover(
+            function() {
+                //on hover
+                $(this).parent().addClass("hangar-sub-menu-container-hover");
+            },
+            function() {
+                //on un-hover
+                $(this).parent().removeClass("hangar-sub-menu-container-hover");
+            }
+        );
+
+        $(".hangar-sub-menu-heading").click(function() {
+            let contract = (jqObj) => {
+                jqObj.parent().removeClass("hangar-sub-menu-container-expanded");
+                jqObj.removeClass("hangar-sub-menu-heading-selected");
+            }
+            if ($(this).parent().is(".hangar-sub-menu-container-expanded")) {
+                //if already expanded, then contract
+                contract($(this));
+            }
+            else {
+                //if not expanded, then expand and contract all other sub menu containers
+                $(".hangar-sub-menu-heading-selected").each(function() {
+                    contract($(this));
+                });
+
+                $(this).parent().addClass("hangar-sub-menu-container-expanded");
+                $(this).addClass("hangar-sub-menu-heading-selected");
+            }
+        });
+
+        //bind hue slider to player's hue
+        $('#shipHueSlider').on('input', (event) => {
+            this.#player.ShipHue = event.target.value;
+        })
+    }
+
+    #initialiseSkyBox = () => {
+        let skyMapTextures = this.AssetHandler.LoadedImages.skymap;
+        let matParams = { side: THREE.BackSide, depthWrite: false };
+        let materials = [
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.rt, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.lt, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.tp, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.bm, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.ft, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.bk, ...matParams }),
+        ];
+
+        let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
+        let skyBox = new THREE.Mesh(skyBoxGeo, materials);
+        this.Scene.add(skyBox);
+        skyBox.visible = true;
+
+        this.SkyBox = skyBox;
+
+        this.#initialiseSun();
+    }
+
+    #initialiseSun = () => {
+        this.#sun = new SunObject();
+        this.AddGameObject(this.#sun);
+
+        this.SkyBox.add(this.#sun.Object);
+        this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
         
+        let ambientLight = new THREE.AmbientLight( 0xabfff8, 0.7 );
+        this.#scene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
+        dirLight.position.copy(this.#sun.Position)
+        dirLight.name = "dirlight";
+        dirLight.castShadow = true;
+        this.#scene.add(dirLight);
+    }
+
+    #initialisePlayer = () => {
+        let playerMeshes = {
+            ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
+            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
+            gattling_gun_new: {
+                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
+                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
+                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+            }
+        };
+
+        this.#player = new PlayerObject(playerMeshes, this.#camera);
+        this.AddGameObject(this.#player);
+    }
+
+    #initialiseScene = () => {
+        window.addEventListener("resize", () => { this.Resize(); });
+        
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                this.Pause();
+            }
+        }, false)
+
+        document.body.appendChild(this.#renderer.domElement);
+
+        this.#initialisePlayer();
+
+        this.#player.SetupPointerLock();
+
+        // var pointLight = new THREE.PointLight( 0xffffff, 1.5, 18 );
+        // pointLight.position.set( 0, 10, 10 );
+        // pointLight.castShadow = true;
+        // this.#scene.add(pointLight);
+
+        // var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.3 );
+        // this.#scene.add( directionalLight );
+
+        
+
+        // let light = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2.0 );
+        // this.#scene.add(light);
+
+        // var hemiLight = new THREE.HemisphereLight( 0xff0000, 0x0000ff, 0.6 );
+        // // hemiLight.color.setHSL( 0.63, 61, 31 );
+        // // hemiLight.groundColor.setHSL( 4.2, 34, 37 );
+        // hemiLight.position.set( 0, 1000, 0 );
+        // this.#scene.add( hemiLight );
+
+        let gridHelper = new THREE.GridHelper(5000, 100);
+        this.#scene.add(gridHelper);
+
+        // let gridHelper2 = new THREE.GridHelper(5000, 100);
+        // gridHelper2.translateY(25000);
+        // this.#scene.add(gridHelper2);
+
+        // let randomCubeGeo = new THREE.BoxGeometry(1, 1, 1);
+        // let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
+        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        // this.#scene.add(randomCube);
+        // randomCube.position.y += 10;
+        // this.randomCube = randomCube;
+
+        this.#initialiseSkyBox();
+
+        //spawn
+        this.SpawnMultipleObstacles(1);
+
+        this.#renderer.setPixelRatio(window.devicePixelRatio);
+        this.#renderer.setSize(window.innerWidth, window.innerHeight);
+        this.#renderer.shadowMap.enabled = true;
+
+        this.#setupMenuEvents();
 
         this.#gameObjects.forEach(g => {
-            //physics logic here (later moved to physics handler probably)
-            //[...]
-
-            g.PostPhysicsCallback(dt);
+            if (!g.Object.parent) {
+                this.#scene.add(g.Object);
+            }
         });
-        
-        
-
-        //test obst spawn
-        //console.log("ob pos", this.#obstacle[0].obstaclePosition);
-        this.SpawnNewObstacles(); 
-        this.DistanceCalculation();
-        //console.log(this.#player.Acceleration);
-       
-         
-
-        // //camera movement testing
-        // if (this.#timeElapsed == this.#totalTime) {
-        //     //this.#timeElapsed = 0;
-        // }
-        // else {
-        //     //this.#timeElapsed = Math.min(this.#timeElapsed + dt, this.#totalTime);
-        //     this.#timeElapsed = THREE.MathUtils.lerp(this.#timeElapsed, this.#totalTime, (1 + this.#timeElapsed / this.#totalTime) * dt);
-        //     this.#timeElapsed += 0.015 * dt;
-        //     if (this.#timeElapsed / this.#totalTime > 0.9999) {
-        //         this.#timeElapsed = this.#totalTime;
-        //     }
-        //     console.log(this.#timeElapsed / this.#totalTime);
-        // }
-        //
-        // let progressPct = this.#timeElapsed / this.#totalTime;
-        //
-        // this.#lookAt.lerpVectors(new THREE.Vector3(0, 15.5, 15),  new THREE.Vector3(1, -3, 10), progressPct);
-        // this.#debugCamera.lookAt(this.#lookAt);
-        // //this.#debugCamera.lookAt(new THREE.Vector3(1, -3, 10));
-        //
-        // this.#curveObject.getPointAt(progressPct, this.#cameraGroup.position);
-
-        //orbit controls for debugging
-        //this.controls.update();
-
-        //this.#renderer.render(this.#scene, this.#debugCamera);
         this.#renderer.render(this.#scene, this.#camera);
+    }
+
+    #startGameRunning = () => {
+        this.#mode = this.#modes.GAMERUNNING;
+        // this.TogglePause();
+        this.#animate();
     }
 
     //public methods
     Initialise() {
         this.#mode = this.#modes.INITIALISING;
 
-        let assets = [
-            {
-                path: this.#assetPaths[0],
-                onComplete: object => this.AddPlayer(object)
-            }
-        ];
-
-        UTILS.LoadAssets(assets, () => {
-            $(".pre-downloader").remove();
-            this.InitialiseScene();
-            this.StartGameRunning();
-        });
+        //later can extend this to animate the cursor
+        $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
+        this.#initialiseScene();
+        this.#startGameRunning();
+        window.setTimeout(() => $(".pre-downloader").remove(), 1000);
     }
 
-    InitialiseScene() {
-        window.addEventListener("resize", () => { this.Resize(); });
-        window.addEventListener("keydown", INPUT.OnKeyDown);
-        window.addEventListener("keyup", INPUT.OnKeyUp);
-
-        document.body.appendChild(this.#renderer.domElement);
-
-        this.#player.SetupPointerLock();
-        //this.#scene.add(this.#cameraGroup);
-        //this.#cameraGroup.add(this.#debugCamera);
-        //let cameraHelper = new THREE.CameraHelper(this.#debugCamera);
-        //this.#scene.add(cameraHelper);
-        //this.#cameraGroup.position.set(0, 7.6, -31.9);
-        //this.#debugCamera.lookAt(new THREE.Vector3(0, 15.5, 15));
-        //cameraHelper.visible = true;
-
-        this.#gameObjects.forEach(g => { this.#scene.add(g.Object); });
-
-        let light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 10 );
-        this.#scene.add(light);
-
-        let gridHelper = new THREE.GridHelper(50000, 1000);
-        this.#scene.add(gridHelper);
-
-        let gridHelper2 = new THREE.GridHelper(50000, 1000);
-        gridHelper2.translateY(25000);
-        this.#scene.add(gridHelper2);
-
-        //spawn
-        this.SpawnMultipleObstacles(1);
-        this.SpawnNewObstacles(); 
-
-        this.#renderer.setPixelRatio(window.devicePixelRatio);
-        this.#renderer.setSize(window.innerWidth, window.innerHeight);
-        this.#renderer.shadowMap.enabled = true;
-        //this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        //orbit controls for debugging
-        //this.#camera.position.set(2, -5, 15);
-        //this.controls = new OrbitControls(this.#camera, this.#renderer.domElement);
-        //this.controls.update();
-
-        // var curve = new THREE.CatmullRomCurve3( [
-        // 	new THREE.Vector3(0, 7.6, -31.9),
-        // 	new THREE.Vector3( 15, 0, 0 ),
-        //     new THREE.Vector3( 10, -3, 12 ),
-        // 	new THREE.Vector3( 2, -5, 15 )
-        // ] );
-        //
-        // var points = curve.getPoints( 100 );
-        // var geometry = new THREE.BufferGeometry().setFromPoints( points );
-        //
-        // var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
-        //
-        // // Create the final object to add to the scene
-        // var curveObject = new THREE.Line( geometry, material );
-        // this.#curveObject = curve;
-        //
-        // this.#scene.add(curveObject);
-    }
-
-    AddPlayer(object) {
-        this.#player = new PlayerObject(object, this.#camera);
-        //this.#scene.add(this.#camera);
-        this.AddObject(this.#player);
-    }
-
-    AddObject(object) {
+    AddGameObject(object) {
         if (object instanceof GameObject) {
             this.#gameObjects.push(object);
         }
         else {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
         }
-    }
-
-    StartGameRunning() {
-        this.#mode = this.#modes.GAMERUNNING;
-        this.#animate();
     }
 
     //resizes the renderer to fit the screen
@@ -237,18 +312,39 @@ class GameHandler {
     //toggles mode between running and paused. Will do nothing if mode is not currently one of the two.
     TogglePause() {
         if (this.#mode == this.#modes.GAMERUNNING) {
-            this.#mode = this.#modes.GAMEPAUSED;
+            this.Pause();
         }
         else if (this.#mode == this.#modes.GAMEPAUSED) {
-            this.#mode = this.#modes.GAMERUNNING;
+            this.Unpause();
         }
         else {
             console.log("Cannot toggle pause, game is not currently running or paused.");
         }
     }
 
+    Pause() {
+        this.#mode = this.#modes.GAMEPAUSED;
+            
+        //release mouse
+        document.exitPointerLock();
+
+        //show hangar menu
+        $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
+    }
+
+    Unpause() {
+        this.#mode = this.#modes.GAMERUNNING;
+            
+        //reclaim mouse
+        this.#renderer.domElement.requestPointerLock();
+
+        //hide hangar menu
+        $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
+    }
+
     SpawnMultipleObstacles(n){
         this.#obstacle = new Array(n);
+        /*
         var num = n; 
 
         //set initial
@@ -256,30 +352,27 @@ class GameHandler {
             Math.trunc(value);
             return value; 
         }
+        */
         //generat n obstacles
         for (let i = 0; i < n; i++) {
             this.#obstacle[i] = new ObstacleObject(); 
         } 
     }
     SpawnNewObstacles(){
-        //alternatively create distance travelled and every X units create the obstacles. 
-       
-        //+ 5 or number, because so many checks occurs every second that too many,
-        //obstacles spawn at once, so if you reach 200, by the 
-        // so if the distance is between 200 and 205
-        //only a certain number can spawn 
-
+        //Checks distance travelled and every X units create the obstacles. 
+        //If current total distance greater than checkpoint, spawn new obst.
         if (this.#distance > this.#checkPoint) {
             this.SpawnMultipleObstacles(5);
 
             //every 200 units, add obstacle.
             this.#checkPoint += 200;  
-        }
+        }   
         
     }
 
     DistanceCalculation(){
         //seems like not using clone() can affect the actual object when using ceil()
+        //ceil converts to int, since float numbers goes too far.
         var currPos = this.#player.Object.position.clone().ceil();
         //if player moves, then add to distance
         //even if two vectors are same, if statement still goes off, so using length instead.
@@ -296,6 +389,10 @@ class GameHandler {
     get Player() { return this.#player; }
 
     get Renderer() { return this.#renderer; }
+
+    get IsPaused() { return this.#mode == this.#modes.GAMEPAUSED; }
+
+    get Clock() { return this.#clock; }
 }
 
 export default GameHandler;
