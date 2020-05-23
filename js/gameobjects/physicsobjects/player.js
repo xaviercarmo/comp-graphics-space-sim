@@ -58,12 +58,20 @@ class PlayerObject extends PhysicsObject {
     #rightThrusterParticleSystem;
     #rightThrusterTarget = new THREE.Object3D();
     #leftThrusterTarget = new THREE.Object3D();
-
-    //bottom
     #botLeftThrusterParticleSystem;
     #botRightThrusterParticleSystem;
     #botRightThrusterTarget = new THREE.Object3D();
     #botLeftThrusterTarget = new THREE.Object3D();
+
+    //thruster lights
+    #thrusterLightPositions = {
+        topLeft: new THREE.Vector3(2.8, 2.48, -10),
+        topRight: new THREE.Vector3(-2.8, 2.48, -10)
+    }
+    #topLeftThrusterLight = new THREE.PointLight(0xff1000, 0, 10);
+    #topLeftThrusterLightIntensity = 0;
+    #topRightThrusterLight = new THREE.PointLight(0xff1000, 0, 10);
+    #topRightThrusterLightIntensity = 0;
 
     //general
     #meshes;
@@ -287,8 +295,6 @@ class PlayerObject extends PhysicsObject {
         // this._objectGroup.add(cubeG);
     }
 
-    get Testing(){ return this.#leftThrusterTarget.getWorldPosition(new THREE.Vector3()); }
-
     #setupThrusters = () => {
         //top
         this.#rightThrusterTarget.position.set(-2.8, 2.48, -8.74);
@@ -349,24 +355,30 @@ class PlayerObject extends PhysicsObject {
 
         //the orange-y colour: 0xff1000
         //the blue-y colour
-        this.testLight = new THREE.PointLight(0x70eaff, 1, 5);
-        this.testLight.position.set(2.8, 2.48, -10);
-        this._mainObject.add(this.testLight);
+        // this.testLight = new THREE.PointLight(0x70eaff, 1, 10);
+        // this.testLight.position.set(2.8, 2.48, -10);
+        // this._mainObject.add(this.testLight);
 
-        this.testLightR = new THREE.PointLight(0xff1000, 1, 5);
-        this.testLightR.position.set(2.8, 2.48, -10);
-        this._mainObject.add(this.testLightR);
+        this.#topLeftThrusterLight.position.copy(this.#thrusterLightPositions.topLeft);
+        this.#topLeftThrusterLight.castShadow = true;
+        let sphereSize = 0.75;
+        let pointLightHelper = new THREE.PointLightHelper(this.#topLeftThrusterLight, sphereSize);
+        window.GameHandler.Scene.add(pointLightHelper);
 
-        this.testLight.castShadow = true;
-        this.testLightR.castShadow = true;
+        this.#topRightThrusterLight.position.copy(this.#thrusterLightPositions.topRight);
+        this.#topRightThrusterLight.castShadow = true;
+        pointLightHelper = new THREE.PointLightHelper(this.#topRightThrusterLight, sphereSize);
+        window.GameHandler.Scene.add(pointLightHelper);
+
+        this._mainObject.add(this.#topLeftThrusterLight);
+        this._mainObject.add(this.#topRightThrusterLight);
+
+        // this.testLight.castShadow = true;
         //debug
-        var sphereSize = 0.75;
-        var pointLightHelper = new THREE.PointLightHelper(this.testLight, sphereSize);
-        window.GameHandler.Scene.add(pointLightHelper);
+        // var sphereSize = 0.75;
+        // var pointLightHelper = new THREE.PointLightHelper(this.testLight, sphereSize);
+        // window.GameHandler.Scene.add(pointLightHelper);
 
-        sphereSize = 0.75;
-        pointLightHelper = new THREE.PointLightHelper(this.testLightR, sphereSize);
-        window.GameHandler.Scene.add(pointLightHelper);
     }
 
     #setupCrosshair = () => {
@@ -410,13 +422,15 @@ class PlayerObject extends PhysicsObject {
 
             this.#targetSpeed = Math.min(this.#targetSpeed + scrollTicks * this.#targetSpeedAccel, this.#maxSpeed);
             if (this.#targetSpeed < 0) { this.#targetSpeed = 0; }
+
+            // this.#topLeftThrusterLight.position.copy(this.#thrusterLightPositions.topLeft);
             
-            this.#leftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
-            this.#rightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
+            this.#leftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 3.5;
+            this.#rightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 3.5;
             
             //bottom
-            this.#botLeftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
-            this.#botRightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 5;
+            this.#botLeftThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 3.5;
+            this.#botRightThrusterParticleSystem.Speed = this.#targetSpeed / this.#targetSpeedAccel * 3.5;
         }
     }
 
@@ -571,6 +585,9 @@ class PlayerObject extends PhysicsObject {
         
         //this.#debugLine.From = this._objectGroup.position;
         //this.#debugLine.To = UTILS.AddVectors(this._objectGroup.position, this.#getWorldUpVector().multiplyScalar(10));
+
+        this.#topLeftThrusterLight.intensity = 4.5 * this.#targetSpeed / this.#maxSpeed * (0.8 + Math.random() * 0.5);
+        this.#topRightThrusterLight.intensity = 4.5 * this.#targetSpeed / this.#maxSpeed * (0.8 + Math.random() * 0.5);
     }
 
     MainNoPause(dt) {
@@ -639,22 +656,25 @@ class PlayerObject extends PhysicsObject {
         moveVec.multiplyScalar(0.5);
         
         if (INPUT.KeyPressed("alt")) {
-            this.testLight.position.add(moveVec);
-            this.testLight.intensity += intensity;
-            this.testLightR.position.add(moveVec);
-            this.testLightR.intensity += intensity;
+            // this.testLight.position.add(moveVec);
+            // this.testLight.intensity += intensity;
         }
         else if (INPUT.KeyPressed("shift")) {
-            this.testLight.position.add(moveVec);
-            this.testLight.intensity += intensity;
+            // this.testLight.position.add(moveVec);
+            // this.testLight.intensity += intensity;
         }
         else {
-            this.testLightR.position.add(moveVec);
-            this.testLightR.intensity += intensity;
+            this.#topLeftThrusterLight.position.add(moveVec);
+            this.#topLeftThrusterLight.intensity += intensity;
+            moveVec.x *= -1;
+            this.#topRightThrusterLight.position.add(moveVec);
+            this.#topRightThrusterLight.intensity += intensity;
         }
 
-        this.testLight.intensity = Math.max(0, this.testLight.intensity);
-        this.testLightR.intensity = Math.max(0, this.testLightR.intensity);
+        // this.testLight.intensity = Math.max(0, this.testLight.intensity);
+        this.#topLeftThrusterLight.intensity = Math.max(0, this.#topLeftThrusterLight.intensity);
+        this.#topRightThrusterLight.intensity = Math.max(0, this.#topRightThrusterLight.intensity);
+        //console.log(this.#topLeftThrusterLight.intensity);
         //this.#currentGunObject.position.add(moveVec);
         ///this.#currentGunObject.rotateX(rotVec.x);
     }
