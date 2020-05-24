@@ -336,7 +336,7 @@ class ThrusterParticle extends Particle {
         //(255, 50, 0) at reddest
         //x = r, y = g, z = b
         let newColour = new THREE.Vector3();
-        if (agePct < 0.25) {
+        if (agePct < 0.25 && Math.abs(this.PositionStore.x) < 0.4) {
             newColour.x = 255 * agePct;
             newColour.y = 150 - 100 * agePct;
             newColour.z = 255 * (1 - agePct)

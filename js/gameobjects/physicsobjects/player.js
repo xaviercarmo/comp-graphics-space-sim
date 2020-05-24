@@ -50,6 +50,7 @@ class PlayerObject extends PhysicsObject {
     //equipment vars
     #currentGun;
     #currentGunObject;
+    #currentGunBarrelGroup;
     #gunNames = ["gattling_gun", "rail_gun"];
     #gunNameIndex = 0;
     
@@ -65,13 +66,11 @@ class PlayerObject extends PhysicsObject {
 
     //thruster lights
     #thrusterLightPositions = {
-        topLeft: new THREE.Vector3(2.8, 2.48, -10),
-        topRight: new THREE.Vector3(-2.8, 2.48, -10)
+        topLeft: new THREE.Vector3(2.8, 2.48, -11),
+        topRight: new THREE.Vector3(-2.8, 2.48, -11)
     }
     #topLeftThrusterLight = new THREE.PointLight(0xff1000, 0, 10);
-    #topLeftThrusterLightIntensity = 0;
     #topRightThrusterLight = new THREE.PointLight(0xff1000, 0, 10);
-    #topRightThrusterLightIntensity = 0;
 
     //general
     #meshes;
@@ -93,11 +92,6 @@ class PlayerObject extends PhysicsObject {
 
         this.#setupShipMaterials();
 
-        // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-        // var material = new THREE.MeshBasicMaterial( {map: testTexture} );
-        // var cube = new THREE.Mesh( geometry, material );
-        // window.GameHandler.Scene.add( cube );
-
         this._mass = 10;
 
         this.#meshes.ship.scale.multiplyScalar(0.5)
@@ -107,14 +101,26 @@ class PlayerObject extends PhysicsObject {
         let gattlingGunGroup = new THREE.Group();
         gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
         gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.barrel);
+        this.#currentGunBarrelGroup = new THREE.Group();
+        this.#currentGunBarrelGroup.position.y = -7.8;
+        this.#meshes.gattling_gun_new.barrel.position.y = 7.8;
+        this.#currentGunBarrelGroup.add(this.#meshes.gattling_gun_new.barrel);
+        gattlingGunGroup.add(this.#currentGunBarrelGroup);
+
+        // for debugging the pivot group
+        // let sphereGeometry1 = new THREE.SphereBufferGeometry(2, 30, 30);
+        //     // Sphere Material 1
+        // let sphereMaterial1 = new THREE.MeshLambertMaterial({
+        //         color: 0xff0000
+        // });
+        //     // Sphere Mesh 1
+        // let sphereMesh1 = new THREE.Mesh(sphereGeometry1, sphereMaterial1);
+        // this.barrelPivotGroup.add(sphereMesh1);
+
         gattlingGunGroup.scale.multiplyScalar(0.1);
         gattlingGunGroup.position.set(0, -1.88, 4.29);
         gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
-        //console.log(gattlingGunGroup);
-        // this.#meshes.gattling_gun_new.base_plate.scale.multiplyScalar(0.1);
-        // this.#meshes.gattling_gun_new.struts.scale.multiplyScalar(0.1);
-        // this.#meshes.gattling_gun_new.barrel.scale.multiplyScalar(0.1);
+        this.#currentGunBarrelGroup.rotation.x = -gattlingGunGroup.rotation.x;
 
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
@@ -128,16 +134,17 @@ class PlayerObject extends PhysicsObject {
         this.CameraPosition = "FOLLOW";
         // this.CameraPosition = "ORBIT";
         
-        let randomCubeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        let randomCubeGeo = new THREE.BoxGeometry(0.25, 0.25, 5.5);
         let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
         let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
 
-        //this.CurrentGun = this.#gunNames[this.#gunNameIndex];
-        // this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
+        let randomTargetGeo = new THREE.SphereBufferGeometry(20, 30, 30);
+        let randomTarget = new THREE.Mesh(randomTargetGeo, randomCubeMat);
+        window.GameHandler.Scene.add(randomTarget);
 
         this.#currentGunObject = gattlingGunGroup;
         this._mainObject.add(this.#currentGunObject);
-        this.#currentGun = new Gun(this.#currentGunObject, randomCube, 2000, 10, 0.5);
+        this.#currentGun = new Gun(this.#currentGunBarrelGroup, this, randomCube, 750, 10, 10);
 
         window.addEventListener("wheel", this.#handleScroll);
     }
@@ -353,32 +360,20 @@ class PlayerObject extends PhysicsObject {
             extraOptions
         );
 
-        //the orange-y colour: 0xff1000
-        //the blue-y colour
-        // this.testLight = new THREE.PointLight(0x70eaff, 1, 10);
-        // this.testLight.position.set(2.8, 2.48, -10);
-        // this._mainObject.add(this.testLight);
-
         this.#topLeftThrusterLight.position.copy(this.#thrusterLightPositions.topLeft);
         this.#topLeftThrusterLight.castShadow = true;
-        let sphereSize = 0.75;
-        let pointLightHelper = new THREE.PointLightHelper(this.#topLeftThrusterLight, sphereSize);
-        window.GameHandler.Scene.add(pointLightHelper);
-
+        
         this.#topRightThrusterLight.position.copy(this.#thrusterLightPositions.topRight);
         this.#topRightThrusterLight.castShadow = true;
-        pointLightHelper = new THREE.PointLightHelper(this.#topRightThrusterLight, sphereSize);
-        window.GameHandler.Scene.add(pointLightHelper);
+
+        // let sphereSize = 0.75;
+        // let pointLightHelper = new THREE.PointLightHelper(this.#topLeftThrusterLight, sphereSize);
+        // window.GameHandler.Scene.add(pointLightHelper);
+        // pointLightHelper = new THREE.PointLightHelper(this.#topRightThrusterLight, sphereSize);
+        // window.GameHandler.Scene.add(pointLightHelper);
 
         this._mainObject.add(this.#topLeftThrusterLight);
         this._mainObject.add(this.#topRightThrusterLight);
-
-        // this.testLight.castShadow = true;
-        //debug
-        // var sphereSize = 0.75;
-        // var pointLightHelper = new THREE.PointLightHelper(this.testLight, sphereSize);
-        // window.GameHandler.Scene.add(pointLightHelper);
-
     }
 
     #setupCrosshair = () => {
@@ -445,7 +440,6 @@ class PlayerObject extends PhysicsObject {
         }
     }
 
-    
     #adjustRotationAmounts = (dt) => {
         this.#mouseOffsetPct.set(this.#mouseOffset.x / this.#maxMouseOffset, this.#mouseOffset.y / this.#maxMouseOffset);
 
@@ -635,41 +629,44 @@ class PlayerObject extends PhysicsObject {
             moveVec.x = -0.1;
         }
         if (INPUT.KeyPressed("r")) {
-            //moveVec.y = 0.1;
+            moveVec.y = 0.1;
             intensity = 0.1;
+            rotVec.x = 0.03;
         }
         if (INPUT.KeyPressed("f")) {
-            //moveVec.y = -0.1;
+            moveVec.y = -0.1;
             intensity = -0.1;
+            rotVec.x = -0.03;
         }
         if (INPUT.KeyPressed("t")) {
-            rotVec.x = 0.05;
         }
         if (INPUT.KeyPressed("g")) {
-            rotVec.x = -0.05;
         }
         if (INPUT.KeyPressed("shift")) {
-            //moveVec.multiplyScalar(0.1);
-            //rotVec.multiplyScalar(0.1);
+            moveVec.multiplyScalar(0.1);
+            rotVec.multiplyScalar(0.1);
         }
 
-        moveVec.multiplyScalar(0.5);
+        //moveVec.multiplyScalar(0.5);
         
-        if (INPUT.KeyPressed("alt")) {
-            // this.testLight.position.add(moveVec);
-            // this.testLight.intensity += intensity;
-        }
-        else if (INPUT.KeyPressed("shift")) {
-            // this.testLight.position.add(moveVec);
-            // this.testLight.intensity += intensity;
-        }
-        else {
-            this.#topLeftThrusterLight.position.add(moveVec);
-            this.#topLeftThrusterLight.intensity += intensity;
-            moveVec.x *= -1;
-            this.#topRightThrusterLight.position.add(moveVec);
-            this.#topRightThrusterLight.intensity += intensity;
-        }
+        // if (INPUT.KeyPressed("alt")) {
+        //     // this.testLight.position.add(moveVec);
+        //     // this.testLight.intensity += intensity;
+        // }
+        // else if (INPUT.KeyPressed("shift")) {
+        //     // this.testLight.position.add(moveVec);
+        //     // this.testLight.intensity += intensity;
+        // }
+        // else {
+        //     this.#topLeftThrusterLight.position.add(moveVec);
+        //     this.#topLeftThrusterLight.intensity += intensity;
+        //     moveVec.x *= -1;
+        //     this.#topRightThrusterLight.position.add(moveVec);
+        //     this.#topRightThrusterLight.intensity += intensity;
+        // }
+
+        //this.#currentGunBarrelGroup.position.add(moveVec);
+        this.#currentGunBarrelGroup.rotateX(rotVec.x);
 
         // this.testLight.intensity = Math.max(0, this.testLight.intensity);
         this.#topLeftThrusterLight.intensity = Math.max(0, this.#topLeftThrusterLight.intensity);
@@ -754,6 +751,10 @@ class PlayerObject extends PhysicsObject {
                 console.log(`"${positionName}" is an invalid camera position name.`);
             }
         }
+    }
+
+    get Speed() {
+        return this.#targetSpeed;
     }
 
     /**
