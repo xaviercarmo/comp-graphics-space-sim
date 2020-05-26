@@ -144,7 +144,7 @@ class PlayerObject extends PhysicsObject {
 
         this.#currentGunObject = gattlingGunGroup;
         this._mainObject.add(this.#currentGunObject);
-        this.#currentGun = new Gun(this.#currentGunBarrelGroup, this, randomCube, 750, 10, 10);
+        this.#currentGun = new Gun(this.#currentGunBarrelGroup, this, randomCube, 750, 2, 10);
 
         window.addEventListener("wheel", this.#handleScroll);
     }
