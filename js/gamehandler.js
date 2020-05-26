@@ -8,6 +8,8 @@ import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import SunObject from './gameobjects/sun.js';
 
+import { EffectComposer } from '../libraries/EffectComposer.js';
+
 class GameHandler {
     //debug
     get Camera() { return this.#camera; }
@@ -27,7 +29,7 @@ class GameHandler {
         GAMERUNNING: 4,
         GAMEPAUSED: 5,
         GAMEOVER: 6
-    }
+    };
     #mode = this.#modes.NONE;
 
     #player;
@@ -37,6 +39,12 @@ class GameHandler {
 
     //publics
     AssetHandler = new AssetHandler();
+
+    //public so that other classes can assign themselves to a layer
+    RenderLayers = {
+        BASE: 0,
+        BLOOM: 1
+    };
 
     constructor() {
         this.#mode = this.#modes.PRELOADING;
