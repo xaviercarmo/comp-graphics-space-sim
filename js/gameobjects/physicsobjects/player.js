@@ -134,9 +134,15 @@ class PlayerObject extends PhysicsObject {
         this.CameraPosition = "FOLLOW";
         // this.CameraPosition = "ORBIT";
         
+        let randomSphereGeo = new THREE.SphereBufferGeometry(0.4, 30, 30);
+        let randomSphereMat = new THREE.MeshBasicMaterial({ color: 0xff7700 });
+        let randomSphere = new THREE.Mesh(randomSphereGeo, randomSphereMat);
+        randomSphere.layers.enable(window.GameHandler.RenderLayers.BLOOM);
+
         let randomCubeGeo = new THREE.BoxGeometry(0.25, 0.25, 5.5);
         let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
         let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        randomCube.layers.enable(window.GameHandler.RenderLayers.BLOOM);
 
         // going to be used for collision testing later
         // let randomTargetGeo = new THREE.SphereBufferGeometry(20, 30, 30);
@@ -145,7 +151,7 @@ class PlayerObject extends PhysicsObject {
 
         this.#currentGunObject = gattlingGunGroup;
         this._mainObject.add(this.#currentGunObject);
-        this.#currentGun = new Gun(this.#currentGunBarrelGroup, this, randomCube, 750, 2, 10);
+        this.#currentGun = new Gun(this.#currentGunBarrelGroup, this, randomSphere, 750, 18, 10);
 
         window.addEventListener("wheel", this.#handleScroll);
     }

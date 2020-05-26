@@ -119,10 +119,11 @@ class GameHandler {
 
         let renderScene = new RenderPass(this.#scene, this.#camera);
         
-        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        bloomPass.threshold = 0.05;
-        bloomPass.strength = 1.2;
-        bloomPass.radius = 0.55;
+        //(resolution, strength, radius, threshold)
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.5, 0.0);
+        //bloomPass.threshold = 0.05;
+        //bloomPass.strength = 1.2;
+        //bloomPass.radius = 0.55;
 
         //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
         this.#bloomComposer.renderToScreen = false; //play around with setting this to true

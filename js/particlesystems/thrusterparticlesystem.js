@@ -224,6 +224,8 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
         super(parent, window.GameHandler.AssetHandler.LoadedImages.sprites.thrusterSprite, particleAgeLimit, particlesPerSecond, particleSize);
         
         this._parent.add(this._points);
+        
+        this._points.layers.enable(window.GameHandler.RenderLayers.BLOOM);
 
         this.Direction = direction;
         this.#velocity = new THREE.Vector3();
