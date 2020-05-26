@@ -83,7 +83,7 @@ class PlayerObject extends PhysicsObject {
     #shipHue = 0.08;
     
     //debug
-    #debugLine = new UTILS.RedDebugLine();
+    //#debugLine = new UTILS.RedDebugLine();
 
     constructor(meshes, camera) {
         super(meshes.ship);
@@ -138,9 +138,10 @@ class PlayerObject extends PhysicsObject {
         let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
         let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
 
-        let randomTargetGeo = new THREE.SphereBufferGeometry(20, 30, 30);
-        let randomTarget = new THREE.Mesh(randomTargetGeo, randomCubeMat);
-        window.GameHandler.Scene.add(randomTarget);
+        // going to be used for collision testing later
+        // let randomTargetGeo = new THREE.SphereBufferGeometry(20, 30, 30);
+        // let randomTarget = new THREE.Mesh(randomTargetGeo, randomCubeMat);
+        // window.GameHandler.Scene.add(randomTarget);
 
         this.#currentGunObject = gattlingGunGroup;
         this._mainObject.add(this.#currentGunObject);
@@ -285,15 +286,15 @@ class PlayerObject extends PhysicsObject {
     }
 
     #setupDebugHelpers = () => {
-        let geo = new THREE.BoxGeometry(1, 1, 1);
-        let matR = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        let matG = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        let matB = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-        let matW = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        let cubeR = new THREE.Mesh(geo, matR);
-        let cubeG = new THREE.Mesh(geo, matG);
-        let cubeB = new THREE.Mesh(geo, matB);
-        let cubeW = new THREE.Mesh(geo, matW);
+        // let geo = new THREE.BoxGeometry(1, 1, 1);
+        // let matR = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        // let matG = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        // let matB = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        // let matW = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        // let cubeR = new THREE.Mesh(geo, matR);
+        // let cubeG = new THREE.Mesh(geo, matG);
+        // let cubeB = new THREE.Mesh(geo, matB);
+        // let cubeW = new THREE.Mesh(geo, matW);
 
         // cubeW.position.copy(this.#cameraPositions.FOLLOW.lookTarg);
         // this._objectGroup.add(cubeW);
@@ -391,6 +392,7 @@ class PlayerObject extends PhysicsObject {
                 }
 
                 this.#crosshairSprites[key] = new THREE.Sprite(material)
+                this.#crosshairSprites[key].layers.enable(window.GameHandler.RenderLayers.BLOOM);
             }
         }
 

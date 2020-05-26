@@ -9,6 +9,10 @@ import PlayerObject from './gameobjects/physicsobjects/player.js';
 import SunObject from './gameobjects/sun.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
+import { RenderPass } from '../libraries/RenderPass.js';
+import { ShaderPass } from '../libraries/ShaderPass.js';
+import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
+import { FXAAShader } from '../libraries/FXAAShader.js';
 
 class GameHandler {
     //debug
@@ -16,7 +20,14 @@ class GameHandler {
 
     //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
+    
     #renderer = new THREE.WebGLRenderer({ antialias: true });
+    #bloomEnabled = true;
+    #bloomComposer = new EffectComposer(this.#renderer);
+    #finalComposer = new EffectComposer(this.#renderer);
+    #darkMaterial = new THREE.MeshBasicMaterial( { color: "black" } );
+    #materials = {};
+
     #clock = new THREE.Clock();
 
     #gameObjects = [];
@@ -60,7 +71,7 @@ class GameHandler {
         $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
         this.#initialiseScene();
         this.#startGameRunning();
-        window.setTimeout(() => $(".pre-downloader").remove(), 1000);
+        window.setTimeout(() => $(".pre-downloader").fadeOut(), 1000);
     }
 
     #initialiseScene = () => {
@@ -78,6 +89,14 @@ class GameHandler {
         this.#setupMenuEvents();
 
         this.#initialiseGameObjects();
+
+        // a cube for testing bloom
+        let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
+        let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        randomCube.layers.enable(this.RenderLayers.BLOOM);
+        randomCube.position.y += 5;
+        this.#scene.add(randomCube);
     }
 
     #initialiseRenderer = () => {
@@ -94,6 +113,59 @@ class GameHandler {
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
+        
+        this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
+
+        let renderScene = new RenderPass(this.#scene, this.#camera);
+        
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.05;
+        bloomPass.strength = 1.2;
+        bloomPass.radius = 0.55;
+
+        //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
+        this.#bloomComposer.renderToScreen = false; //play around with setting this to true
+        this.#bloomComposer.addPass(renderScene);
+        this.#bloomComposer.addPass(bloomPass);
+
+        let fxaaPass = new ShaderPass(FXAAShader);
+        fxaaPass.uniforms.resolution.value.set(1 / window.innerWidth, 1 / window.innerHeight);
+
+        //copies the output of the bloom composer and passes it into the shader as a source
+        let finalPassMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                baseTexture: { value: null },
+                bloomTexture: { value: this.#bloomComposer.renderTarget2.texture },
+            },
+            vertexShader: "varying vec2 vUv;\nvoid main() {\n    vUv = uv;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}",
+            fragmentShader: "uniform sampler2D baseTexture;\n\nuniform sampler2D bloomTexture;\nvarying vec2 vUv; \nvec4 getTexture( sampler2D texelToLinearTexture ) {\n    return mapTexelToLinear( texture2D( texelToLinearTexture , vUv ) );\n}\nvoid main() {\ngl_FragColor = ( getTexture( baseTexture ) + vec4( 1.0 ) * getTexture( bloomTexture ) );\n}",
+            defines: {}
+        });
+        let finalPass = new ShaderPass(finalPassMaterial, "baseTexture");
+        finalPass.needsSwap = true;
+
+        this.#finalComposer.addPass(renderScene);
+        this.#finalComposer.addPass(fxaaPass);
+        this.#finalComposer.addPass(finalPass); //need to test swapping this out for a normal render pass (plain vert/frag shaders)
+
+        //old version
+        // let renderPass = new RenderPass(this.#scene, this.#camera);
+
+        //(resolution, strength, radius, threshold)
+        // let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        // bloomPass.threshold = 0.05;
+        // bloomPass.strength = 1.2;
+        // bloomPass.radius = 0.55;
+        // bloomPass.renderToScreen = true;
+
+        // this.#composer.setSize(window.innerWidth, window.innerHeight);
+        // this.#composer.addPass(renderPass);
+        // this.#composer.addPass(bloomPass);
+
+        // this.#renderer.gammaInput = true
+        // this.#renderer.gammaOutput = true
+        // this.#renderer.toneMappingExposure = Math.pow(0.9, 4.0);
     }
 
     #initialisePlayer = () => {
@@ -149,6 +221,8 @@ class GameHandler {
         dirLight.name = "dirlight";
         dirLight.castShadow = true;
         this.#scene.add(dirLight);
+
+        //this.#sun.Object.layers.enable(this.RenderLayers.BLOOM);
     }
 
     #setupMenuEvents = () => {
@@ -256,8 +330,37 @@ class GameHandler {
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
+        
+        if (this.#bloomEnabled) {
+            this.#darkenNonBloomTargets();
+            this.#bloomComposer.render();
+            this.#restoreNonBloomTargets();
+            this.#finalComposer.render();
+        }
+        else {
+            this.#renderer.render(this.#scene, this.#camera);
+        }
+    }
 
-        this.#renderer.render(this.#scene, this.#camera);
+    #darkenNonBloomTargets = () => {
+        let bloomLayer = new THREE.Layers();
+        bloomLayer.set(this.RenderLayers.BLOOM);
+        //console.log(bloomLayer);
+        this.#scene.traverse(obj => {
+            if (obj.material && obj.layers && !(obj.layers.mask & (this.RenderLayers.BLOOM + 1))){//bloomLayer.test(obj.layers) === false) {
+                this.#materials[obj.uuid] = obj.material;
+                obj.material = this.#darkMaterial;
+            }
+        });
+    }
+
+    #restoreNonBloomTargets = () => {
+        this.#scene.traverse(obj => {
+            if (this.#materials[obj.uuid]) {
+                obj.material = this.#materials[obj.uuid];
+                delete this.#materials[obj.uuid];
+            }
+        });
     }
     
     //public methods
@@ -272,9 +375,13 @@ class GameHandler {
 
     //resizes the renderer to fit the screen
     Resize() {
-        this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#camera.aspect = window.innerWidth / window.innerHeight;
         this.#camera.updateProjectionMatrix();
+
+        this.#renderer.setSize(window.innerWidth, window.innerHeight);
+
+        this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
     }
 
     //toggles mode between running and paused. Will do nothing if mode is not currently one of the two.
