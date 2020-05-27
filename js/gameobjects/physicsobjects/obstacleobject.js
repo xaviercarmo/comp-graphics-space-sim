@@ -27,11 +27,11 @@ class ObstacleObject extends GameObject {
     //randomise size
     //random spawn
     //Random int per axis  (range of +/- 100)
-    let x = THREE.MathUtils.randFloat(0, 400);
-    let y = THREE.MathUtils.randFloat(0, 400);
-    let z = THREE.MathUtils.randFloat(0, 400);
+    let x = THREE.MathUtils.randFloat(-50, 50);
+    let y = THREE.MathUtils.randFloat(-50, 50);
+    let z = THREE.MathUtils.randFloat(-50, 50);
     let ranPos = new THREE.Vector3(x, y, z);
-    //ranPos.clampLength(0, 400); //creates spherical range
+    ranPos.clampLength(0, 400); //creates spherical range
 
     //Setting spawn range around player position.
     //add the position onto existing player position?
@@ -45,8 +45,15 @@ class ObstacleObject extends GameObject {
 
     //vector to store position
     let frontPos = new THREE.Vector3;
-    frontPos.set(pPos.x + cDir.x*x , pPos.y + cDir.y*y, pPos.z + cDir.z*z);
+    //*100 to set distance of obstacles from player
+    frontPos.set(pPos.x+ cDir.x*100 , pPos.y + cDir.y*100, pPos.z + cDir.z*100);
+    //add ranPos to randomise spawnpoint
+    //This makes object spawn randomly around the point "frontPos"
+    //so if that distance to that point is longer than the spawn range of the obstacles
+    //it'll never spawn behind the player. 
+    frontPos.add(ranPos);
     console.log("player", pPos);
+    console.log('camDir', cDir);
     console.log(frontPos);
       
     //Set new position and add object to scene
