@@ -33,15 +33,19 @@ class GameHandler {
 
     #player;
     #sun;
-    #obstacle = {}; 
+    #obstacle = []; 
     #distance = 0; 
     #prev = new THREE.Vector3;
     #checkPoint = 200; 
-
+    #material = new THREE.LineBasicMaterial({
+        color: 0xFF0000
+      });
+    #geometry = new THREE.Geometry();
     #scene = new THREE.Scene();
 
     //publics
     AssetHandler = new AssetHandler();
+    
 
     constructor() {
         this.#mode = this.#modes.PRELOADING;
@@ -90,10 +94,9 @@ class GameHandler {
             //console.log("ob pos", this.#obstacle[0].obstaclePosition);
             this.SpawnNewObstacles(); 
             this.DistanceCalculation();
-            //console.log(this.#player.Acceleration);
+            //let vec = new THREE.Vector3();
+            //console.log(this.Camera.getWorldDirection(vec));
 
-            //let pos = new THREE.Vector3();
-            
             //this.Player.Object.localToWorld(pos);
             //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
             //console.log(this.Player.Object.position.z - this.randomCube.position.z);
@@ -343,7 +346,7 @@ class GameHandler {
     }
 
     SpawnMultipleObstacles(n){
-        this.#obstacle = new Array(n);
+        //this.#obstacle.setSize(n);
         /*
         var num = n; 
 
@@ -356,14 +359,14 @@ class GameHandler {
         //generat n obstacles
         for (let i = 0; i < n; i++) {
             this.#obstacle[i] = new ObstacleObject(); 
+            //console.log(i, "index", this.#obstacle[i]._mainObject.position);
         } 
     }
     SpawnNewObstacles(){
         //Checks distance travelled and every X units create the obstacles. 
         //If current total distance greater than checkpoint, spawn new obst.
         if (this.#distance > this.#checkPoint) {
-            this.SpawnMultipleObstacles(5);
-
+            this.SpawnMultipleObstacles(10);
             //every 200 units, add obstacle.
             this.#checkPoint += 200;  
         }   
@@ -381,7 +384,6 @@ class GameHandler {
             this.#prev = currPos; 
             //console.log("distance", this.#distance);      
         }
-
     }
 
     get Scene() { return this.#scene; }
