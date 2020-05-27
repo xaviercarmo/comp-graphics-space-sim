@@ -91,12 +91,12 @@ class GameHandler {
         this.#initialiseGameObjects();
 
         // a cube for testing bloom
-        let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
-        let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-        let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-        randomCube.layers.enable(this.RenderLayers.BLOOM);
-        randomCube.position.y += 5;
-        this.#scene.add(randomCube);
+        // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
+        // let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        // randomCube.layers.enable(this.RenderLayers.BLOOM);
+        // randomCube.position.y += 5;
+        // this.#scene.add(randomCube);
     }
 
     #initialiseRenderer = () => {
@@ -273,7 +273,8 @@ class GameHandler {
     }
 
     #startGameRunning = () => {
-        this.#mode = this.#modes.GAMERUNNING;
+        // this.#mode = this.#modes.GAMERUNNING;
+        this.#mode = this.#modes.MAINMENU;
         this.#animate();
     }
 
