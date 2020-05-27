@@ -86,7 +86,9 @@ class GameHandler {
 
         this.#initialiseSun();
 
-        this.#setupMenuEvents();
+        this.#setupMainMenuEvents();
+
+        this.#setupPauseMenuEvents();
 
         this.#initialiseGameObjects();
 
@@ -171,7 +173,7 @@ class GameHandler {
 
     #initialisePlayer = () => {
         let playerMeshes = {
-            ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            ship: this.AssetHandler.LoadedAssets.test.clone(), //this.AssetHandler.LoadedAssets.ship.clone(),
             gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
             rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
             gattling_gun_new: {
@@ -226,7 +228,22 @@ class GameHandler {
         //this.#sun.Object.layers.enable(this.RenderLayers.BLOOM);
     }
 
-    #setupMenuEvents = () => {
+    #setupMainMenuEvents = () => {
+        $('#mainMenu').hide(); //temporary while debugging
+
+        $(".menu-button").hover(
+            function() {
+                //on hover
+                $(this).addClass("menu-button-hover");
+            },
+            function() {
+                //on un-hover
+                $(this).removeClass("menu-button-hover");
+            }
+        );
+    }
+
+    #setupPauseMenuEvents = () => {
         $(".hangar-sub-menu-heading").hover(
             function() {
                 //on hover
@@ -273,8 +290,8 @@ class GameHandler {
     }
 
     #startGameRunning = () => {
-        // this.#mode = this.#modes.GAMERUNNING;
-        this.#mode = this.#modes.MAINMENU;
+        this.#mode = this.#modes.GAMERUNNING;
+        // this.#mode = this.#modes.MAINMENU;
         this.#animate();
     }
 
@@ -426,6 +443,8 @@ class GameHandler {
     get Player() { return this.#player; }
 
     get Renderer() { return this.#renderer; }
+
+    get IsMainMenu() { return this.#mode == this.#modes.MAINMENU; }
 
     get IsPaused() { return this.#mode == this.#modes.GAMEPAUSED; }
 

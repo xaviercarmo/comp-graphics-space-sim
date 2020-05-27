@@ -14,7 +14,13 @@ class AssetHandler {
         rail_gun: "../assets/rail_gun.fbx",
         gattling_gun_base_plate: "../assets/guns/gattling_gun/base_plate_origin.fbx",
         gattling_gun_struts: "../assets/guns/gattling_gun/struts_origin.fbx",
-        gattling_gun_barrel: "../assets/guns/gattling_gun/barrel_origin.fbx"
+        gattling_gun_barrel: "../assets/guns/gattling_gun/barrel_origin.fbx",
+        test: "../assets/testing_testing.fbx"
+    }
+    #glbAssetPaths = {
+        small_ship: "../assets/player_ships/small_fighter.glb",
+        medium_ship: "../assets/player_ships/medium_fighter.glb",
+        heavy_ship: "../assets/player_ships/large_fighter.glb"
     }
     #shaderPaths = {
         vert: {
@@ -170,9 +176,14 @@ class AssetHandler {
         this.#initialiseLoadingBar();
         this.OnComplete = onComplete;
 
-        // download all 3d models
+        // download all fbx models
         for (let key in this.#fbxAssetPaths) {
             this.#download3DAsset(this.#fbxAssetPaths[key]);
+        }
+
+        // download all glb models
+        for (let key in this.#glbAssetPaths) {
+            this.#download3DAsset(this.#glbAssetPaths[key]);
         }
 
         // manually download the skybox
@@ -243,24 +254,32 @@ class AssetHandler {
     }
 
     #loadAllAssets = (onComplete) => {
+        let assetsLoadedCount = 0;
+        let totalAssetsCount = Object.keys(this.#fbxAssetPaths).length + Object.keys(this.#glbAssetPaths).length;
+
         let onAssetLoaded = (key, obj) => {
             this.LoadedAssets[key] = obj;
-        }
-        
-        const loader = new FBXLoader();
-        let assetsLoadedCount = 0;
-        // let assetsLoadedCount = -1;
 
-        //let objLoader = new OBJLoader();
-        //objLoader.load('../../assets/killme.obj', (object) => { onAssetLoaded('ship', object); assetsLoadedCount++; });
+            if (++assetsLoadedCount == totalAssetsCount) {
+                onComplete();
+            }
+        }
+
+        // load fbx models
+        const fbxLoader = new FBXLoader();
 
         for (let key in this.#fbxAssetPaths) {
-            loader.load(this.#fbxAssetPaths[key], (object) => {
+            fbxLoader.load(this.#fbxAssetPaths[key], (object) => {
                 onAssetLoaded(key, object);
-                
-                if (++assetsLoadedCount == Object.keys(this.#fbxAssetPaths).length) {
-                    onComplete();
-                }
+            });
+        }
+
+        // load glb models
+        const gltfLoader = new GLTFLoader();
+
+        for (let key in this.#glbAssetPaths) {
+            gltfLoader.load(this.#glbAssetPaths[key], (gltf) => {
+                onAssetLoaded(key, gltf.scene);
             });
         }
     }

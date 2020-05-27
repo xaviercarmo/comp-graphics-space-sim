@@ -90,7 +90,8 @@ class PlayerObject extends PhysicsObject {
         
         this.#meshes = meshes;
 
-        this.#setupShipMaterials();
+        //this.#setupShipMaterials();
+        this.#testing();
 
         this._mass = 10;
 
@@ -156,13 +157,24 @@ class PlayerObject extends PhysicsObject {
         window.addEventListener("wheel", this.#handleScroll);
     }
 
+    // #testing = () => {
+    //     let testTexture = new THREE.TextureLoader().load('../../assets/player_ship_alt/textures/Material04_baseColor.jpeg');
+    //     this.#meshes.ship.traverse(function(child) {
+    //         if (child.isMesh) {
+    //             child.material.map = testTexture;
+    //         }
+    //     });
+    // }
+
     #setupShipMaterials = () => {
+        let testTexture = new THREE.TextureLoader().load('../../assets/player_ship_alt/textures/Material04_baseColor.jpeg');
         let testTexture = new THREE.TextureLoader().load('../../assets/test_original_green.jpg');
 
         const initialHue = this.#shipHue;
         const shipShaders = this.#shipShaders;
-        this.#meshes.ship.traverse(function (child) {
+        this.#meshes.ship.traverse(function(child) {
             if (child.isMesh) {
+                console.log(child.material);
                 // apply texture
                 child.material.map = testTexture;
 
@@ -597,7 +609,7 @@ class PlayerObject extends PhysicsObject {
 
         this.#handleCameraTransition(dt);
 
-        if (window.GameHandler.IsPaused) {
+        if (window.GameHandler.IsMainMenu || window.GameHandler.IsPaused) {
             if (INPUT.KeyPressedOnce("ArrowRight")) {
                 this.#gunNameIndex = UTILS.Mod(this.#gunNameIndex + 1, this.#gunNames.length);
                 this.CurrentGun = this.#gunNames[this.#gunNameIndex];

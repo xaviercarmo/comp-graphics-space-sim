@@ -28,7 +28,13 @@ class SunObject extends GameObject {
         this.#material.uniforms.time.value = .004 * this.#timeBank;
     }
 
-    MainNoPause(dt) { }
+    MainNoPause(dt) {
+        //if on the main menu, animate the sun
+        if (window.GameHandler.IsMainMenu) {
+            this.#timeBank += dt;
+            this.#material.uniforms.time.value = .004 * this.#timeBank;
+        }
+    }
 }
 
 export default SunObject;
