@@ -263,7 +263,7 @@ class GameHandler {
         this.#initialiseSkyBox();
 
         //spawn
-        this.SpawnMultipleObstacles(1);
+        this.SpawnMultipleObstacles(20);
 
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
@@ -346,16 +346,6 @@ class GameHandler {
     }
 
     SpawnMultipleObstacles(n){
-        //this.#obstacle.setSize(n);
-        /*
-        var num = n; 
-
-        //set initial
-        function Int(value){
-            Math.trunc(value);
-            return value; 
-        }
-        */
         //generat n obstacles
         for (let i = 0; i < n; i++) {
             this.#obstacle[i] = new ObstacleObject(); 
@@ -365,14 +355,42 @@ class GameHandler {
     SpawnNewObstacles(){
         //Checks distance travelled and every X units create the obstacles. 
         //If current total distance greater than checkpoint, spawn new obst.
-        if (this.#distance > this.#checkPoint) {
+        /*if (this.#distance > this.#checkPoint) {
             this.SpawnMultipleObstacles(10);
             //every 200 units, add obstacle.
             this.#checkPoint += 200;  
-        }   
+        }
+        */
+       for (var i = 0; i < this.#obstacle.length; i++) {
+            let x = this.#obstacle[i]._mainObject.position.x;
+            let y = this.#obstacle[i]._mainObject.position.y;
+            let z = this.#obstacle[i]._mainObject.position.z;
+            let rx = THREE.MathUtils.randFloat(-50, 50);
+            let ry = THREE.MathUtils.randFloat(-50, 50);
+            let rz = THREE.MathUtils.randFloat(-50, 50);
+
+            let pPos = this.#player.Object.position.clone()
+            let vect = new THREE.Vector3(); 
+            let cDir = this.#camera.getWorldDirection(vect); 
+            let frontPos = new THREE.Vector3;
+            //position in front of player
+            frontPos.set(pPos.x+ cDir.x , pPos.y + cDir.y, pPos.z + cDir.z);
+            //determine if current object is behind the player.
+            this.#camera.updateMatrix();
+            this.#camera.updateMatrixWorld(); 
+            let frustum = new THREE.Frustum();
+            frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.#camera.projectionMatrix, this.#camera.matrixWorldInverse));
+            var pos = new THREE.Vector3(x,y,z);
+            //if not in view 
+            if (!frustum.containsPoint(pos)){
+                this.#obstacle[i].ChangePos(frontPos.x + rx, frontPos.y + ry, frontPos.z + rz);
+            }
+
+       }
         
     }
-
+    /*
+    //Useless now due to frustum detection method. 
     DistanceCalculation(){
         //seems like not using clone() can affect the actual object when using ceil()
         //ceil converts to int, since float numbers goes too far.
@@ -385,6 +403,7 @@ class GameHandler {
             //console.log("distance", this.#distance);      
         }
     }
+    */
 
     get Scene() { return this.#scene; }
 

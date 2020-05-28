@@ -46,7 +46,7 @@ class ObstacleObject extends GameObject {
     //vector to store position
     let frontPos = new THREE.Vector3;
     //*100 to set distance of obstacles from player
-    frontPos.set(pPos.x+ cDir.x*100 , pPos.y + cDir.y*100, pPos.z + cDir.z*100);
+    frontPos.set(pPos.x+ cDir.x*250 , pPos.y + cDir.y*250, pPos.z + cDir.z*250);
     //add ranPos to randomise spawnpoint
     //This makes object spawn randomly around the point "frontPos"
     //so if that distance to that point is longer than the spawn range of the obstacles
@@ -58,7 +58,7 @@ class ObstacleObject extends GameObject {
       
     //Set new position and add object to scene
     //scale object size, as its very small initially
-    this._mainObject.scale.set(10,10, 1);
+    this._mainObject.scale.set(1,1, 1);
     //why does copy but not set or add work when trying to console.log 
     this._mainObject.position.copy(frontPos); 
     //console.log("position of obst",this._mainObject.position, );
@@ -73,6 +73,7 @@ class ObstacleObject extends GameObject {
   ChangePos(x, y, z) {
     this._mainObject.position.set(x, y, z);
   }
+
 }
 
 export default ObstacleObject;
