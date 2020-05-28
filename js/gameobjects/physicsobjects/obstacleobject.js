@@ -5,8 +5,6 @@ import GameObject from '../../gameobject.js';
 import GameHandler from '../../gamehandler.js';
 
 class ObstacleObject extends GameObject { 
- //public variable to enable changes to position.
-  //obstaclePosition;
   
   constructor(){
     /*
@@ -17,26 +15,24 @@ class ObstacleObject extends GameObject {
     var mat = new THREE.MeshBasicMaterial( { color:	0xff0000 });
     var obst = new THREE.Mesh(geo, mat);
     */
-    var spriteMap = new THREE.TextureLoader().load('../../assets/sprites/asteroid.png');
-    //var spriteMap = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprite1.png');
+    var spriteMap = new THREE.TextureLoader().load('../../assets/sprites/asteroid_1.png');
     var spriteMaterial = new THREE.SpriteMaterial({map: spriteMap});
     var obst = new THREE.Sprite(spriteMaterial);
     
     super(obst); 
-    //create basic object
     //randomise size
     //random spawn
-    //Random int per axis  (range of +/- 100)
+    //Random range via random int per axis.
     let x = THREE.MathUtils.randFloat(-50, 50);
     let y = THREE.MathUtils.randFloat(-50, 50);
     let z = THREE.MathUtils.randFloat(-50, 50);
     let ranPos = new THREE.Vector3(x, y, z);
-    ranPos.clampLength(0, 400); //creates spherical range
+    //ranPos.clampLength(-100, 100); //creates spherical range
 
     //Setting spawn range around player position.
     //add the position onto existing player position?
     let newPos = window.GameHandler.Player.Object.position.clone().add(ranPos); //vector3
-    
+    /*
     //set spawn in front of player 
     //Get direction of camera and add it to player pos
     let pPos = window.GameHandler.Player.Object.position.clone();
@@ -54,13 +50,15 @@ class ObstacleObject extends GameObject {
     frontPos.add(ranPos);
     console.log("player", pPos);
     console.log('camDir', cDir);
-    console.log(frontPos);
-      
+    console.log(newPos);
+      */
+    
     //Set new position and add object to scene
     //scale object size, as its very small initially
-    this._mainObject.scale.set(1,1, 1);
+    this._mainObject.scale.set(1, 1, 1);
     //why does copy but not set or add work when trying to console.log 
-    this._mainObject.position.copy(frontPos); 
+    this._mainObject.position.copy(newPos); 
+    console.log(this._mainObject.position);
     //console.log("position of obst",this._mainObject.position, );
     window.GameHandler.Scene.add(this._mainObject);
   }
@@ -70,8 +68,8 @@ class ObstacleObject extends GameObject {
     super.Main();
   }
 
-  ChangePos(x, y, z) {
-    this._mainObject.position.set(x, y, z);
+  ChangePos(vector3) {
+    this._mainObject.position.copy(vector3);
   }
 
 }

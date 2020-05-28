@@ -91,11 +91,7 @@ class GameHandler {
             });
 
             //test obst spawn
-            //console.log("ob pos", this.#obstacle[0].obstaclePosition);
             this.SpawnNewObstacles(); 
-            this.DistanceCalculation();
-            //let vec = new THREE.Vector3();
-            //console.log(this.Camera.getWorldDirection(vec));
 
             //this.Player.Object.localToWorld(pos);
             //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
@@ -353,57 +349,49 @@ class GameHandler {
         } 
     }
     SpawnNewObstacles(){
-        //Checks distance travelled and every X units create the obstacles. 
-        //If current total distance greater than checkpoint, spawn new obst.
-        /*if (this.#distance > this.#checkPoint) {
-            this.SpawnMultipleObstacles(10);
-            //every 200 units, add obstacle.
-            this.#checkPoint += 200;  
-        }
-        */
        for (var i = 0; i < this.#obstacle.length; i++) {
-            let x = this.#obstacle[i]._mainObject.position.x;
-            let y = this.#obstacle[i]._mainObject.position.y;
-            let z = this.#obstacle[i]._mainObject.position.z;
-            let rx = THREE.MathUtils.randFloat(-50, 50);
-            let ry = THREE.MathUtils.randFloat(-50, 50);
-            let rz = THREE.MathUtils.randFloat(-50, 50);
+            //store obstacle position
+            let x = this.#obstacle[i]._mainObject.position.x, 
+                y = this.#obstacle[i]._mainObject.position.y, 
+                z = this.#obstacle[i]._mainObject.position.z;
+            var obstPos = new THREE.Vector3(x,y,z);
 
-            let pPos = this.#player.Object.position.clone()
-            let vect = new THREE.Vector3(); 
-            let cDir = this.#camera.getWorldDirection(vect); 
-            let frontPos = new THREE.Vector3;
+            //random spawn range per axis
+            let rx = THREE.MathUtils.randFloat(-50, 50),
+                ry = THREE.MathUtils.randFloat(-50, 50),
+                rz = THREE.MathUtils.randFloat(-50, 50);
+            let ranPos = new THREE.Vector3(rx, ry, rz);
+
+            //set spawn in front of player 
+            //Get direction of camera and add it to player position
+            let playerPos = this.#player.Object.position.clone()
+            let vec = new THREE.Vector3(); 
+            let camDir = this.#camera.getWorldDirection(vec); 
+
             //position in front of player
-            frontPos.set(pPos.x+ cDir.x , pPos.y + cDir.y, pPos.z + cDir.z);
+            let frontPos = new THREE.Vector3;
+            //multiply by arbitrary number for distance note: higher it is more vertically displaced it gets. 
+            frontPos.set(playerPos.x+ camDir.x*50 , playerPos.y + camDir.y*50, playerPos.z + camDir.z*50);
+            //add random spawn.
+            frontPos.add(ranPos);
+
             //determine if current object is behind the player.
             this.#camera.updateMatrix();
             this.#camera.updateMatrixWorld(); 
             let frustum = new THREE.Frustum();
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.#camera.projectionMatrix, this.#camera.matrixWorldInverse));
-            var pos = new THREE.Vector3(x,y,z);
+            
             //if not in view 
-            if (!frustum.containsPoint(pos)){
-                this.#obstacle[i].ChangePos(frontPos.x + rx, frontPos.y + ry, frontPos.z + rz);
+            //if point of current object is within camera's view.
+            //if object is close enough, while the player turns camera obstacle won't move. 
+            let dist = playerPos.distance
+            if (!frustum.containsPoint(obstPos) && playerPos.distanceTo(obstPos) > 30){
+                this.#obstacle[i].ChangePos(frontPos);
             }
 
        }
         
     }
-    /*
-    //Useless now due to frustum detection method. 
-    DistanceCalculation(){
-        //seems like not using clone() can affect the actual object when using ceil()
-        //ceil converts to int, since float numbers goes too far.
-        var currPos = this.#player.Object.position.clone().ceil();
-        //if player moves, then add to distance
-        //even if two vectors are same, if statement still goes off, so using length instead.
-        if (currPos.length() != this.#prev.ceil().length()) { 
-            this.#distance += 1; 
-            this.#prev = currPos; 
-            //console.log("distance", this.#distance);      
-        }
-    }
-    */
 
     get Scene() { return this.#scene; }
 
