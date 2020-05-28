@@ -24,7 +24,10 @@ class ParticleSystem {
     _positions;
     _colours;
 
+    _didFlush = false;
+
     //publics
+    Active = true;
 
     //will need to take max num particles, particles per second, origin for spawn (or area for origin of spawn)
     constructor(parent, texture, particleAgeLimit, particlesPerSecond, particleSize) {
@@ -75,6 +78,15 @@ class ParticleSystem {
 
     get Object() {
         return this._points;
+    }
+
+    Flush() {
+        this._didFlush = true;
+        for (let i = this._activeParticles.length - 1; i >= 0; i--) {
+            let particle = this._activeParticles.pop();
+            particle.Deactivate();
+            this._availableParticles.push(particle);
+        }
     }
 }
 

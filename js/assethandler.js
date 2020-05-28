@@ -10,18 +10,22 @@ class AssetHandler {
 
     #fbxAssetPaths = {
         ship: "../assets/SciFi_Fighter.FBX",
+        medium_ship: "../assets/player_ships/medium_ship.fbx",
+        heavy_ship: "../assets/player_ships/heavy_ship.fbx",
         gattling_gun: "../assets/gattling_gun.fbx",
         rail_gun: "../assets/rail_gun.fbx",
         gattling_gun_base_plate: "../assets/guns/gattling_gun/base_plate_origin.fbx",
         gattling_gun_struts: "../assets/guns/gattling_gun/struts_origin.fbx",
         gattling_gun_barrel: "../assets/guns/gattling_gun/barrel_origin.fbx",
-        test: "../assets/testing_testing.fbx"
     }
+
+    //not required at the moment
     #glbAssetPaths = {
-        small_ship: "../assets/player_ships/small_fighter.glb",
-        medium_ship: "../assets/player_ships/medium_fighter.glb",
-        heavy_ship: "../assets/player_ships/large_fighter.glb"
+        // small_ship: "../assets/player_ships/small_fighter.glb",
+        // medium_ship: "../assets/player_ships/medium_fighter.glb",
+        // heavy_ship: "../assets/player_ships/large_fighter.glb"
     }
+
     #shaderPaths = {
         vert: {
             sun: "sun",
@@ -102,7 +106,7 @@ class AssetHandler {
             );
     }
 
-    #downloadImages = (rootPath, rootKey, files = []) => {
+    #downloadImages = (rootPath, rootKey, files) => {
         if (this.LoadedImages[rootKey ?? rootPath] == undefined) {
             this.LoadedImages[rootKey ?? rootPath] = {};
         }
@@ -221,6 +225,14 @@ class AssetHandler {
             { name: "sun_texture.png", size: 395, key: "sunTexture" }
         ];
         this.#downloadImages("assets/sprites/", "sprites", spriteFiles);
+
+        // download the ship textures
+        let shipTextureFiles = [
+            { name: "light_ship_texture.png", size: 326000, key: "lightShipTexture" },
+            { name: "medium_ship_texture.jpg", size: 235000, key: "mediumShipTexture" },
+            { name: "heavy_ship_texture.jpg", size: 375000, key: "heavyShipTexture" }
+        ];
+        this.#downloadImages("assets/player_ships/", "playerShipTextures", shipTextureFiles);
 
         // download all shaders
         this.#downloadShaders();

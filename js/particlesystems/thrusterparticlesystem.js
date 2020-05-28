@@ -202,7 +202,6 @@ class ThrusterParticleSystemGlobalPos extends ParticleSystem {
 class ThrusterParticleSystemLocalPos extends ParticleSystem {
     #spawnTimeCounter = 0;
     #velocity;
-    #velSpread;
     #options;
     #speed = 0;
 
@@ -295,21 +294,28 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
     }
 
     Main(dt) {
-        this.#spawnParticles(dt);
+        if (this.Active) {
+            if (!this._didFlush) {
+                this.#spawnParticles(dt);
 
-        for (let i = this._activeParticles.length - 1; i >= 0; i--) {
-            let particle = this._activeParticles[i];
-            if (particle.IsExpired) {
-                particle.Deactivate();
-                this._activeParticles.splice(i, 1);
-                this._availableParticles.push(particle);
+                for (let i = this._activeParticles.length - 1; i >= 0; i--) {
+                    let particle = this._activeParticles[i];
+                    if (particle.IsExpired) {
+                        particle.Deactivate();
+                        this._activeParticles.splice(i, 1);
+                        this._availableParticles.push(particle);
+                    }
+                    else {
+                        particle.Main(dt);
+                    }
+                }
+                
+                this._geometry.computeBoundingSphere();
             }
             else {
-                particle.Main(dt);
+                this._didFlush = false;
             }
         }
-        
-        this._geometry.computeBoundingSphere();
     }
 
     get Speed() {

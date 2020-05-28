@@ -65,13 +65,18 @@ class GameHandler {
     //private methods
     //NOTE: Due to current lack of support in Chrome for private instance methods we will use private fields that hold methods
     #initialise = () => {
-        this.#mode = this.#modes.INITIALISING;
-        
-        //later can extend this to animate the cursor
-        $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
-        this.#initialiseScene();
-        this.#startGameRunning();
-        window.setTimeout(() => $(".pre-downloader").fadeOut(), 1000);
+        try {
+            this.#mode = this.#modes.INITIALISING;
+            
+            //later can extend this to animate the cursor
+            $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
+            this.#initialiseScene();
+            this.#startGameRunning();
+            window.setTimeout(() => $(".pre-downloader").fadeOut(), 1000);
+        }
+        catch(err) {
+            console.log(err);
+        }
     }
 
     #initialiseScene = () => {
@@ -173,7 +178,10 @@ class GameHandler {
 
     #initialisePlayer = () => {
         let playerMeshes = {
-            ship: this.AssetHandler.LoadedAssets.test.clone(), //this.AssetHandler.LoadedAssets.ship.clone(),
+            // ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
+            // ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            medium_ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
+            heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone(),
             gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
             rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
             gattling_gun_new: {
@@ -183,7 +191,17 @@ class GameHandler {
             }
         };
 
-        this.#player = new PlayerObject(playerMeshes, this.#camera);
+        let playerTextures = {
+            medium_ship: this.AssetHandler.LoadedImages.playerShipTextures.mediumShipTexture,
+            heavy_ship: this.AssetHandler.LoadedImages.playerShipTextures.heavyShipTexture
+        }
+
+        let playerAssets = {
+            meshes: playerMeshes,
+            textures: playerTextures
+        }
+
+        this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
         this.#player.SetupPointerLock();
@@ -229,8 +247,6 @@ class GameHandler {
     }
 
     #setupMainMenuEvents = () => {
-        $('#mainMenu').hide(); //temporary while debugging
-
         $(".menu-button").hover(
             function() {
                 //on hover
@@ -291,6 +307,7 @@ class GameHandler {
 
     #startGameRunning = () => {
         this.#mode = this.#modes.GAMERUNNING;
+        $('#mainMenu').hide(); //temporary while debugging
         // this.#mode = this.#modes.MAINMENU;
         this.#animate();
     }
