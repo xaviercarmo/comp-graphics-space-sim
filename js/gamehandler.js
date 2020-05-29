@@ -34,12 +34,6 @@ class GameHandler {
     #player;
     #sun;
     #obstacle = []; 
-    #distance = 0; 
-    #prev = new THREE.Vector3;
-    #checkPoint = 200; 
-    #material = new THREE.LineBasicMaterial({
-        color: 0xFF0000
-      });
     #geometry = new THREE.Geometry();
     #scene = new THREE.Scene();
 
@@ -375,18 +369,17 @@ class GameHandler {
             //add random spawn.
             frontPos.add(ranPos);
 
-            //determine if current object is behind the player.
+            //determine if current object is within camera view
+            //**Not really checking for objects behind player
             this.#camera.updateMatrix();
             this.#camera.updateMatrixWorld(); 
             let frustum = new THREE.Frustum();
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.#camera.projectionMatrix, this.#camera.matrixWorldInverse));
             
-            //if not in view 
-            //if point of current object is within camera's view.
-            //if object is close enough, while the player turns camera obstacle won't move. 
-            let dist = playerPos.distance
+            //if coordinates of current object is not within camera's view.
+            //and if the object is close enough while the player turns the camera, the object won't move. 
             if (!frustum.containsPoint(obstPos) && playerPos.distanceTo(obstPos) > 30){
-                this.#obstacle[i].ChangePos(frontPos);
+                this.#obstacle[i]._mainObject.position.copy(frontPos);
             }
 
        }

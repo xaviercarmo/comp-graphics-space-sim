@@ -15,7 +15,8 @@ class ObstacleObject extends GameObject {
     var mat = new THREE.MeshBasicMaterial( { color:	0xff0000 });
     var obst = new THREE.Mesh(geo, mat);
     */
-    var spriteMap = new THREE.TextureLoader().load('../../assets/sprites/asteroid_1.png');
+    //var spriteMap = new THREE.TextureLoader().load('../../assets/sprites/asteroid_1.png');
+    var spriteMap = window.GameHandler.AssetHandler.LoadedImages.sprites.asteroidTexture;
     var spriteMaterial = new THREE.SpriteMaterial({map: spriteMap});
     var obst = new THREE.Sprite(spriteMaterial);
     
@@ -32,26 +33,6 @@ class ObstacleObject extends GameObject {
     //Setting spawn range around player position.
     //add the position onto existing player position?
     let newPos = window.GameHandler.Player.Object.position.clone().add(ranPos); //vector3
-    /*
-    //set spawn in front of player 
-    //Get direction of camera and add it to player pos
-    let pPos = window.GameHandler.Player.Object.position.clone();
-    let vect = new THREE.Vector3(); 
-    let cDir = window.GameHandler.Camera.getWorldDirection(vect); 
-
-    //vector to store position
-    let frontPos = new THREE.Vector3;
-    //*100 to set distance of obstacles from player
-    frontPos.set(pPos.x+ cDir.x*250 , pPos.y + cDir.y*250, pPos.z + cDir.z*250);
-    //add ranPos to randomise spawnpoint
-    //This makes object spawn randomly around the point "frontPos"
-    //so if that distance to that point is longer than the spawn range of the obstacles
-    //it'll never spawn behind the player. 
-    frontPos.add(ranPos);
-    console.log("player", pPos);
-    console.log('camDir', cDir);
-    console.log(newPos);
-      */
     
     //Set new position and add object to scene
     //scale object size, as its very small initially
@@ -67,10 +48,11 @@ class ObstacleObject extends GameObject {
   Main(dt){
     super.Main();
   }
-
+  /*
   ChangePos(vector3) {
     this._mainObject.position.copy(vector3);
   }
+  */
 
 }
 

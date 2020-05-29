@@ -207,7 +207,8 @@ class AssetHandler {
         let spriteFiles = [
             { name: "thruster_sprite.png", size: 12000, key: "thrusterSprite" },
             { name: "white_square.png", size: 131, key: "whiteSquare" },
-            { name: "sun_texture.png", size: 395, key: "sunTexture" }
+            { name: "sun_texture.png", size: 395, key: "sunTexture" },
+            { name: "asteroid_1.png", size: 256, key: "asteroidTexture" }
         ];
         this.#downloadImages("assets/sprites/", "sprites", spriteFiles);
 
