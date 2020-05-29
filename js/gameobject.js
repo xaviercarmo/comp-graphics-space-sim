@@ -14,6 +14,12 @@ class GameObject {
         this._mainObject = object;
     }
 
+    _changeMainObject(newObject) {
+        this._objectGroup.remove(this._mainObject);
+        this._mainObject = newObject;
+        this._objectGroup.add(this._mainObject);
+    }
+
     /**
      * Main operations that will pause when game is paused
      * @param {number} dt 

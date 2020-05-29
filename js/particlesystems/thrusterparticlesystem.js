@@ -239,6 +239,7 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
             //just randomising velocity for now, will be customisable later
             //let vel = new THREE.Vector3(Math.random() / 2 - 0.25, Math.random() / 2 - 0.25, 1).multiplyScalar(1);
             let particle = new ThrusterParticle(
+                this.#options.originSpread,
                 new THREE.Vector3(0, 150, 255),
                 this._particleAgeLimit,
                 new THREE.Vector3(),
@@ -329,6 +330,14 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
 }
 
 class ThrusterParticle extends Particle {
+    #blueThreshold;
+
+    constructor(originSpread, colour, ageLimit, velocity, attributes, index) {
+        super(colour, ageLimit, velocity, attributes, index);
+
+        this.#blueThreshold = originSpread.lengthSq() * 0.3;
+    }
+
     Main(dt) {
         this.Age += dt;
         this.PositionStore.add(this.Velocity.clone().multiplyScalar(dt));
@@ -344,7 +353,9 @@ class ThrusterParticle extends Particle {
         //(255, 50, 0) at reddest
         //x = r, y = g, z = b
         let newColour = new THREE.Vector3();
-        if (agePct < 0.25 && Math.abs(this.PositionStore.x) < 0.4) {
+        let positionXY = new THREE.Vector2(this.PositionStore.x, this.PositionStore.y);
+        let distFromCentre = positionXY.lengthSq();
+        if (agePct < 0.4 && distFromCentre < this.#blueThreshold) {
             newColour.x = 255 * agePct;
             newColour.y = 150 - 100 * agePct;
             newColour.z = 255 * (1 - agePct)
