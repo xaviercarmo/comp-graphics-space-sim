@@ -24,6 +24,8 @@ class GameHandler {
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #bloomEnabled = true;
     #bloomComposer = new EffectComposer(this.#renderer);
+    #variableBloomComposer = new EffectComposer(this.#renderer);
+    #variableBloomPass;
     #finalComposer = new EffectComposer(this.#renderer);
     #darkMaterial = new THREE.MeshBasicMaterial( { color: "black" } );
     #materials = {};
@@ -53,8 +55,8 @@ class GameHandler {
 
     //public so that other classes can assign themselves to a layer
     RenderLayers = {
-        BASE: 0,
-        BLOOM: 1
+        BLOOM_STATIC: 1,
+        BLOOM_VARYING: 2
     };
 
     constructor() {
@@ -80,6 +82,10 @@ class GameHandler {
     }
 
     #initialiseScene = () => {
+        this.#setupMainMenuEvents();
+
+        this.#setupPauseMenuEvents();
+
         this.#initialiseRenderer();
 
         this.#initialisePlayer();
@@ -91,17 +97,13 @@ class GameHandler {
 
         this.#initialiseSun();
 
-        this.#setupMainMenuEvents();
-
-        this.#setupPauseMenuEvents();
-
         this.#initialiseGameObjects();
 
         // a cube for testing bloom
         // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
         // let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
         // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-        // randomCube.layers.enable(this.RenderLayers.BLOOM);
+        // randomCube.layers.enable(this.RenderLayers.BLOOM_STATIC);
         // randomCube.position.y += 5;
         // this.#scene.add(randomCube);
     }
@@ -122,32 +124,34 @@ class GameHandler {
         this.#renderer.shadowMap.enabled = true;
         
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
 
         let renderScene = new RenderPass(this.#scene, this.#camera);
         
-        //(resolution, strength, radius, threshold)
         let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.5, 0.0);
-        //bloomPass.threshold = 0.05;
-        //bloomPass.strength = 1.2;
-        //bloomPass.radius = 0.55;
-
         //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
-        this.#bloomComposer.renderToScreen = false; //play around with setting this to true
+        this.#bloomComposer.renderToScreen = false;
         this.#bloomComposer.addPass(renderScene);
         this.#bloomComposer.addPass(bloomPass);
 
+        this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.5, 0.0);
+        this.#variableBloomComposer.renderToScreen = false;
+        this.#variableBloomComposer.addPass(renderScene); //not sure if this is necessary or if can use the output from the bloom pass
+        this.#variableBloomComposer.addPass(this.#variableBloomPass);
+        this.ohBabyBaby = this.#variableBloomPass;
+
         let fxaaPass = new ShaderPass(FXAAShader);
         fxaaPass.uniforms.resolution.value.set(1 / window.innerWidth, 1 / window.innerHeight);
-
         //copies the output of the bloom composer and passes it into the shader as a source
         let finalPassMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 baseTexture: { value: null },
-                bloomTexture: { value: this.#bloomComposer.renderTarget2.texture },
+                bloomTexture: { value: this.#bloomComposer.readBuffer.texture }, //note: readBuffer contains result of last pass in the composer
+                variableBloomTexture: {value: this.#variableBloomComposer.readBuffer.texture }
             },
-            vertexShader: "varying vec2 vUv;\nvoid main() {\n    vUv = uv;\n    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n}",
-            fragmentShader: "uniform sampler2D baseTexture;\n\nuniform sampler2D bloomTexture;\nvarying vec2 vUv; \nvec4 getTexture( sampler2D texelToLinearTexture ) {\n    return mapTexelToLinear( texture2D( texelToLinearTexture , vUv ) );\n}\nvoid main() {\ngl_FragColor = ( getTexture( baseTexture ) + vec4( 1.0 ) * getTexture( bloomTexture ) );\n}",
+            vertexShader: this.AssetHandler.LoadedShaders.vert.baseUv,
+            fragmentShader: this.AssetHandler.LoadedShaders.frag.sceneAndBloomAdditive,
             defines: {}
         });
         let finalPass = new ShaderPass(finalPassMaterial, "baseTexture");
@@ -156,30 +160,13 @@ class GameHandler {
         this.#finalComposer.addPass(renderScene);
         this.#finalComposer.addPass(fxaaPass);
         this.#finalComposer.addPass(finalPass); //need to test swapping this out for a normal render pass (plain vert/frag shaders)
-
-        //old version
-        // let renderPass = new RenderPass(this.#scene, this.#camera);
-
-        //(resolution, strength, radius, threshold)
-        // let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        // bloomPass.threshold = 0.05;
-        // bloomPass.strength = 1.2;
-        // bloomPass.radius = 0.55;
-        // bloomPass.renderToScreen = true;
-
-        // this.#composer.setSize(window.innerWidth, window.innerHeight);
-        // this.#composer.addPass(renderPass);
-        // this.#composer.addPass(bloomPass);
-
-        // this.#renderer.gammaInput = true
-        // this.#renderer.gammaOutput = true
-        // this.#renderer.toneMappingExposure = Math.pow(0.9, 4.0);
     }
 
     #initialisePlayer = () => {
         let playerMeshes = {
             // ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
             // ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            light_ship: this.AssetHandler.LoadedAssets.light_ship.clone(),
             medium_ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
             heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone(),
             gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
@@ -192,6 +179,7 @@ class GameHandler {
         };
 
         let playerTextures = {
+            light_ship: this.AssetHandler.LoadedImages.playerShipTextures.lightShipTexture,
             medium_ship: this.AssetHandler.LoadedImages.playerShipTextures.mediumShipTexture,
             heavy_ship: this.AssetHandler.LoadedImages.playerShipTextures.heavyShipTexture
         }
@@ -242,8 +230,6 @@ class GameHandler {
         dirLight.name = "dirlight";
         dirLight.castShadow = true;
         this.#scene.add(dirLight);
-
-        //this.#sun.Object.layers.enable(this.RenderLayers.BLOOM);
     }
 
     #setupMainMenuEvents = () => {
@@ -291,10 +277,48 @@ class GameHandler {
             }
         });
 
-        //bind hue slider to player's hue
         $('#shipHueSlider').on('input', (event) => {
+            $('#shipSaturationSlider').css('background-image', `linear-gradient(to right, #444, hsl(${event.target.value * 360}, 100%, 50%))`);
+            $('#shipLuminositySlider').css('background-image', `linear-gradient(to right, rgba(0, 0, 0, 0.001), hsl(${event.target.value * 360}, 100%, 50%))`);
             this.#player.ShipHue = event.target.value;
-        })
+        });
+
+        $('#shipSaturationSlider').on('input', (event) => {
+            this.#player.ShipSaturation = event.target.value;
+        });
+
+        $('#shipValueSlider').on('input', (event) => {
+            this.#player.ShipValue = event.target.value;
+        });
+
+        $('#shipLuminositySlider').on('input', (event) => {
+            this.#variableBloomPass.strength = event.target.value * 3;
+        });
+
+        let params = {
+            type: 'double',
+            min: 0,
+            max: 1,
+            from: 0.5,
+            to: 1,
+            step: 0.001,
+            drag_interval: true,
+            skin: 'flat',
+            hide_min_max: true,
+            onChange: (data) => {
+                this.#player.ShipHueMask = new THREE.Vector2(data.from, data.to);
+            }
+        };
+
+        //setup ion sliders
+        $('#shipHueMaskSlider').ionRangeSlider(params);
+
+        params.from = 0;
+        params.onChange = (data) => { this.#player.ShipSaturationMask = new THREE.Vector2(data.from, data.to); };
+        $('#shipSaturationMaskSlider').ionRangeSlider(params);
+
+        params.onChange = (data) => { this.#player.ShipValueMask = new THREE.Vector2(data.from, data.to); };
+        $('#shipValueMaskSlider').ionRangeSlider(params);
     }
 
     #initialiseGameObjects = () => {
@@ -370,7 +394,13 @@ class GameHandler {
         if (this.#bloomEnabled) {
             this.#darkenNonBloomTargets();
             this.#bloomComposer.render();
-            this.#restoreNonBloomTargets();
+            this.#restoreOriginalMaterials();
+
+            this.#materials = [];
+            this.#darkenOrMaskNonVariableBloomTargets();
+            this.#variableBloomComposer.render();
+            this.#restoreOriginalMaterials();
+
             this.#finalComposer.render();
         }
         else {
@@ -379,24 +409,45 @@ class GameHandler {
     }
 
     #darkenNonBloomTargets = () => {
-        let bloomLayer = new THREE.Layers();
-        bloomLayer.set(this.RenderLayers.BLOOM);
-        //console.log(bloomLayer);
         this.#scene.traverse(obj => {
-            if (obj.material && obj.layers && !(obj.layers.mask & (this.RenderLayers.BLOOM + 1))){//bloomLayer.test(obj.layers) === false) {
+            if (obj.material && obj.layers && !this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_STATIC)){
                 this.#materials[obj.uuid] = obj.material;
                 obj.material = this.#darkMaterial;
             }
         });
     }
 
-    #restoreNonBloomTargets = () => {
+    #darkenOrMaskNonVariableBloomTargets = () => {
+        this.#scene.traverse(obj => {
+            if (obj.material && obj.layers) {
+                // if this object is part of the bloom_varying layer and it is set up properly mask out fragments
+                // that should not be bloomed
+                if (this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_VARYING) && obj.setMaskInverse) {
+                    obj.setMaskInverse(true);
+                }
+                // otherwise just darken the material
+                else {
+                    this.#materials[obj.uuid] = obj.material;
+                    obj.material = this.#darkMaterial;
+                }
+            }
+        });
+    }
+
+    #restoreOriginalMaterials = () => {
         this.#scene.traverse(obj => {
             if (this.#materials[obj.uuid]) {
                 obj.material = this.#materials[obj.uuid];
                 delete this.#materials[obj.uuid];
             }
+            else {
+                obj.setMaskInverse?.(false);
+            }
         });
+    }
+
+    #testRenderLayer = (mask, layer) => {
+        return mask & Math.pow(2, layer);
     }
     
     //public methods

@@ -15,8 +15,9 @@ class SunObject extends GameObject {
             fragmentShader: window.GameHandler.AssetHandler.LoadedShaders.frag.sun
         });
 
-        let geometry = new THREE.IcosahedronGeometry(15_000, 5);
+        let geometry = new THREE.IcosahedronGeometry(8000, 5);
         let sphere = new THREE.Mesh(geometry, material);
+        sphere.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         super(sphere);
 

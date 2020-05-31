@@ -10,6 +10,7 @@ class AssetHandler {
 
     #fbxAssetPaths = {
         ship: "../assets/SciFi_Fighter.FBX",
+        light_ship: "../assets/player_ships/light_ship.fbx",
         medium_ship: "../assets/player_ships/medium_ship.fbx",
         heavy_ship: "../assets/player_ships/heavy_ship.fbx",
         gattling_gun: "../assets/gattling_gun.fbx",
@@ -28,10 +29,12 @@ class AssetHandler {
 
     #shaderPaths = {
         vert: {
+            baseUv: "baseUv",
             sun: "sun",
             particle: "particle"
         },
         frag: {
+            sceneAndBloomAdditive: "sceneAndBloomAdditive",
             sun: "sun",
             particle: "particle"
         }

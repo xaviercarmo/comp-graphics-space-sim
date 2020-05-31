@@ -18591,7 +18591,7 @@ function WebGLPrograms( renderer, extensions, capabilities ) {
 
 		var shaderobject = getShaderObject( material, shaderID );
 		material.onBeforeCompile( shaderobject, renderer );
-
+		
 		var currentRenderTarget = renderer.getRenderTarget();
 
 		var parameters = {
