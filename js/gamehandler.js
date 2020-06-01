@@ -7,12 +7,14 @@ import GameObject from './gameobject.js';
 import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import SunObject from './gameobjects/sun.js';
+import AsteroidObject from './gameobjects/physicsobjects/asteroids.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
 import { RenderPass } from '../libraries/RenderPass.js';
 import { ShaderPass } from '../libraries/ShaderPass.js';
 import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
 import { FXAAShader } from '../libraries/FXAAShader.js';
+
 
 class GameHandler {
     //debug
@@ -90,6 +92,8 @@ class GameHandler {
         this.#initialiseSkyBox();
 
         this.#initialiseSun();
+
+        this.#initialiseAsteroid(); 
 
         this.#setupMainMenuEvents();
 
@@ -244,6 +248,13 @@ class GameHandler {
         this.#scene.add(dirLight);
 
         //this.#sun.Object.layers.enable(this.RenderLayers.BLOOM);
+    }
+
+    #initialiseAsteroid = () => {
+        //Testing method - check if object appears in scene. 
+        let asteroid = new AsteroidObject(); 
+        this.AddGameObject(asteroid); 
+
     }
 
     #setupMainMenuEvents = () => {
