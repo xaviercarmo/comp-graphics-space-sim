@@ -29,6 +29,8 @@ class GameHandler {
     #finalComposer = new EffectComposer(this.#renderer);
     #darkMaterial = new THREE.MeshBasicMaterial( { color: "black" } );
     #materials = {};
+    #bloomLights = {};
+    #nonBloomLightIntensities = {};
 
     #clock = new THREE.Clock();
 
@@ -47,6 +49,7 @@ class GameHandler {
 
     #player;
     #sun;
+    #sunLight;
 
     #scene = new THREE.Scene();
 
@@ -129,11 +132,13 @@ class GameHandler {
 
         let renderScene = new RenderPass(this.#scene, this.#camera);
         
-        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.5, 0.0);
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.6, 0.0);
         //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
         this.#bloomComposer.renderToScreen = false;
         this.#bloomComposer.addPass(renderScene);
         this.#bloomComposer.addPass(bloomPass);
+
+        this.jizz = bloomPass;
 
         this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.5, 0.0);
         this.#variableBloomComposer.renderToScreen = false;
@@ -224,12 +229,13 @@ class GameHandler {
         
         let ambientLight = new THREE.AmbientLight( 0xabfff8, 0.7 );
         this.#scene.add(ambientLight);
+        this.RegisterBloomLight(ambientLight);
 
-        var dirLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
-        dirLight.position.copy(this.#sun.Position)
-        dirLight.name = "dirlight";
-        dirLight.castShadow = true;
-        this.#scene.add(dirLight);
+        this.#sunLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
+        this.#sunLight.position.copy(this.#sun.Position)
+        this.#sunLight.name = "dirlight";
+        this.#sunLight.castShadow = true;
+        this.#scene.add(this.#sunLight);
     }
 
     #setupMainMenuEvents = () => {
@@ -292,7 +298,7 @@ class GameHandler {
         });
 
         $('#shipLuminositySlider').on('input', (event) => {
-            this.#variableBloomPass.strength = event.target.value * 3;
+            this.#variableBloomPass.strength = event.target.value;
         });
 
         let params = {
@@ -392,20 +398,41 @@ class GameHandler {
         INPUT.FlushKeyPressedOnce();
         
         if (this.#bloomEnabled) {
+            this.#turnOffNonBloomLights();
+
             this.#darkenNonBloomTargets();
             this.#bloomComposer.render();
             this.#restoreOriginalMaterials();
 
-            this.#materials = [];
             this.#darkenOrMaskNonVariableBloomTargets();
             this.#variableBloomComposer.render();
             this.#restoreOriginalMaterials();
+
+            this.#restoreNonBloomLights();
 
             this.#finalComposer.render();
         }
         else {
             this.#renderer.render(this.#scene, this.#camera);
         }
+    }
+
+    #turnOffNonBloomLights = () => {
+        this.#scene.traverse(obj => {
+            if (obj instanceof THREE.Light && !this.#bloomLights[obj.uuid]) {
+                this.#nonBloomLightIntensities[obj.uuid] = obj.intensity;
+                obj.intensity = 0;
+            }
+        });
+    }
+
+    #restoreNonBloomLights = () => {
+        this.#scene.traverse(obj => {
+            if (this.#nonBloomLightIntensities[obj.uuid]) {
+                obj.intensity = this.#nonBloomLightIntensities[obj.uuid];
+                delete this.#nonBloomLightIntensities[obj.uuid];
+            }
+        });
     }
 
     #darkenNonBloomTargets = () => {
@@ -504,6 +531,12 @@ class GameHandler {
 
         //hide hangar menu
         $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
+    }
+
+    RegisterBloomLight(light) {
+        if (light instanceof THREE.Light) {
+            this.#bloomLights[light.uuid] = light;
+        }
     }
 
     get Scene() { return this.#scene; }

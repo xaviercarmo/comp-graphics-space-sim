@@ -330,6 +330,7 @@ class PlayerObject extends PhysicsObject {
 
                 child.material.onBeforeCompile = function(shader) {
                     shadersArray.push(shader);
+                    console.log(shader);
 
                     child.setMaskInverse = function(value) {
                         shader.uniforms.uMaskInverse.value = value;
@@ -396,8 +397,6 @@ class PlayerObject extends PhysicsObject {
                             '\t#endif'
                         ].join('\n')
                     );
-
-                    //create a clone of the material with a different onBeforeCompile that has a version of the shader that blacks out everything outside of the hsv mask, store it 
                 }
 
                 child.material.needsUpdate = true;
@@ -791,8 +790,8 @@ class PlayerObject extends PhysicsObject {
             }
         });
 
-        let newIntensity = 4.5 * this.#targetSpeed / this.#currentShipStats.maxSpeed * (0.8 + Math.random() * 0.5);
-        Object.values(this.#thrusterLights).forEach(lightObj => lightObj.light.intensity = newIntensity);
+        // let newIntensity = 4.5 * this.#targetSpeed / this.#currentShipStats.maxSpeed * (0.8 + Math.random() * 0.5);
+        // Object.values(this.#thrusterLights).forEach(lightObj => lightObj.light.intensity = newIntensity);
     }
 
     #handleMouseMove = (event) => {
@@ -967,6 +966,8 @@ class PlayerObject extends PhysicsObject {
 
         this.Object.updateWorldMatrix(true, true);
         Object.values(this.#currentThrusters).forEach(thruster => thruster.system?.Main?.(dt));
+        let newIntensity = 4.5 * this.#targetSpeed / this.#currentShipStats.maxSpeed * (0.8 + Math.random() * 0.5);
+        Object.values(this.#thrusterLights).forEach(lightObj => lightObj.light.intensity = newIntensity);
 
         Object.values(this.#currentGuns).forEach(gunObj => {
             gunObj.gun.Firing = INPUT.KeyPressed("leftMouse");

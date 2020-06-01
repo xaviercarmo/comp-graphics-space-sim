@@ -1,4 +1,4 @@
-// src: https://github.com/mrdoob/three.js/blob/master/examples/webgl_postprocessing_unreal_bloom_selective.html
+// adapted from: https://github.com/mrdoob/three.js/blob/master/examples/webgl_postprocessing_unreal_bloom_selective.html
 
 uniform sampler2D baseTexture;
 uniform sampler2D bloomTexture;
