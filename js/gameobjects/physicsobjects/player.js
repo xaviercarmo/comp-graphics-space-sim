@@ -202,10 +202,28 @@ class PlayerObject extends PhysicsObject {
 
     //appearance
     #shipShaders = {};
-    #shipHue = 0.08;
-    #shipSaturation = 1;
-    #shipValue = 0.5;
-    #shipLuminosity = 0;
+    _lightShipSettings = {
+        hsv: new THREE.Vector3(0.08, 1, 0),
+        luminosity: 2,
+        hMask: new THREE.Vector2(0, 1),
+        sMask: new THREE.Vector2(0.556, 1),
+        vMask: new THREE.Vector2(0.146, 1)
+    };
+    _mediumShipSettings = {
+        hsv: new THREE.Vector3(0.5, 1, 0),
+        luminosity: 2,
+        hMask: new THREE.Vector2(0, 1),
+        sMask: new THREE.Vector2(0, 0.163),
+        vMask: new THREE.Vector2(0.579, 1)
+    };
+    _heavyShipSettings = {
+        hsv: new THREE.Vector3(0.08, 1, 0),
+        luminosity: 2,
+        hMask: new THREE.Vector2(0.08, 0.3),
+        sMask: new THREE.Vector2(0.3, 1),
+        vMask: new THREE.Vector2(0.2, 1)
+    };
+    #currentShipSettings;
 
     //debug
     //#debugLine = new UTILS.RedDebugLine();
@@ -287,50 +305,46 @@ class PlayerObject extends PhysicsObject {
             this._lightShip,
             this.#textures.light_ship,
             this.#shipShaders[this.#classes.LIGHT],
-            100,
-            new THREE.Vector3(0.08, 1, 0),
-            new THREE.Vector2(0, 1),
-            new THREE.Vector2(0.556, 1),
-            new THREE.Vector2(0.146, 1)
+            this._lightShipSettings.hsv,
+            this._lightShipSettings.hMask,
+            this._lightShipSettings.sMask,
+            this._lightShipSettings.vMask
         );
 
         this.#setupShipMaterial(
             this._mediumShip,
             this.#textures.medium_ship,
             this.#shipShaders[this.#classes.MEDIUM],
-            100,
-            new THREE.Vector3(0.5, 1, 0),
-            new THREE.Vector2(0, 1),
-            new THREE.Vector2(0, 0.163),
-            new THREE.Vector2(0.579, 1)
+            this._mediumShipSettings.hsv,
+            this._mediumShipSettings.hMask,
+            this._mediumShipSettings.sMask,
+            this._mediumShipSettings.vMask
         );
 
         this.#setupShipMaterial(
             this._heavyShip,
             this.#textures.heavy_ship,
             this.#shipShaders[this.#classes.HEAVY],
-            100,
-            new THREE.Vector3(0.08, 1, 0),
-            new THREE.Vector2(0.08, 0.3),
-            new THREE.Vector2(0.3, 1),
-            new THREE.Vector2(0.2, 1)
+            this._heavyShipSettings.hsv,
+            this._heavyShipSettings.hMask,
+            this._heavyShipSettings.sMask,
+            this._heavyShipSettings.vMask
         );
     }
 
-    #setupShipMaterial = (object, texture, shadersArray, shininess, initialHsv, hueMask, saturationMask = new THREE.Vector2(0.3, 1), valueMask = new THREE.Vector2(0, 1)) => {
+    #setupShipMaterial = (object, texture, shadersArray, initialHsv, hueMask, saturationMask = new THREE.Vector2(0.3, 1), valueMask = new THREE.Vector2(0, 1)) => {
         object.traverse(function(child) {
             if (child.isMesh) {
                 // apply texture
                 child.material.map = texture;
 
-                child.material.shininess = shininess;
+                child.material.shininess = 100;
                 child.material.specular.set(0x63cfff);
 
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_VARYING);
 
                 child.material.onBeforeCompile = function(shader) {
                     shadersArray.push(shader);
-                    console.log(shader);
 
                     child.setMaskInverse = function(value) {
                         shader.uniforms.uMaskInverse.value = value;
@@ -944,6 +958,16 @@ class PlayerObject extends PhysicsObject {
         this.#crosshairSprites["sometimes/tr"].material.opacity = opacity;
     }
 
+    //make lum slider update player's settings
+    #refreshShaderUniformsFromSettings = () => {
+        this.#shipShaders[this.#currentClass].forEach(shader => {
+            shader.uniforms.uHSV.value = this.#currentShipSettings.hsv;
+            shader.uniforms.uHueMask.value = this.#currentShipSettings.hMask;
+            shader.uniforms.uSaturationMask.value = this.#currentShipSettings.sMask;
+            shader.uniforms.uValueMask.value = this.#currentShipSettings.vMask;
+        });
+    }
+
     //public methods
     Main(dt) {
         super.Main(dt);
@@ -1148,64 +1172,44 @@ class PlayerObject extends PhysicsObject {
         }
     }
 
-    get ShipHue() {
-        return this.#shipHue;
-    }
-
     set ShipHue(hue) {
-        this.#shipHue = UTILS.LimitToRange(hue, 0, 1);
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.uHSV.value.x = this.#shipHue);
-    }
-
-    get ShipSaturation() {
-        return this.#shipSaturation;
+        this.#currentShipSettings.hsv.x = UTILS.LimitToRange(hue, 0, 1);
+        this.#refreshShaderUniformsFromSettings();
     }
 
     set ShipSaturation(saturation) {
-        this.#shipSaturation = UTILS.LimitToRange(saturation, 0, 1);
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.uHSV.value.y = this.#shipSaturation);
-    }
-
-    get ShipValue() {
-        return this.#shipValue;
+        this.#currentShipSettings.hsv.y = UTILS.LimitToRange(saturation, 0, 1);
+        this.#refreshShaderUniformsFromSettings();
     }
 
     set ShipValue(value) {
-        this.#shipValue = UTILS.LimitToRange(value, -1, 1);
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.uHSV.value.z = this.#shipValue);
-    }
-
-    get ShipLuminosity() {
-        return this.#shipLuminosity;
+        this.#currentShipSettings.hsv.z = UTILS.LimitToRange(value, -1, 1);
+        this.#refreshShaderUniformsFromSettings();
     }
 
     set ShipLuminosity(luminosity) {
-        this.#shipLuminosity = UTILS.LimitToRange(luminosity, 0, 1);
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.shipColourLuminosity.value = this.#shipLuminosity);
+        this.#currentShipSettings.luminosity = UTILS.LimitToRange(luminosity, 0, 1);
     }
     
-    get ShipHueMask() {
-        return this.#shipShaders[this.#currentClass][0]?.uniforms.uHueMask.value.clone();
-    }
-
     set ShipHueMask(mask) {
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.uHueMask.value = mask);
-    }
-
-    get ShipSaturationMask() {
-        return this.#shipShaders[this.#currentClass][0]?.uniforms.uSaturationMask.value.clone();
+        if (mask instanceof THREE.Vector2) {
+            this.#currentShipSettings.hMask = mask;
+            this.#refreshShaderUniformsFromSettings();
+        }
     }
 
     set ShipSaturationMask(mask) {
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.uSaturationMask.value = mask);
-    }
-
-    get ShipValueMask() {
-        return this.#shipShaders[this.#currentClass][0]?.uniforms.uValueMask.value.clone();
+        if (mask instanceof THREE.Vector2) {
+            this.#currentShipSettings.sMask = mask;
+            this.#refreshShaderUniformsFromSettings();
+        }
     }
 
     set ShipValueMask(mask) {
-        this.#shipShaders[this.#currentClass].forEach(shader => shader.uniforms.uValueMask.value = mask);
+        if (mask instanceof THREE.Vector2) {
+            this.#currentShipSettings.vMask = mask;
+            this.#refreshShaderUniformsFromSettings();
+        }
     }
 
     /**
@@ -1254,20 +1258,27 @@ class PlayerObject extends PhysicsObject {
             Object.values(this.#currentGuns).forEach(gunObj => gunObj.gun.Flush());
             this.#currentGuns = this[`_${this.#currentClass}Guns`];
 
-            // update the sliders to have current uniforms values
-            $('.js-range-slider').data('ionRangeSlider').update({
-                from: this.ShipHueMask?.x ?? 0,
-                to: this.ShipHueMask?.y ?? 1
-            });
+            // set the current settings object
+            this.#currentShipSettings = this[`_${this.#currentClass}ShipSettings`];
 
+            // update the hsv and luminosity sliders to have current values
+            $('#shipHueSlider').val(this.#currentShipSettings.hsv.x);
+            $('#shipSaturationSlider').val(this.#currentShipSettings.hsv.y);
+            $('#shipValueSlider').val(this.#currentShipSettings.hsv.z);
+            $('#shipLuminositySlider').val(this.#currentShipSettings.luminosity);
+
+            // update the masking sliders to have current values
+            $('#shipHueMaskSlider').data('ionRangeSlider').update({
+                from: this.#currentShipSettings.hMask.x,
+                to: this.#currentShipSettings.hMask.y
+            });
             $('#shipSaturationMaskSlider').data('ionRangeSlider').update({
-                from: this.ShipSaturationMask?.x ?? 0,
-                to: this.ShipSaturationMask?.y ?? 1
+                from: this.#currentShipSettings.sMask.x,
+                to: this.#currentShipSettings.sMask.y
             });
-
             $('#shipValueMaskSlider').data('ionRangeSlider').update({
-                from: this.ShipValueMask?.x ?? 0,
-                to: this.ShipValueMask?.y ?? 1
+                from: this.#currentShipSettings.vMask.x,
+                to: this.#currentShipSettings.vMask.y
             });
         }
         else {

@@ -298,6 +298,7 @@ class GameHandler {
         });
 
         $('#shipLuminositySlider').on('input', (event) => {
+            this.#player.ShipLuminosity = event.target.value;
             this.#variableBloomPass.strength = event.target.value;
         });
 
