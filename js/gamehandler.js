@@ -93,8 +93,8 @@ class GameHandler {
 
         this.#initialisePlayer();
 
-        let gridHelper = new THREE.GridHelper(5000, 100);
-        this.#scene.add(gridHelper);
+        // let gridHelper = new THREE.GridHelper(5000, 100);
+        // this.#scene.add(gridHelper);
 
         this.#initialiseSkyBox();
 
@@ -140,15 +140,15 @@ class GameHandler {
 
         this.jizz = bloomPass;
 
-        this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.5, 0.0);
+        this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2, 0.5, 0.0);
         this.#variableBloomComposer.renderToScreen = false;
-        this.#variableBloomComposer.addPass(renderScene); //not sure if this is necessary or if can use the output from the bloom pass
+        this.#variableBloomComposer.addPass(renderScene);
         this.#variableBloomComposer.addPass(this.#variableBloomPass);
-        this.ohBabyBaby = this.#variableBloomPass;
 
         let fxaaPass = new ShaderPass(FXAAShader);
         fxaaPass.uniforms.resolution.value.set(1 / window.innerWidth, 1 / window.innerHeight);
-        //copies the output of the bloom composer and passes it into the shader as a source
+
+        // the final pass composites the results of the bloom passes with the actual rendered scene
         let finalPassMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 baseTexture: { value: null },
@@ -164,7 +164,7 @@ class GameHandler {
 
         this.#finalComposer.addPass(renderScene);
         this.#finalComposer.addPass(fxaaPass);
-        this.#finalComposer.addPass(finalPass); //need to test swapping this out for a normal render pass (plain vert/frag shaders)
+        this.#finalComposer.addPass(finalPass);
     }
 
     #initialisePlayer = () => {
@@ -538,6 +538,10 @@ class GameHandler {
         if (light instanceof THREE.Light) {
             this.#bloomLights[light.uuid] = light;
         }
+    }
+
+    SetVariableBloomPassStrength(strength) {
+        this.#variableBloomPass.strength = strength;
     }
 
     get Scene() { return this.#scene; }

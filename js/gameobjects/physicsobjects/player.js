@@ -3,6 +3,7 @@ import * as INPUT from '../../input.js';
 import * as UTILS from '../../utils.js';
 
 import PhysicsObject from '../physics.js';
+import RockParticleCloud from '../../rockparticlecloud.js';
 
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
@@ -161,6 +162,7 @@ class PlayerObject extends PhysicsObject {
     #textures;
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
+    #rockParticleCloud;
 
     //classes
     #classes = {
@@ -204,21 +206,21 @@ class PlayerObject extends PhysicsObject {
     #shipShaders = {};
     _lightShipSettings = {
         hsv: new THREE.Vector3(0.08, 1, 0),
-        luminosity: 2,
+        luminosity: 0,
         hMask: new THREE.Vector2(0, 1),
         sMask: new THREE.Vector2(0.556, 1),
         vMask: new THREE.Vector2(0.146, 1)
     };
     _mediumShipSettings = {
         hsv: new THREE.Vector3(0.5, 1, 0),
-        luminosity: 2,
+        luminosity: 0,
         hMask: new THREE.Vector2(0, 1),
         sMask: new THREE.Vector2(0, 0.163),
         vMask: new THREE.Vector2(0.579, 1)
     };
     _heavyShipSettings = {
         hsv: new THREE.Vector3(0.08, 1, 0),
-        luminosity: 2,
+        luminosity: 0,
         hMask: new THREE.Vector2(0.08, 0.3),
         sMask: new THREE.Vector2(0.3, 1),
         vMask: new THREE.Vector2(0.2, 1)
@@ -242,6 +244,8 @@ class PlayerObject extends PhysicsObject {
         this.#setupCrosshair();
 
         window.addEventListener("wheel", this.#handleScroll);
+
+        this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
     }
 
     #setupCamera = (camera) => {
@@ -997,6 +1001,8 @@ class PlayerObject extends PhysicsObject {
             gunObj.gun.Firing = INPUT.KeyPressed("leftMouse");
             gunObj.gun.Main(dt);
         });
+
+        this.#rockParticleCloud.Main(dt);
     }
 
     MainNoPause(dt) {
@@ -1266,6 +1272,7 @@ class PlayerObject extends PhysicsObject {
             $('#shipSaturationSlider').val(this.#currentShipSettings.hsv.y);
             $('#shipValueSlider').val(this.#currentShipSettings.hsv.z);
             $('#shipLuminositySlider').val(this.#currentShipSettings.luminosity);
+            window.GameHandler.SetVariableBloomPassStrength(this.#currentShipSettings.luminosity);
 
             // update the masking sliders to have current values
             $('#shipHueMaskSlider').data('ionRangeSlider').update({
