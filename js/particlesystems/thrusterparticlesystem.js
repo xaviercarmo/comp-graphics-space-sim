@@ -282,7 +282,7 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
                     this._activeParticles.push(activatedParticle);
                 }
                 else {
-                    console.log("ERROR: NOT ENOUGH PARTICLES FOR SYSTEM");
+                    console.warn("WARNING: NOT ENOUGH PARTICLES FOR SYSTEM");
                 }
     
                 this.#spawnTimeCounter -= this._spawnTimeInterval;
@@ -296,8 +296,6 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
     Main(dt) {
         if (this.Active) {
             if (!this._didFlush) {
-                this.#spawnParticles(dt);
-
                 for (let i = this._activeParticles.length - 1; i >= 0; i--) {
                     let particle = this._activeParticles[i];
                     if (particle.IsExpired) {
@@ -309,6 +307,8 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
                         particle.Main(dt);
                     }
                 }
+
+                this.#spawnParticles(dt);
                 
                 this._geometry.computeBoundingSphere();
             }
