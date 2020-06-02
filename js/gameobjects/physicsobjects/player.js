@@ -163,6 +163,13 @@ class PlayerObject extends PhysicsObject {
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
     #rockParticleCloud;
+    #saveId;
+    #savedKeys = [
+        '_currentClass',
+        '_lightShipSettings',
+        '_mediumShipSettings',
+        '_heavyShipSettings'
+    ];
 
     //classes
     #classes = {
@@ -170,7 +177,7 @@ class PlayerObject extends PhysicsObject {
         MEDIUM: 'medium',
         HEAVY: 'heavy'
     };
-    #currentClass = this.#classes.HEAVY;
+    _currentClass = this.#classes.HEAVY;
 
     //ship models
     _lightShip = new THREE.Object3D();
@@ -212,8 +219,8 @@ class PlayerObject extends PhysicsObject {
         vMask: new THREE.Vector2(0.146, 1)
     };
     _mediumShipSettings = {
-        hsv: new THREE.Vector3(0.5, 1, 0),
-        luminosity: 0,
+        hsv: new THREE.Vector3(0.08/*nice: 0.46*/, 1, 0.64),
+        luminosity: 0, //nice: 1.15,
         hMask: new THREE.Vector2(0, 1),
         sMask: new THREE.Vector2(0, 0.163),
         vMask: new THREE.Vector2(0.579, 1)
@@ -227,6 +234,12 @@ class PlayerObject extends PhysicsObject {
     };
     #currentShipSettings;
 
+    //publics
+    InputEnabled = true;
+    
+    //statics
+    static SaveGamePrefix = 'playerSave-';
+    
     //debug
     //#debugLine = new UTILS.RedDebugLine();
 
@@ -236,7 +249,7 @@ class PlayerObject extends PhysicsObject {
         this.#meshes = assets.meshes;
         this.#textures = assets.textures;
 
-        this.#setupShipClasses(this.#classes.HEAVY);
+        this.#setupShipClasses(this.#classes.MEDIUM);
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
         this.#setupCamera(camera);
@@ -279,11 +292,10 @@ class PlayerObject extends PhysicsObject {
     }
 
     #setupShipClasses = (defaultClass) => {
-        this._lightShip.add(this.#meshes.light_ship)
+        this._lightShip.add(this.#meshes.light_ship);
         this.#meshes.light_ship.scale.set(4.3, 4.3, 4.3);
 
         this._mediumShip.add(this.#meshes.medium_ship);
-        // this._mediumShip.scale.set(0.043, 0.043, 0.043);
         this.#meshes.medium_ship.scale.set(4.3, 4.3, 4.3);
 
         this._heavyShip = this.#meshes.heavy_ship;
@@ -339,10 +351,12 @@ class PlayerObject extends PhysicsObject {
     #setupShipMaterial = (object, texture, shadersArray, initialHsv, hueMask, saturationMask = new THREE.Vector2(0.3, 1), valueMask = new THREE.Vector2(0, 1)) => {
         object.traverse(function(child) {
             if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+
                 // apply texture
                 child.material.map = texture;
-
-                child.material.shininess = 100;
+                child.material.shininess = 1000;
                 child.material.specular.set(0x63cfff);
 
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_VARYING);
@@ -426,8 +440,6 @@ class PlayerObject extends PhysicsObject {
         this.#setupLightShipThrusters();
         this.#setupMediumShipThrusters();
         this.#setupHeavyShipThrusters();
-        
-        this.#setupThrusterLights();
     }
 
     #setupLightShipThrusters = () => {
@@ -542,7 +554,6 @@ class PlayerObject extends PhysicsObject {
         setupMediumThruster(this._mediumThrusters.mid_right, thrusterPos, thrusterDir);
     }
 
-    //have restructured the whole system so need to change this to setup all the thrusters for all the classes...
     #setupHeavyShipThrusters = () => {
         let extraOptions = {
             velSpread: new THREE.Vector3(5, 5, 0),
@@ -581,16 +592,6 @@ class PlayerObject extends PhysicsObject {
         setupHeavyThruster(this._heavyThrusters.top_right, thrusterPos, thrusterDir);
     }
 
-    //creates and initialises the thruster lights based on the current ship class
-    #setupThrusterLights = () => {
-        Object.values(this.#thrusterLights).forEach(lightObj => lightObj.light.castShadow = true);
-
-        // var sphereSize = 0.25;
-        // var pointLightHelper = new THREE.PointLightHelper(this.#thrusterLights.left.light, sphereSize);
-        // window.GameHandler.Scene.add( pointLightHelper );
-    }
-
-    // sets up all guns for all classes
     #setupGuns = () => {
         this.#setupLightGuns();
         this.#setupMediumGuns();
@@ -601,6 +602,7 @@ class PlayerObject extends PhysicsObject {
         let bulletGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
         let bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         let bullet = new THREE.Mesh(bulletGeo, bulletMat);
+        bullet.castShadow = true;
         bullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         let gunBulletSpeed = 750;
@@ -617,6 +619,7 @@ class PlayerObject extends PhysicsObject {
         let bulletGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
         let bulletMat = new THREE.MeshBasicMaterial({ color: 0x8000ff });
         let bullet = new THREE.Mesh(bulletGeo, bulletMat);
+        bullet.castShadow = true;
         bullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         let gunBulletSpeed = 750;
@@ -638,15 +641,17 @@ class PlayerObject extends PhysicsObject {
         let smallBulletGeo = new THREE.SphereBufferGeometry(0.4, 30, 30);
         let smallBulletMat = new THREE.MeshBasicMaterial({ color: 0xff7700 });
         let smallBullet = new THREE.Mesh(smallBulletGeo, smallBulletMat);
+        smallBullet.castShadow = true;
         smallBullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         let largeBulletGeo = new THREE.SphereBufferGeometry(0.8, 30, 30);
         let largeBulletMat = new THREE.MeshBasicMaterial({ color: 0x73ff00 });
         let largeBullet = new THREE.Mesh(largeBulletGeo, largeBulletMat);
+        largeBullet.castShadow = true;
         largeBullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         let smallGunBulletSpeed = 1000;
-        let smallGunFireRate = 5;
+        let smallGunFireRate = 8;
 
         let bigGunBulletSpeed = 450;
         let bigGunFireRate = 2;
@@ -684,8 +689,8 @@ class PlayerObject extends PhysicsObject {
 
         this.#cameraPositions.HANGAR = {
             name: "HANGAR",
-            posnTarg: new THREE.Vector3(),
-            lookTarg: new THREE.Vector3()
+            posnTarg: new THREE.Vector3(1, 2.5, 7.5),
+            lookTarg: new THREE.Vector3(-0.5, 1.5, 5)
         }
 
         this.#cameraPositions.HANGAR_GUN_SLOT = {
@@ -718,9 +723,12 @@ class PlayerObject extends PhysicsObject {
         	this.#cameraPositions.FOLLOW.posnTarg
         ]);
 
-        this.#cameraTransitionCurves.FOLLOW_HANGAR = {
-            //needs to be implemented
-        }
+        this.#cameraTransitionCurves.FOLLOW_HANGAR = new THREE.CatmullRomCurve3([
+        	this.#cameraPositions.FOLLOW.posnTarg,
+        	new THREE.Vector3(7.5, 3.4, 0),
+            new THREE.Vector3(5, 2.9, 6),
+        	this.#cameraPositions.HANGAR.posnTarg
+        ]);
 
         this.#cameraTransitionCurves.HANGAR_HANGAR_GUN_SLOT = {
             //needs to be implemented
@@ -785,7 +793,7 @@ class PlayerObject extends PhysicsObject {
     }
 
     #handleScroll = (event) => {
-        if (!window.GameHandler.IsPaused && event.deltaY != 0) {
+        if (!window.GameHandler.IsPaused && event.deltaY != 0 && this.InputEnabled) {
             //initialise a scrollDelta so we know how much their mouse wheel is scrolling each time
             if (this.#scrollDelta == 0) {
                 this.#scrollDelta = Math.abs(event.deltaY);
@@ -807,13 +815,10 @@ class PlayerObject extends PhysicsObject {
                 thruster.system.Speed = thrusterSpeed;
             }
         });
-
-        // let newIntensity = 4.5 * this.#targetSpeed / this.#currentShipStats.maxSpeed * (0.8 + Math.random() * 0.5);
-        // Object.values(this.#thrusterLights).forEach(lightObj => lightObj.light.intensity = newIntensity);
     }
 
     #handleMouseMove = (event) => {
-        if (!window.GameHandler.IsPaused) {
+        if (!window.GameHandler.IsPaused && this.InputEnabled) {
             if (document.pointerLockElement === window.GameHandler.Renderer.domElement) {
                 this.#mouseOffset.x += -event.movementX; //y movement is positive when going right, the reverse of ThreeJS x axis orientation
                 this.#mouseOffset.y += -event.movementY; //y movement is positive when going down, the reverse of ThreeJS y axis orientation
@@ -847,8 +852,6 @@ class PlayerObject extends PhysicsObject {
 
     #adjustPositionOffset = (dt) => {
         let speedPct = this.#targetSpeed / this.#currentShipStats.maxSpeed;
-        //this.#debugMouseOffset.position.x = this.#mouseOffsetPct.x * (4 + 8 * speedPct);
-        //this.#debugMouseOffset.position.y = this.#mouseOffsetPct.y * (4 + 8 * speedPct);
 
         let maxCrosshairOffset = 2 + (2 * speedPct);
         this.#crosshairSprites["always/arcs"].position.set(
@@ -861,9 +864,6 @@ class PlayerObject extends PhysicsObject {
         this.#crosshairSprites["sometimes/tl"].position.copy(this.#crosshairSprites["always/arcs"].position);
         this.#crosshairSprites["sometimes/tr"].position.copy(this.#crosshairSprites["always/arcs"].position);
         
-        //this.#mainObjectTarget.position.x = this.#rotAmt.x * (4 + 8 * speedPct);
-        //this.#mainObjectTarget.position.y = this.#rotAmt.y * (4 + 8 * speedPct);
-
         this.#crosshairSprites["halo"].position.set(
             this.#crosshairOrigin.x + (this.#rotAmt.x / this.#currentShipStats.maxTurnSpeedMultiplier) * maxCrosshairOffset,
             this.#crosshairOrigin.y + (this.#rotAmt.y / this.#currentShipStats.maxTurnSpeedMultiplier) * maxCrosshairOffset,
@@ -911,6 +911,7 @@ class PlayerObject extends PhysicsObject {
             else {
                 //if no curve was found, just move to the new position
                 this.#camera.position.copy(this.#cameraPosition.posnTarg);
+                //look at does not work nicely, need to save orientation and set the quaternion
                 this.#camera.lookAt(this.#cameraPosition.lookTarg);
                 this.#cameraTransitioning = false;
             }
@@ -918,10 +919,6 @@ class PlayerObject extends PhysicsObject {
         else if (this.#cameraPosition.name == "ORBIT") {
             this.#orbitControls.update();
         }
-    }
-
-    #getWorldUpVector = () => {
-        return new THREE.Vector3(0, 1, 0).transformDirection(this._objectGroup.matrixWorld);
     }
     
     //disabled for now, actual turret models has been delayed
@@ -937,7 +934,7 @@ class PlayerObject extends PhysicsObject {
     }
 
     #updateCrosshairVisibility = () => {
-        if (window.GameHandler.IsMainMenu || window.GameHandler.IsPaused) {
+        if (window.GameHandler.IsMainMenu || window.GameHandler.IsPaused || !this.InputEnabled) {
             this.#crosshairSprites["always/arcs"].material.opacity = 0;
             this.#crosshairSprites["sometimes/bt"].material.opacity = 0;
             this.#crosshairSprites["sometimes/tl"].material.opacity = 0;
@@ -962,9 +959,8 @@ class PlayerObject extends PhysicsObject {
         this.#crosshairSprites["sometimes/tr"].material.opacity = opacity;
     }
 
-    //make lum slider update player's settings
     #refreshShaderUniformsFromSettings = () => {
-        this.#shipShaders[this.#currentClass].forEach(shader => {
+        this.#shipShaders[this._currentClass].forEach(shader => {
             shader.uniforms.uHSV.value = this.#currentShipSettings.hsv;
             shader.uniforms.uHueMask.value = this.#currentShipSettings.hMask;
             shader.uniforms.uSaturationMask.value = this.#currentShipSettings.sMask;
@@ -982,7 +978,7 @@ class PlayerObject extends PhysicsObject {
 
         //handle all visual effects associated with current movement
         if (this.#cameraPosition.name != "ORBIT") {
-            if (INPUT.KeyPressed("space")) {
+            if (this.InputEnabled && INPUT.KeyPressed("space")) {
                 this.#mouseOffset.set(0, 0);
             }
 
@@ -998,7 +994,7 @@ class PlayerObject extends PhysicsObject {
         Object.values(this.#thrusterLights).forEach(lightObj => lightObj.light.intensity = newIntensity);
 
         Object.values(this.#currentGuns).forEach(gunObj => {
-            gunObj.gun.Firing = INPUT.KeyPressed("leftMouse");
+            gunObj.gun.Firing = this.InputEnabled && INPUT.KeyPressed("leftMouse");
             gunObj.gun.Main(dt);
         });
 
@@ -1088,23 +1084,40 @@ class PlayerObject extends PhysicsObject {
         let canvas = window.GameHandler.Renderer.domElement;
         canvas.requestPointerLock = canvas.requestPointerLock;
         canvas.onclick = () => {
-            if (!window.GameHandler.IsPaused) {
+            if (!window.GameHandler.IsPaused && this.InputEnabled) {
                 canvas.requestPointerLock();
             }
         }
 
-        document.addEventListener("pointerlockchange", (e) => {
-            if (document.pointerLockElement === canvas) {
-                // console.log("Pointer Locked");
-            }
-            else {
-                // console.log("Pointer Unlocked");
-            }
-        }, false);
-
         document.addEventListener("mousemove", this.#handleMouseMove);
 
         canvas.requestPointerLock();
+    }
+
+    SaveToLocalStorage(newPlayerName) {
+        if (newPlayerName != undefined) {
+            this.#saveId = PlayerObject.SaveGamePrefix + newPlayerName;
+        }
+
+        let saveObj = {};
+
+        for (let key of this.#savedKeys) {
+            saveObj[key] = this[key];
+        }
+
+        localStorage.setItem(this.#saveId, JSON.stringify(saveObj));
+    }
+
+    LoadFromLocalStorage(saveId) {
+        this.#saveId = saveId;
+
+        let saveObj = JSON.parse(localStorage.getItem(saveId));
+
+        for (let key in saveObj) {
+            this[key] = saveObj[key];
+        }
+
+        this.Class = this._currentClass;
     }
 
     get CameraPosition() { return this.#cameraPosition; }
@@ -1142,6 +1155,8 @@ class PlayerObject extends PhysicsObject {
 
                         this.#cameraTransitioning = true;
                     }
+
+                    this.InputEnabled = true;
                 }
                 else {
                     if (this.#orbitControls == undefined) {
@@ -1152,6 +1167,8 @@ class PlayerObject extends PhysicsObject {
                     this.#cameraCurve = undefined;
                     this.#cameraTransitioning = true;
                     this.#orbitControls.enabled = true;
+
+                    this.InputEnabled = false;
                 }
             }
             else {
@@ -1194,7 +1211,7 @@ class PlayerObject extends PhysicsObject {
     }
 
     set ShipLuminosity(luminosity) {
-        this.#currentShipSettings.luminosity = UTILS.LimitToRange(luminosity, 0, 1);
+        this.#currentShipSettings.luminosity = UTILS.LimitToRange(luminosity, 0, 3);
     }
     
     set ShipHueMask(mask) {
@@ -1223,18 +1240,18 @@ class PlayerObject extends PhysicsObject {
      */
     set Class(value) {
         if (Object.values(this.#classes).includes(value)) {
-            this.#currentClass = value;
+            this._currentClass = value;
 
             // set the current ship model
-            this.#currentShip = this[`_${this.#currentClass}Ship`];
+            this.#currentShip = this[`_${this._currentClass}Ship`];
             this._changeMainObject(this.#currentShip);
 
             // set the current ship stats
-            this.#currentShipStats = this[`_${this.#currentClass}ShipStats`];
+            this.#currentShipStats = this[`_${this._currentClass}ShipStats`];
             this.#targetSpeed = UTILS.LimitToRange(this.#targetSpeed, 0, this.#currentShipStats.maxSpeed);
 
             // update the light positions
-            let positionKey = `${this.#currentClass}_position`;
+            let positionKey = `${this._currentClass}_position`;
             for (let lightKey in this.#thrusterLights) {
                 let lightObj = this.#thrusterLights[lightKey];
     
@@ -1250,22 +1267,22 @@ class PlayerObject extends PhysicsObject {
                 for (let thrusterKey in this[thrusterName]) {
                     if (this[thrusterName][thrusterKey].system != undefined) {
                         this[thrusterName][thrusterKey].system.Speed = 0;
-                        this[thrusterName][thrusterKey].system.Active = className == this.#currentClass;
+                        this[thrusterName][thrusterKey].system.Active = className == this._currentClass;
                         this[thrusterName][thrusterKey].system.Flush();
                     }
                 }
             }
 
             // set the current thrusters
-            this.#currentThrusters = this[`_${this.#currentClass}Thrusters`];
+            this.#currentThrusters = this[`_${this._currentClass}Thrusters`];
             this.#updateCurrentThrusterSpeeds();
 
             // flush the current guns colleciton, and set to the new guns collection
             Object.values(this.#currentGuns).forEach(gunObj => gunObj.gun.Flush());
-            this.#currentGuns = this[`_${this.#currentClass}Guns`];
+            this.#currentGuns = this[`_${this._currentClass}Guns`];
 
             // set the current settings object
-            this.#currentShipSettings = this[`_${this.#currentClass}ShipSettings`];
+            this.#currentShipSettings = this[`_${this._currentClass}ShipSettings`];
 
             // update the hsv and luminosity sliders to have current values
             $('#shipHueSlider').val(this.#currentShipSettings.hsv.x);

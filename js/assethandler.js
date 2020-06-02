@@ -86,11 +86,11 @@ class AssetHandler {
         .fail((data) => { console.log(`ERROR LOADING ASSET: ${assetPath}`, data); });
     }
 
-    #downloadCubeMap = (rootPath, fileNames, folderSizeBytes) => {
+    #downloadCubeMap = (key, rootPath, fileNames, folderSizeBytes) => {
         const assetState = { loaded: 0, total: folderSizeBytes ?? 1, isComplete: false };
         this.#assetLoadingStates[rootPath] = assetState;
 
-        this.LoadedCubeMaps[rootPath] = new THREE.CubeTextureLoader()
+        this.LoadedCubeMaps[key] = new THREE.CubeTextureLoader()
             .setPath(rootPath)
             .load(fileNames,
                 () => {
@@ -185,6 +185,16 @@ class AssetHandler {
         this.#initialiseLoadingBar();
         this.OnComplete = onComplete;
 
+        // let files = [
+        //     'right.png',
+        //     'left.png',
+        //     'top.png',
+        //     'bot.png',
+        //     'front.png',
+        //     'back.png'
+        // ];
+        // this.#downloadCubeMap('sky', 'assets/cube_maps/lightblue/', files);
+
         // download all fbx models
         for (let key in this.#fbxAssetPaths) {
             this.#download3DAsset(this.#fbxAssetPaths[key]);
@@ -242,33 +252,6 @@ class AssetHandler {
 
         // download all shaders
         this.#downloadShaders();
-
-        // let loader = new GLTFLoader();
-
-        // loader.load(
-        //     '../assets/gattling_gun_pls_work.glb',
-        //     function(gltf) {
-        //         let amysCool = gltf.scene;
-        //         let amysSweet = gltf.animations;
-        //         amysCool.traverse(a => {
-        //             //console.log(a);
-        //             if (a.isMesh) {
-        //                 a.castShadow = true;
-        //                 a.receiveShadow = true;
-        //             }
-
-        //             if (a.isBone) {
-        //                 console.log('its a bone:', a);
-        //             }
-        //         });
-        //     },
-        //     function(xhr) {
-        //         console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        //     },
-        //     function(error) {
-        //         console.log(error);
-        //     }
-        // );
     }
 
     #loadAllAssets = (onComplete) => {

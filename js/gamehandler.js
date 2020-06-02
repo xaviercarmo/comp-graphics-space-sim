@@ -47,8 +47,11 @@ class GameHandler {
     };
     #mode = this.#modes.NONE;
 
+    #isMainMenuTransitioning = false;
+
     #player;
     #sun;
+    #ambientLight;
     #sunLight;
 
     #scene = new THREE.Scene();
@@ -76,7 +79,7 @@ class GameHandler {
             //later can extend this to animate the cursor
             $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
             this.#initialiseScene();
-            this.#startGameRunning();
+            this.#startMainMenu();
             window.setTimeout(() => $(".pre-downloader").fadeOut(), 1000);
         }
         catch(err) {
@@ -92,9 +95,6 @@ class GameHandler {
         this.#initialiseRenderer();
 
         this.#initialisePlayer();
-
-        // let gridHelper = new THREE.GridHelper(5000, 100);
-        // this.#scene.add(gridHelper);
 
         this.#initialiseSkyBox();
 
@@ -115,7 +115,7 @@ class GameHandler {
         window.addEventListener("resize", () => { this.Resize(); });
         
         document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
+            if (document.hidden && this.IsGameRunning) {
                 this.Pause();
             }
         }, false)
@@ -125,6 +125,7 @@ class GameHandler {
         this.#renderer.setPixelRatio(window.devicePixelRatio);
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
+        this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
@@ -137,8 +138,6 @@ class GameHandler {
         this.#bloomComposer.renderToScreen = false;
         this.#bloomComposer.addPass(renderScene);
         this.#bloomComposer.addPass(bloomPass);
-
-        this.jizz = bloomPass;
 
         this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2, 0.5, 0.0);
         this.#variableBloomComposer.renderToScreen = false;
@@ -196,8 +195,6 @@ class GameHandler {
 
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
-
-        this.#player.SetupPointerLock();
     }
 
     #initialiseSkyBox = () => {
@@ -215,40 +212,217 @@ class GameHandler {
         let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
         let skyBox = new THREE.Mesh(skyBoxGeo, materials);
         this.Scene.add(skyBox);
-        skyBox.visible = true;
 
-        this.SkyBox = skyBox;
+        this.SkyBox = skyBox; // for debugging purposes
     }
 
     #initialiseSun = () => {
         this.#sun = new SunObject();
+        this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
         this.AddGameObject(this.#sun);
 
-        this.SkyBox.add(this.#sun.Object);
-        this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
+        this.SkyBox.add(this.#sun.Object); // for debugging purposes
         
-        let ambientLight = new THREE.AmbientLight( 0xabfff8, 0.7 );
-        this.#scene.add(ambientLight);
-        this.RegisterBloomLight(ambientLight);
+        this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.2);
+        this.#scene.add(this.#ambientLight);
+        this.RegisterBloomLight(this.#ambientLight);
 
-        this.#sunLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
-        this.#sunLight.position.copy(this.#sun.Position)
-        this.#sunLight.name = "dirlight";
+        this.#sunLight = new THREE.DirectionalLight(0xabfff8, 1.2);
+        this.#sunLight.position.copy(this.#sun.Position);
         this.#sunLight.castShadow = true;
         this.#scene.add(this.#sunLight);
+
+        // restrict the frustum of the sun light's shadow camera
+        let size = 10;
+        this.#sunLight.shadow.camera.left = -size;
+        this.#sunLight.shadow.camera.right = size;
+        this.#sunLight.shadow.camera.top = size;
+        this.#sunLight.shadow.camera.bottom = -size;
+        this.#sunLight.shadow.camera.far = 100000;
+        this.#sunLight.shadow.mapSize.width = 1024;
+        this.#sunLight.shadow.mapSize.height = 1024;
+        // make the sun light track the player
+        this.#sunLight.target = this.#player.Object;
+
+        // for viewing the shadow camera frustum
+        // this.#scene.add(new THREE.CameraHelper(this.#sunLight.shadow.camera));
     }
 
     #setupMainMenuEvents = () => {
-        $(".menu-button").hover(
-            function() {
-                //on hover
-                $(this).addClass("menu-button-hover");
+        $(".menu-button, .back-menu-button").hover(
+            (event) => {
+                if (event.target.id != 'newGame' || this.#getAllSaveGameIds().length < 10) {
+                    $(event.target).addClass('menu-button-hover');
+                }
             },
-            function() {
-                //on un-hover
-                $(this).removeClass("menu-button-hover");
+            (event) => {
+                $(event.target).removeClass('menu-button-hover');
             }
         );
+
+        //need to call this whenever the main menu is accessed...right now the player could create infinite profiles if they could get back
+        //to the main menu
+        if (this.#getAllSaveGameIds().length >= 10) {
+            $('#newGame').addClass('menu-button-disabled');
+        }
+        
+        $('#newGame').click(() => {
+            if (!this.#isMainMenuTransitioning) {
+                this.#transitionMainMenu(true, '#menuItems');
+                $('#title').css('opacity', 0);
+                this.#player.CameraPosition = 'HANGAR';
+                window.setTimeout(() => {
+                    $('#classMenu').addClass('hangar-menu-base-container-expanded');
+                    window.setTimeout(() => {
+                        $('#mediumClassHeading').click();
+                    }, 300);
+                }, 1000);
+            }
+        });
+
+        // setting up additional click handlers for the class selection buttons. They already have handlers
+        // from the pause-menu setup (as they share that functionality)
+        $('#lightClassHeading').click(() => {
+            this.#player.Class = 'light';
+        });
+
+        $('#mediumClassHeading').click(() => {
+            this.#player.Class = 'medium';
+        });
+
+        $('#heavyClassHeading').click(() => {
+            this.#player.Class = 'heavy';
+        });
+
+        $('#classMenuStartButton').click(() => {
+            let playerName = window.prompt("Please enter a callsign: ");
+
+            //manual call here so that dt isnt very large due to the prompt
+            this.#clock.getDelta();
+
+            if (playerName != null) {
+                this.#player.SaveToLocalStorage(playerName);
+                $('#classMenu').removeClass('hangar-menu-base-container-expanded');
+
+                this.#startGameRunning();
+            }
+        });
+
+        $('#classMenuBackButton').click(() => {
+            $('#classMenu').removeClass('hangar-menu-base-container-expanded');
+            this.#player.CameraPosition = 'FOLLOW';
+            $('#title').css('opacity', 1);
+            this.#transitionMainMenu(false, undefined, '#menuItems');
+        });
+
+        $('#loadGame').click(() => {
+            if (!this.#isMainMenuTransitioning) {
+                $('#loadGameItems .menu-button').remove();
+
+                let didFindIds = false;
+                for (let id of this.#getAllSaveGameIds()) {
+                    didFindIds = true;
+                    $('.menu-button-template')
+                        .clone(true)
+                        .text(id.substr(PlayerObject.SaveGamePrefix.length))
+                        .toggleClass(['menu-button-template', 'menu-button-right'])
+                        .click(() => this.#onSaveGameButtonClick(id))
+                        .prependTo('#loadGameItems');
+                }
+
+                if (!didFindIds) {
+                    $('.menu-button-template')
+                        .clone()
+                        .text('No save games')
+                        .toggleClass(['menu-button-template', 'menu-button-right'])
+                        .prependTo('#loadGameItems');
+                }
+
+                this.#transitionMainMenu(true, '#menuItems', '#loadGameItems');
+            }
+        });
+
+        $('#loadGameBack').click(() => {
+            if (!this.#isMainMenuTransitioning) {
+                this.#transitionMainMenu(false, '#loadGameItems', '#menuItems');
+            }
+        });
+    }
+
+    #getAllSaveGameIds = () => {
+        return Object.keys(localStorage).filter(key => key.startsWith('playerSave-'));
+    }
+
+    #onSaveGameButtonClick = (id) => {
+        this.#player.LoadFromLocalStorage(id);
+        this.#transitionMainMenu(false, '#loadGameItems', undefined, this.#startGameRunning);
+    }
+
+    // gets all the currently visible main menu buttons, swipes them out of view in
+    // order, disabling input (sets mainMenuTransitioning = true) until the final anim
+    // is complete.
+    #transitionMainMenu = (forwards, fromSelector, toSelector, onComplete) => {
+        this.#isMainMenuTransitioning = true;
+
+        let fromMenu = $(fromSelector);
+        let fromButtons = fromMenu.children() ?? [];
+        
+        let toMenu = $(toSelector);
+        let toButtons = toMenu.children() ?? [];
+
+        let fromInterval = fromButtons.length > 5 ? 10 : 30;
+        let toInterval = toButtons.length > 5 ? 10 : 30;
+        
+        //fade the old buttons out
+        fromButtons.each((i, button) => {
+            let time = !forwards
+                ? (fromButtons.length - 1 - i) * fromInterval
+                : i * fromInterval;
+
+            window.setTimeout(() => {
+                if (forwards) {
+                    $(button).addClass('menu-button-left');
+                }
+                else {
+                    $(button).addClass('menu-button-right');
+                }
+
+                window.setTimeout(() => {
+                    if (i == fromButtons.length - 1) {
+                        fromMenu.addClass('main-menu-screen-hidden');
+
+                        if (fromButtons.length >= toButtons.length) {
+                            this.#isMainMenuTransitioning = false;
+                            onComplete?.();
+                        }
+                    }
+                }, 300 + (fromButtons.length - 1) * fromInterval);
+            }, time);
+        });
+
+        //fade the new buttons in
+        toMenu.removeClass('main-menu-screen-hidden');
+        toButtons.each((i, button) => {
+            let time = !forwards
+                ? (toButtons.length - 1 - i) * toInterval
+                : i * toInterval;
+
+            window.setTimeout(() => {
+                if (forwards) {
+                    $(button).removeClass('menu-button-right');
+                }
+                else {
+                    $(button).removeClass('menu-button-left');
+                }
+    
+                window.setTimeout(() => {
+                    if (i == toButtons.length - 1 && toButtons.length >= fromButtons.length) {
+                        this.#isMainMenuTransitioning = false;
+                        onComplete?.();
+                    }
+                }, 300 + (toButtons.length - 1) * toInterval);
+            }, time);
+        });
     }
 
     #setupPauseMenuEvents = () => {
@@ -268,8 +442,8 @@ class GameHandler {
                 jqObj.parent().removeClass("hangar-sub-menu-container-expanded");
                 jqObj.removeClass("hangar-sub-menu-heading-selected");
             }
-            if ($(this).parent().is(".hangar-sub-menu-container-expanded")) {
-                //if already expanded, then contract
+            //if already expanded and not a class selector, then contract
+            if ($(this).parent().is(".hangar-sub-menu-container-expanded") && !$(this).parents('#classMenu').length) {
                 contract($(this));
             }
             else {
@@ -298,6 +472,7 @@ class GameHandler {
         });
 
         $('#shipLuminositySlider').on('input', (event) => {
+            console.log(event.target.value);
             this.#player.ShipLuminosity = event.target.value;
             this.#variableBloomPass.strength = event.target.value;
         });
@@ -336,11 +511,24 @@ class GameHandler {
         });
     }
 
-    #startGameRunning = () => {
-        this.#mode = this.#modes.GAMERUNNING;
-        $('#mainMenu').hide(); //temporary while debugging
-        // this.#mode = this.#modes.MAINMENU;
+    #startMainMenu = () => {
+        this.#mode = this.#modes.MAINMENU;
+
+        $('#mainMenu').css('display', 'flex');
+        this.#player.InputEnabled = false;
+
+        this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
+
         this.#animate();
+    }
+
+    #startGameRunning = () => {
+        this.#player.CameraPosition = 'FOLLOW';
+        this.#player.InputEnabled = true;
+        this.#player.SetupPointerLock();
+        $('#mainMenu').css('opacity', '0');
+        window.setTimeout(() => $('#mainMenu').css('display', 'none'), 300);
+        this.#mode = this.#modes.GAMERUNNING;
     }
 
     #animate = () => {
@@ -352,7 +540,7 @@ class GameHandler {
         //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
         let dt = this.#clock.getDelta();
 
-        if (INPUT.KeyPressedOnce("p")) {
+        if (INPUT.KeyPressedOnce("p") && !this.IsMainMenu) {
             this.TogglePause();
         }
         
@@ -400,17 +588,21 @@ class GameHandler {
         
         if (this.#bloomEnabled) {
             this.#turnOffNonBloomLights();
-
+            // this.#scene.background = new THREE.Color(0x000);
             this.#darkenNonBloomTargets();
             this.#bloomComposer.render();
             this.#restoreOriginalMaterials();
 
             this.#darkenOrMaskNonVariableBloomTargets();
+            let oldAmbientIntensity = this.#ambientLight.intensity;
+            this.#ambientLight.intensity = 0.8;
             this.#variableBloomComposer.render();
             this.#restoreOriginalMaterials();
+            this.#ambientLight.intensity = oldAmbientIntensity;
 
             this.#restoreNonBloomLights();
 
+            // this.#scene.background = this.AssetHandler.LoadedCubeMaps.sky;
             this.#finalComposer.render();
         }
         else {
@@ -521,7 +713,7 @@ class GameHandler {
         document.exitPointerLock();
 
         //show hangar menu
-        $(".hangar-menu-base-container").addClass("hangar-menu-base-container-expanded");
+        $("#pauseMenu").addClass("hangar-menu-base-container-expanded");
     }
 
     Unpause() {
@@ -531,7 +723,7 @@ class GameHandler {
         this.#renderer.domElement.requestPointerLock();
 
         //hide hangar menu
-        $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
+        $("#pauseMenu").removeClass("hangar-menu-base-container-expanded");
     }
 
     RegisterBloomLight(light) {
@@ -553,6 +745,8 @@ class GameHandler {
     get IsMainMenu() { return this.#mode == this.#modes.MAINMENU; }
 
     get IsPaused() { return this.#mode == this.#modes.GAMEPAUSED; }
+
+    get IsGameRunning() { return this.#mode == this.#modes.GAMERUNNING; }
 
     get Clock() { return this.#clock; }
 }

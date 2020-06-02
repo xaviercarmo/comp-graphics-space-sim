@@ -72,7 +72,7 @@ class RockParticleCloud {
 
     //generates a random point within the cloud, optionally restricted to the distant front
     #getRandomPos = (onlyFarZ) => {
-        let minZ = onlyFarZ ? this.#cloudRadiusFarZ : -this.#cloudRadiusPadded
+        let minZ = onlyFarZ ? this.#cloudRadiusFarZ : -this.#cloudRadiusPadded;
         let pos = new THREE.Vector3(
             UTILS.RandomFloatInRange(-this.#cloudRadiusPadded, this.#cloudRadiusPadded),
             UTILS.RandomFloatInRange(-this.#cloudRadiusPadded, this.#cloudRadiusPadded),
@@ -90,23 +90,6 @@ class RockParticleCloud {
     }
 
     Main(dt) {
-        // // deactivate particles that are too far away
-        // for (let i = this.#activeParticles.length - 1; i >= 0; i--) {
-        //     let particle = this.#activeParticles[i];
-        //     if (this.#isParticleOutsideCloud(particle)) {
-        //         particle.Deactive();
-        //         this.#activeParticles.splice(i, 1);
-        //         this.#availableParticles.push(particle);
-        //     }
-        // }
-
-        // // recycle any particles that were
-        // this.#availableParticles.forEach(particle => {
-        //     particle.Activate(this.#getRandomPos(true));
-        //     this.#activeParticles.push(particle);
-        // });
-        // this.#availableParticles = [];
-
         for (let particle of this.#activeParticles) {
             if (this.#isParticleOutsideCloud(particle)) {
                 particle.Reset(this.#getRandomPos(true));
@@ -122,8 +105,6 @@ class RockParticle {
     #attributes;
     #bufferIndex;
 
-    IsActive = false;
-
     constructor(attributes, bufferIndex) {
         this.#attributes = attributes;
         this.#bufferIndex = bufferIndex;
@@ -134,7 +115,6 @@ class RockParticle {
     // Activate(pos) {
     Reset(pos) {
         this.Position = pos;
-        this.IsActive = true;
     }
 
     get Position() {

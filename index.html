@@ -18,20 +18,121 @@
 
         <section id="mainMenu">
             <h1 id="title">Starfighter</h1>
-            <div id="menuItems">
-                <div class="menu-button">
+
+            <div class="menu-button menu-button-template">
+                Text
+            </div>
+
+            <div id="menuItems" class="main-menu-screen">
+                <div id="newGame" class="menu-button">
                     New Game
                 </div>
-                <div class="menu-button">
+                <div id="loadGame" class="menu-button">
                     Load Game
                 </div>
-                <div class="menu-button">
+                <div id="settings" class="menu-button">
                     Settings
+                </div>
+            </div>
+
+            <div id="loadGameItems" class="main-menu-screen main-menu-screen-hidden">
+                <!-- <div id="saveGame1" class="menu-button menu-button-right">
+                    Save 1
+                </div>
+                <div id="saveGame2" class="menu-button menu-button-right">
+                    Save 2
+                </div>
+                <div id="saveGame3" class="menu-button menu-button-right">
+                    Save 3
+                </div> -->
+                <div id="loadGameBack" class="back-menu-button menu-button-right">
+                    Back
                 </div>
             </div>
         </section>
 
-        <div class="hangar-menu-base-container">
+        <div id="classMenu" class="hangar-menu-base-container class-selection-base-container">
+            <div class="hangar-menu-background-wrapper">
+                <div class="hangar-menu-background"></div>
+            </div>
+
+            <div class="hangar-menu-wrapper">
+                <div class="hangar-sub-menu-container">
+                    <div id="lightClassHeading" class="hangar-sub-menu-heading">
+                        Light Fighter
+                    </div>
+                    <div class="hangar-sub-menu">
+                        A lightweight fighter optimised for maneuverability at the cost of armour, shields, and damage. Has one center
+                        mounted gun with a high rate of fire but low damage.
+                        <br>
+                        <br>
+                        Armour: 500
+                        <br>
+                        Shields: 800
+                        <br>
+                        Top Speed: 1400 m/s
+                        <br>
+                        Weaponry (rpm, muzzle vel., damage):
+                        <br>
+                        &emsp;- Centre gun: 900rpm, 750 m/s, 0.5
+                    </div>
+                </div>
+
+                <div class="hangar-sub-menu-container">
+                    <div id="mediumClassHeading" class="hangar-sub-menu-heading">
+                        Medium Fighter
+                    </div>
+                    <div class="hangar-sub-menu">
+                        A medium-weight fighter optimised to balance maneuverability, durability, and attack power. Has two guns positioned near
+                        the front-center of the ship, each with a moderate rate of fire with moderate damage.
+                        <br>
+                        <br>
+                        Armour: 800
+                        <br>
+                        Shields: 1200
+                        <br>
+                        Top Speed: 800 m/s
+                        <br>
+                        Weaponry (rpm, muzzle vel., damage):
+                        <br>
+                        &emsp;- Left gun: 480rpm, 750 m/s, 0.85
+                        <br>
+                        &emsp;- Right gun: 480rpm, 750 m/s, 0.85
+                    </div>
+                </div>
+
+                <div class="hangar-sub-menu-container">
+                    <div id="heavyClassHeading" class="hangar-sub-menu-heading">
+                        Heavy Fighter
+                    </div>
+                    <div class="hangar-sub-menu">
+                        A heavy-weight fighter optimised for maximum durability and fire-power at the cost of maneuverability. Has a central gun with a low
+                        rate of fire, slow projectile speed, but very high damage, as well as two faster weapons mounted on either side of the front-center.
+                        <br>
+                        <br>
+                        Armour: 1200
+                        <br>
+                        Shields: 1600
+                        <br>
+                        Top Speed: 500 m/s
+                        <br>
+                        Weaponry (rpm, muzzle vel., damage):
+                        <br>
+                        &emsp;- Left gun: 480rpm, 1000 m/s, 0.85
+                        <br>
+                        &emsp;- Center Gun: 120rpm, 450 m/s, 5
+                        <br>
+                        &emsp;- Right gun: 480rpm, 1000 m/s, 0.85
+                    </div>
+                </div>
+                <div class="class-menu-buttons-container">
+                    <div id="classMenuStartButton" class="class-menu-button">Start Game</div>
+                    <div id="classMenuBackButton" class="class-menu-button">Main Menu</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pauseMenu" class="hangar-menu-base-container">
             <div class="hangar-menu-background-wrapper">
                 <div class="hangar-menu-background"></div>
             </div>
