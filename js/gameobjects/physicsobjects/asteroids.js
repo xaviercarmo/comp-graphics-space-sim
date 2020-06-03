@@ -10,6 +10,7 @@ class AsteroidObject extends PhysicsObject {
     //randomise shape/size of object.
 
     //temp - not sure if needed yet. 
+    #asteroid;  
 
     constructor() {
         let rad = 5;
@@ -21,9 +22,8 @@ class AsteroidObject extends PhysicsObject {
         let mat = new THREE.MeshLambertMaterial( { color: 0xDEB887 });
         //mat.wireframe = true; 
         let obj = new THREE.Mesh(geo, mat);
-
         super(obj);
-
+        this.#asteroid = obj; 
         /*
         //Generates a circular field of asteroids 
         //Doesn't get passed into super class, so won't count as mainObject? 
@@ -40,14 +40,17 @@ class AsteroidObject extends PhysicsObject {
             window.GameHandler.Scene.add(ast);
         }
         */
-        
-
         //add object to scene. 
         //window.GameHandler.Scene.add(this._mainObject);
     }
 
     Main(dt){
         super.Main(dt);
+        this.AsteroidRotation(); 
+    }
+
+    AsteroidRotation(){
+        this._mainObject.rotation.y += 0.0025;
     }
 
 }
