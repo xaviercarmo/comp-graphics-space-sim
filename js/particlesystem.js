@@ -24,15 +24,18 @@ class ParticleSystem {
     _positions;
     _colours;
 
+    _didFlush = false;
+
     //publics
+    Active = true;
 
     //will need to take max num particles, particles per second, origin for spawn (or area for origin of spawn)
     constructor(parent, texture, particleAgeLimit, particlesPerSecond, particleSize) {
         this._parent = parent;
         this._texture = texture;
         this._particleAgeLimit = particleAgeLimit;
-        this._numParticles = Math.ceil(particleAgeLimit * particlesPerSecond); //rounds up in case of fractional pps
-        this._numParticles += Math.ceil(this._numParticles * 0.5); //10% buffer for mistimings 
+        this._numParticles = Math.ceil(particleAgeLimit * particlesPerSecond); // rounds up in case of fractional pps
+        this._numParticles += Math.ceil(this._numParticles * 0.5); // buffer for mistimings 
         this._spawnTimeInterval = 1 / particlesPerSecond;
         this._particleSize = particleSize;
 
@@ -41,19 +44,17 @@ class ParticleSystem {
 
     //private methods
     #initialise = () => {
-        let arraySize = this._numParticles * 3;
-        this._alphas = new Float32Array(arraySize);
-        this._positions = new Float32Array(arraySize);
-        this._colours = new Uint8Array(arraySize);
-
+        this._alphas = new Float32Array(this._numParticles);
         this._geometry.setAttribute('alpha', new THREE.BufferAttribute(this._alphas, 1));
+
+        this._positions = new Float32Array(this._numParticles * 3);
         this._geometry.setAttribute('position', new THREE.BufferAttribute(this._positions, 3));
+
+        this._colours = new Uint8Array(this._numParticles * 3);
         this._geometry.setAttribute('color', new THREE.BufferAttribute(this._colours, 3, true));
 
-        let material = this._getMaterial();
+        this._points = new THREE.Points(this._geometry, this._getMaterial());
 
-        this._points = new THREE.Points(this._geometry, material);
-        //this._points.renderOrder = 9999;
         window.GameHandler.Scene.add(this._points);
     }
 
@@ -65,8 +66,8 @@ class ParticleSystem {
 
         return new THREE.ShaderMaterial({
             uniforms: uniforms,
-            vertexShader: window.GameHandler.AssetHandler.LoadedShaders.vert.particle,
-            fragmentShader: window.GameHandler.AssetHandler.LoadedShaders.frag.particle,
+            vertexShader: window.GameHandler.AssetHandler.LoadedShaders.vert.particleColoured,
+            fragmentShader: window.GameHandler.AssetHandler.LoadedShaders.frag.particleColoured,
             blending: THREE.AdditiveBlending,
             transparent: true,
             depthWrite: false
@@ -75,6 +76,15 @@ class ParticleSystem {
 
     get Object() {
         return this._points;
+    }
+
+    Flush() {
+        this._didFlush = true;
+        for (let i = this._activeParticles.length - 1; i >= 0; i--) {
+            let particle = this._activeParticles.pop();
+            particle.Deactivate();
+            this._availableParticles.push(particle);
+        }
     }
 }
 
@@ -86,7 +96,6 @@ class Particle {
     Attributes;
     Index;
     IsActive = false;
-
     PositionStore = new THREE.Vector3();
 
     constructor(colour, ageLimit, velocity, attributes, index) {
@@ -97,24 +106,12 @@ class Particle {
         this.AgeLimit = ageLimit;
         this.Position = new THREE.Vector3();
         this.Velocity = velocity;
-
-        this.Alpha = 0; //initially its invisible for now
     }
 
     Main(dt) {
         this.Age += dt;
         this.PositionStore.add(this.Velocity.clone().multiplyScalar(dt));
         this.Position = this.PositionStore;
-
-        // if (this.IsExpired) {
-        //     this.Age = 0;
-        //     this.Position = this.Origin;
-        // }
-        // else {
-        //     //should try to make this discrete (like lerping) rather than just adding. this will prevent frame-rate dependency
-        //     this.Position = this._positionStore.add(this.Velocity.clone().multiplyScalar(dt));
-        //     //this.Alpha = 1 - this.Age / this.AgeLimit;
-        // }
     }
 
     Activate(pos, vel) {

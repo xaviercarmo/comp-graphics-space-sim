@@ -6,8 +6,13 @@ import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
 import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
-import ObstacleObject from './gameobjects/physicsobjects/obstacleobject.js'
 import SunObject from './gameobjects/sun.js';
+
+import { EffectComposer } from '../libraries/EffectComposer.js';
+import { RenderPass } from '../libraries/RenderPass.js';
+import { ShaderPass } from '../libraries/ShaderPass.js';
+import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
+import { FXAAShader } from '../libraries/FXAAShader.js';
 
 class GameHandler {
     //debug
@@ -15,7 +20,18 @@ class GameHandler {
 
     //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
+    
     #renderer = new THREE.WebGLRenderer({ antialias: true });
+    #bloomEnabled = true;
+    #bloomComposer = new EffectComposer(this.#renderer);
+    #variableBloomComposer = new EffectComposer(this.#renderer);
+    #variableBloomPass;
+    #finalComposer = new EffectComposer(this.#renderer);
+    #darkMaterial = new THREE.MeshBasicMaterial( { color: "black" } );
+    #materials = {};
+    #bloomLights = {};
+    #nonBloomLightIntensities = {};
+
     #clock = new THREE.Clock();
 
     #gameObjects = [];
@@ -28,88 +44,214 @@ class GameHandler {
         GAMERUNNING: 4,
         GAMEPAUSED: 5,
         GAMEOVER: 6
-    }
+    };
     #mode = this.#modes.NONE;
 
     #player;
     #sun;
-    #obstacle = []; 
-    #geometry = new THREE.Geometry();
+    #sunLight;
+
     #scene = new THREE.Scene();
 
     //publics
     AssetHandler = new AssetHandler();
-    
+
+    //public so that other classes can assign themselves to a layer
+    RenderLayers = {
+        BLOOM_STATIC: 1,
+        BLOOM_VARYING: 2
+    };
 
     constructor() {
         this.#mode = this.#modes.PRELOADING;
-        this.AssetHandler.LoadAllAssets(() => this.Initialise.call(this));
+        this.AssetHandler.LoadAllAssets(() => this.#initialise.call(this));
     }
 
     //private methods
     //NOTE: Due to current lack of support in Chrome for private instance methods we will use private fields that hold methods
-    #animate = () => {
-        //regardless of pausing, animation frames should continue for menu logic
-        requestAnimationFrame(() => { this.#animate(); });
-
-        INPUT.UpdateKeyPressedOnce();
-
-        //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
-        let dt = this.#clock.getDelta();
-
-        if (INPUT.KeyPressedOnce("p")) {
-            this.TogglePause();
+    #initialise = () => {
+        try {
+            this.#mode = this.#modes.INITIALISING;
+            
+            //later can extend this to animate the cursor
+            $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
+            this.#initialiseScene();
+            this.#startGameRunning();
+            window.setTimeout(() => $(".pre-downloader").fadeOut(), 1000);
         }
-        
-        if (INPUT.KeyPressedOnce("t")) {
-            this.SkyBox.visible = !this.SkyBox.visible;
-            console.log(this.SkyBox.visible);
+        catch(err) {
+            console.log(err);
         }
-
-        //menu logic here
-        //[...]
-
-        let playerOldPosition = this.#player.Position;
-
-        //game logic only runs if game isn't paused
-        if (this.#mode == this.#modes.GAMERUNNING) {
-            this.#gameObjects.forEach(g => g.Main(dt));
-    
-            this.#gameObjects.forEach(g => {
-                //physics logic here (later moved to physics handler probably)
-                //[...]
-
-                if (g instanceof PhysicsObject) {
-                    g.PostPhysicsCallback(dt);
-                }
-            });
-
-            //test obst spawn
-            this.SpawnNewObstacles(); 
-
-            //this.Player.Object.localToWorld(pos);
-            //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
-            //console.log(this.Player.Object.position.z - this.randomCube.position.z);
-        }
-
-        //game logic that runs despite pausing
-        this.#gameObjects.forEach(g => g.MainNoPause(dt));
-
-        let playerPositionDelta = UTILS.SubVectors(this.#player.Position, playerOldPosition);
-        if (this.#player.Position.length() < 400_000) {
-            this.SkyBox.position.addScaledVector(playerPositionDelta, 0.95);
-        }
-        else {
-            this.SkyBox.position.addScaledVector(playerPositionDelta, 1.0);
-        }
-
-        //must be done AFTER all other main logic has run
-        INPUT.FlushKeyPressedOnce();
-
-        this.#renderer.render(this.#scene, this.#camera);
     }
 
-    #setupMenuEvents = () => {
+    #initialiseScene = () => {
+        this.#setupMainMenuEvents();
+
+        this.#setupPauseMenuEvents();
+
+        this.#initialiseRenderer();
+
+        this.#initialisePlayer();
+
+        // let gridHelper = new THREE.GridHelper(5000, 100);
+        // this.#scene.add(gridHelper);
+
+        this.#initialiseSkyBox();
+
+        this.#initialiseSun();
+
+        this.#initialiseGameObjects();
+
+        // a cube for testing bloom
+        // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
+        // let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
+        // randomCube.layers.enable(this.RenderLayers.BLOOM_STATIC);
+        // randomCube.position.y += 5;
+        // this.#scene.add(randomCube);
+    }
+
+    #initialiseRenderer = () => {
+        window.addEventListener("resize", () => { this.Resize(); });
+        
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                this.Pause();
+            }
+        }, false)
+
+        document.body.appendChild(this.#renderer.domElement);
+
+        this.#renderer.setPixelRatio(window.devicePixelRatio);
+        this.#renderer.setSize(window.innerWidth, window.innerHeight);
+        this.#renderer.shadowMap.enabled = true;
+        
+        this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
+
+        let renderScene = new RenderPass(this.#scene, this.#camera);
+        
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.6, 0.0);
+        //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
+        this.#bloomComposer.renderToScreen = false;
+        this.#bloomComposer.addPass(renderScene);
+        this.#bloomComposer.addPass(bloomPass);
+
+        this.jizz = bloomPass;
+
+        this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2, 0.5, 0.0);
+        this.#variableBloomComposer.renderToScreen = false;
+        this.#variableBloomComposer.addPass(renderScene);
+        this.#variableBloomComposer.addPass(this.#variableBloomPass);
+
+        let fxaaPass = new ShaderPass(FXAAShader);
+        fxaaPass.uniforms.resolution.value.set(1 / window.innerWidth, 1 / window.innerHeight);
+
+        // the final pass composites the results of the bloom passes with the actual rendered scene
+        let finalPassMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                baseTexture: { value: null },
+                bloomTexture: { value: this.#bloomComposer.readBuffer.texture }, //note: readBuffer contains result of last pass in the composer
+                variableBloomTexture: {value: this.#variableBloomComposer.readBuffer.texture }
+            },
+            vertexShader: this.AssetHandler.LoadedShaders.vert.baseUv,
+            fragmentShader: this.AssetHandler.LoadedShaders.frag.sceneAndBloomAdditive,
+            defines: {}
+        });
+        let finalPass = new ShaderPass(finalPassMaterial, "baseTexture");
+        finalPass.needsSwap = true;
+
+        this.#finalComposer.addPass(renderScene);
+        this.#finalComposer.addPass(fxaaPass);
+        this.#finalComposer.addPass(finalPass);
+    }
+
+    #initialisePlayer = () => {
+        let playerMeshes = {
+            // ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
+            // ship: this.AssetHandler.LoadedAssets.ship.clone(),
+            light_ship: this.AssetHandler.LoadedAssets.light_ship.clone(),
+            medium_ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
+            heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone(),
+            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
+            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
+            gattling_gun_new: {
+                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
+                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
+                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+            }
+        };
+
+        let playerTextures = {
+            light_ship: this.AssetHandler.LoadedImages.playerShipTextures.lightShipTexture,
+            medium_ship: this.AssetHandler.LoadedImages.playerShipTextures.mediumShipTexture,
+            heavy_ship: this.AssetHandler.LoadedImages.playerShipTextures.heavyShipTexture
+        }
+
+        let playerAssets = {
+            meshes: playerMeshes,
+            textures: playerTextures
+        }
+
+        this.#player = new PlayerObject(playerAssets, this.#camera);
+        this.AddGameObject(this.#player);
+
+        this.#player.SetupPointerLock();
+    }
+
+    #initialiseSkyBox = () => {
+        let skyMapTextures = this.AssetHandler.LoadedImages.skymap;
+        let matParams = { side: THREE.BackSide, depthWrite: false };
+        let materials = [
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.rt, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.lt, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.tp, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.bm, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.ft, ...matParams }),
+            new THREE.MeshBasicMaterial({ map: skyMapTextures.bk, ...matParams }),
+        ];
+
+        let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
+        let skyBox = new THREE.Mesh(skyBoxGeo, materials);
+        this.Scene.add(skyBox);
+        skyBox.visible = true;
+
+        this.SkyBox = skyBox;
+    }
+
+    #initialiseSun = () => {
+        this.#sun = new SunObject();
+        this.AddGameObject(this.#sun);
+
+        this.SkyBox.add(this.#sun.Object);
+        this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
+        
+        let ambientLight = new THREE.AmbientLight( 0xabfff8, 0.7 );
+        this.#scene.add(ambientLight);
+        this.RegisterBloomLight(ambientLight);
+
+        this.#sunLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
+        this.#sunLight.position.copy(this.#sun.Position)
+        this.#sunLight.name = "dirlight";
+        this.#sunLight.castShadow = true;
+        this.#scene.add(this.#sunLight);
+    }
+
+    #setupMainMenuEvents = () => {
+        $(".menu-button").hover(
+            function() {
+                //on hover
+                $(this).addClass("menu-button-hover");
+            },
+            function() {
+                //on un-hover
+                $(this).removeClass("menu-button-hover");
+            }
+        );
+    }
+
+    #setupPauseMenuEvents = () => {
         $(".hangar-sub-menu-heading").hover(
             function() {
                 //on hover
@@ -141,151 +283,202 @@ class GameHandler {
             }
         });
 
-        //bind hue slider to player's hue
         $('#shipHueSlider').on('input', (event) => {
+            $('#shipSaturationSlider').css('background-image', `linear-gradient(to right, #444, hsl(${event.target.value * 360}, 100%, 50%))`);
+            $('#shipLuminositySlider').css('background-image', `linear-gradient(to right, rgba(0, 0, 0, 0.001), hsl(${event.target.value * 360}, 100%, 50%))`);
             this.#player.ShipHue = event.target.value;
-        })
-    }
+        });
 
-    #initialiseSkyBox = () => {
-        let skyMapTextures = this.AssetHandler.LoadedImages.skymap;
-        let matParams = { side: THREE.BackSide, depthWrite: false };
-        let materials = [
-            new THREE.MeshBasicMaterial({ map: skyMapTextures.rt, ...matParams }),
-            new THREE.MeshBasicMaterial({ map: skyMapTextures.lt, ...matParams }),
-            new THREE.MeshBasicMaterial({ map: skyMapTextures.tp, ...matParams }),
-            new THREE.MeshBasicMaterial({ map: skyMapTextures.bm, ...matParams }),
-            new THREE.MeshBasicMaterial({ map: skyMapTextures.ft, ...matParams }),
-            new THREE.MeshBasicMaterial({ map: skyMapTextures.bk, ...matParams }),
-        ];
+        $('#shipSaturationSlider').on('input', (event) => {
+            this.#player.ShipSaturation = event.target.value;
+        });
 
-        let skyBoxGeo = new THREE.BoxGeometry(100_000, 100_000, 100_000);
-        let skyBox = new THREE.Mesh(skyBoxGeo, materials);
-        this.Scene.add(skyBox);
-        skyBox.visible = true;
+        $('#shipValueSlider').on('input', (event) => {
+            this.#player.ShipValue = event.target.value;
+        });
 
-        this.SkyBox = skyBox;
+        $('#shipLuminositySlider').on('input', (event) => {
+            this.#player.ShipLuminosity = event.target.value;
+            this.#variableBloomPass.strength = event.target.value;
+        });
 
-        this.#initialiseSun();
-    }
-
-    #initialiseSun = () => {
-        this.#sun = new SunObject();
-        this.AddGameObject(this.#sun);
-
-        this.SkyBox.add(this.#sun.Object);
-        this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
-        
-        let ambientLight = new THREE.AmbientLight( 0xabfff8, 0.7 );
-        this.#scene.add(ambientLight);
-
-        var dirLight = new THREE.DirectionalLight( 0xabfff8, 0.8 );
-        dirLight.position.copy(this.#sun.Position)
-        dirLight.name = "dirlight";
-        dirLight.castShadow = true;
-        this.#scene.add(dirLight);
-    }
-
-    #initialisePlayer = () => {
-        let playerMeshes = {
-            ship: this.AssetHandler.LoadedAssets.ship.clone(),
-            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
-            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
-            gattling_gun_new: {
-                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
-                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
-                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+        let params = {
+            type: 'double',
+            min: 0,
+            max: 1,
+            from: 0.5,
+            to: 1,
+            step: 0.001,
+            drag_interval: true,
+            skin: 'flat',
+            hide_min_max: true,
+            onChange: (data) => {
+                this.#player.ShipHueMask = new THREE.Vector2(data.from, data.to);
             }
         };
 
-        this.#player = new PlayerObject(playerMeshes, this.#camera);
-        this.AddGameObject(this.#player);
+        //setup ion sliders
+        $('#shipHueMaskSlider').ionRangeSlider(params);
+
+        params.from = 0;
+        params.onChange = (data) => { this.#player.ShipSaturationMask = new THREE.Vector2(data.from, data.to); };
+        $('#shipSaturationMaskSlider').ionRangeSlider(params);
+
+        params.onChange = (data) => { this.#player.ShipValueMask = new THREE.Vector2(data.from, data.to); };
+        $('#shipValueMaskSlider').ionRangeSlider(params);
     }
 
-    #initialiseScene = () => {
-        window.addEventListener("resize", () => { this.Resize(); });
-        
-        document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
-                this.Pause();
-            }
-        }, false)
-
-        document.body.appendChild(this.#renderer.domElement);
-
-        this.#initialisePlayer();
-
-        this.#player.SetupPointerLock();
-
-        // var pointLight = new THREE.PointLight( 0xffffff, 1.5, 18 );
-        // pointLight.position.set( 0, 10, 10 );
-        // pointLight.castShadow = true;
-        // this.#scene.add(pointLight);
-
-        // var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.3 );
-        // this.#scene.add( directionalLight );
-
-        
-
-        // let light = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2.0 );
-        // this.#scene.add(light);
-
-        // var hemiLight = new THREE.HemisphereLight( 0xff0000, 0x0000ff, 0.6 );
-        // // hemiLight.color.setHSL( 0.63, 61, 31 );
-        // // hemiLight.groundColor.setHSL( 4.2, 34, 37 );
-        // hemiLight.position.set( 0, 1000, 0 );
-        // this.#scene.add( hemiLight );
-
-        let gridHelper = new THREE.GridHelper(5000, 100);
-        this.#scene.add(gridHelper);
-
-        // let gridHelper2 = new THREE.GridHelper(5000, 100);
-        // gridHelper2.translateY(25000);
-        // this.#scene.add(gridHelper2);
-
-        // let randomCubeGeo = new THREE.BoxGeometry(1, 1, 1);
-        // let randomCubeMat = new THREE.MeshPhongMaterial({ color: 0x00ffff, shininess: 100 });
-        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-        // this.#scene.add(randomCube);
-        // randomCube.position.y += 10;
-        // this.randomCube = randomCube;
-
-        this.#initialiseSkyBox();
-
-        //spawn
-        this.SpawnMultipleObstacles(20);
-
-        this.#renderer.setPixelRatio(window.devicePixelRatio);
-        this.#renderer.setSize(window.innerWidth, window.innerHeight);
-        this.#renderer.shadowMap.enabled = true;
-
-        this.#setupMenuEvents();
-
+    #initialiseGameObjects = () => {
         this.#gameObjects.forEach(g => {
             if (!g.Object.parent) {
                 this.#scene.add(g.Object);
             }
         });
-        this.#renderer.render(this.#scene, this.#camera);
     }
 
     #startGameRunning = () => {
         this.#mode = this.#modes.GAMERUNNING;
-        // this.TogglePause();
+        $('#mainMenu').hide(); //temporary while debugging
+        // this.#mode = this.#modes.MAINMENU;
         this.#animate();
     }
 
-    //public methods
-    Initialise() {
-        this.#mode = this.#modes.INITIALISING;
+    #animate = () => {
+        //regardless of pausing, animation frames should continue for menu logic
+        requestAnimationFrame(() => { this.#animate(); });
 
-        //later can extend this to animate the cursor
-        $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
-        this.#initialiseScene();
-        this.#startGameRunning();
-        window.setTimeout(() => $(".pre-downloader").remove(), 1000);
+        INPUT.UpdateKeyPressedOnce();
+
+        //delta still needed for menu logic and so that physics doesn't jump ahead by a large delta after unpausing
+        let dt = this.#clock.getDelta();
+
+        if (INPUT.KeyPressedOnce("p")) {
+            this.TogglePause();
+        }
+        
+        //for debug purposes
+        if (INPUT.KeyPressedOnce("t")) {
+            this.SkyBox.visible = !this.SkyBox.visible;
+            console.log(this.SkyBox.visible);
+        }
+
+        let playerOldPosition = this.#player.Position;
+
+        //game logic only runs if game isn't paused
+        if (this.#mode == this.#modes.GAMERUNNING) {
+            this.#gameObjects.forEach(g => g.Main(dt));
+    
+            this.#gameObjects.forEach(g => {
+                //physics logic here (later moved to physics handler probably)
+                //[...]
+
+                if (g instanceof PhysicsObject) {
+                    g.PostPhysicsCallback(dt);
+                }
+            });
+
+            //let pos = new THREE.Vector3();
+            
+            //this.Player.Object.localToWorld(pos);
+            //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
+            //console.log(this.Player.Object.position.z - this.randomCube.position.z);
+        }
+
+        //game logic that runs despite pausing
+        this.#gameObjects.forEach(g => g.MainNoPause(dt));
+
+        let playerPositionDelta = UTILS.SubVectors(this.#player.Position, playerOldPosition);
+        if (this.#player.Position.length() < 400_000) {
+            this.SkyBox.position.addScaledVector(playerPositionDelta, 0.95);
+        }
+        else {
+            this.SkyBox.position.addScaledVector(playerPositionDelta, 1.0);
+        }
+
+        //must be done AFTER all other main logic has run
+        INPUT.FlushKeyPressedOnce();
+        
+        if (this.#bloomEnabled) {
+            this.#turnOffNonBloomLights();
+
+            this.#darkenNonBloomTargets();
+            this.#bloomComposer.render();
+            this.#restoreOriginalMaterials();
+
+            this.#darkenOrMaskNonVariableBloomTargets();
+            this.#variableBloomComposer.render();
+            this.#restoreOriginalMaterials();
+
+            this.#restoreNonBloomLights();
+
+            this.#finalComposer.render();
+        }
+        else {
+            this.#renderer.render(this.#scene, this.#camera);
+        }
     }
 
+    #turnOffNonBloomLights = () => {
+        this.#scene.traverse(obj => {
+            if (obj instanceof THREE.Light && !this.#bloomLights[obj.uuid]) {
+                this.#nonBloomLightIntensities[obj.uuid] = obj.intensity;
+                obj.intensity = 0;
+            }
+        });
+    }
+
+    #restoreNonBloomLights = () => {
+        this.#scene.traverse(obj => {
+            if (this.#nonBloomLightIntensities[obj.uuid]) {
+                obj.intensity = this.#nonBloomLightIntensities[obj.uuid];
+                delete this.#nonBloomLightIntensities[obj.uuid];
+            }
+        });
+    }
+
+    #darkenNonBloomTargets = () => {
+        this.#scene.traverse(obj => {
+            if (obj.material && obj.layers && !this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_STATIC)){
+                this.#materials[obj.uuid] = obj.material;
+                obj.material = this.#darkMaterial;
+            }
+        });
+    }
+
+    #darkenOrMaskNonVariableBloomTargets = () => {
+        this.#scene.traverse(obj => {
+            if (obj.material && obj.layers) {
+                // if this object is part of the bloom_varying layer and it is set up properly mask out fragments
+                // that should not be bloomed
+                if (this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_VARYING) && obj.setMaskInverse) {
+                    obj.setMaskInverse(true);
+                }
+                // otherwise just darken the material
+                else {
+                    this.#materials[obj.uuid] = obj.material;
+                    obj.material = this.#darkMaterial;
+                }
+            }
+        });
+    }
+
+    #restoreOriginalMaterials = () => {
+        this.#scene.traverse(obj => {
+            if (this.#materials[obj.uuid]) {
+                obj.material = this.#materials[obj.uuid];
+                delete this.#materials[obj.uuid];
+            }
+            else {
+                obj.setMaskInverse?.(false);
+            }
+        });
+    }
+
+    #testRenderLayer = (mask, layer) => {
+        return mask & Math.pow(2, layer);
+    }
+    
+    //public methods
     AddGameObject(object) {
         if (object instanceof GameObject) {
             this.#gameObjects.push(object);
@@ -297,21 +490,27 @@ class GameHandler {
 
     //resizes the renderer to fit the screen
     Resize() {
-        this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#camera.aspect = window.innerWidth / window.innerHeight;
         this.#camera.updateProjectionMatrix();
+
+        this.#renderer.setSize(window.innerWidth, window.innerHeight);
+
+        this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
     }
 
     //toggles mode between running and paused. Will do nothing if mode is not currently one of the two.
     TogglePause() {
-        if (this.#mode == this.#modes.GAMERUNNING) {
-            this.Pause();
-        }
-        else if (this.#mode == this.#modes.GAMEPAUSED) {
-            this.Unpause();
-        }
-        else {
-            console.log("Cannot toggle pause, game is not currently running or paused.");
+        switch(this.#mode) {
+            case this.#modes.GAMERUNNING:
+                this.Pause();
+                break;
+            case this.#modes.GAMEPAUSED:
+                this.Unpause();
+                break;
+            default:
+                console.log("Cannot toggle pause, game is not currently running or paused.");
+                break;
         }
     }
 
@@ -335,55 +534,14 @@ class GameHandler {
         $(".hangar-menu-base-container").removeClass("hangar-menu-base-container-expanded");
     }
 
-    SpawnMultipleObstacles(n){
-        //generat n obstacles
-        for (let i = 0; i < n; i++) {
-            this.#obstacle[i] = new ObstacleObject(); 
-            //console.log(i, "index", this.#obstacle[i]._mainObject.position);
-        } 
+    RegisterBloomLight(light) {
+        if (light instanceof THREE.Light) {
+            this.#bloomLights[light.uuid] = light;
+        }
     }
-    SpawnNewObstacles(){
-       for (var i = 0; i < this.#obstacle.length; i++) {
-            //store obstacle position
-            let x = this.#obstacle[i]._mainObject.position.x, 
-                y = this.#obstacle[i]._mainObject.position.y, 
-                z = this.#obstacle[i]._mainObject.position.z;
-            var obstPos = new THREE.Vector3(x,y,z);
 
-            //random spawn range per axis
-            let rx = THREE.MathUtils.randFloat(-50, 50),
-                ry = THREE.MathUtils.randFloat(-50, 50),
-                rz = THREE.MathUtils.randFloat(-50, 50);
-            let ranPos = new THREE.Vector3(rx, ry, rz);
-
-            //set spawn in front of player 
-            //Get direction of camera and add it to player position
-            let playerPos = this.#player.Object.position.clone()
-            let vec = new THREE.Vector3(); 
-            let camDir = this.#camera.getWorldDirection(vec); 
-
-            //position in front of player
-            let frontPos = new THREE.Vector3;
-            //multiply by arbitrary number for distance note: higher it is more vertically displaced it gets. 
-            frontPos.set(playerPos.x+ camDir.x*50 , playerPos.y + camDir.y*50, playerPos.z + camDir.z*50);
-            //add random spawn.
-            frontPos.add(ranPos);
-
-            //determine if current object is within camera view
-            //**Not really checking for objects behind player
-            this.#camera.updateMatrix();
-            this.#camera.updateMatrixWorld(); 
-            let frustum = new THREE.Frustum();
-            frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.#camera.projectionMatrix, this.#camera.matrixWorldInverse));
-            
-            //if coordinates of current object is not within camera's view.
-            //and if the object is close enough while the player turns the camera, the object won't move. 
-            if (!frustum.containsPoint(obstPos) && playerPos.distanceTo(obstPos) > 30){
-                this.#obstacle[i]._mainObject.position.copy(frontPos);
-            }
-
-       }
-        
+    SetVariableBloomPassStrength(strength) {
+        this.#variableBloomPass.strength = strength;
     }
 
     get Scene() { return this.#scene; }
@@ -391,6 +549,8 @@ class GameHandler {
     get Player() { return this.#player; }
 
     get Renderer() { return this.#renderer; }
+
+    get IsMainMenu() { return this.#mode == this.#modes.MAINMENU; }
 
     get IsPaused() { return this.#mode == this.#modes.GAMEPAUSED; }
 

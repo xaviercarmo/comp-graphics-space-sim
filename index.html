@@ -1,9 +1,11 @@
 <html>
     <head>
         <title>Space Game</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ion-rangeslider/2.3.1/css/ion.rangeSlider.min.css"/>
         <link rel="stylesheet" href="index.css">
 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/ion-rangeslider/2.3.1/js/ion.rangeSlider.min.js"></script>
     </head>
 
     <body>
@@ -13,6 +15,21 @@
                 window.GameHandler = new GameHandler();
             });
         </script>
+
+        <section id="mainMenu">
+            <h1 id="title">Starfighter</h1>
+            <div id="menuItems">
+                <div class="menu-button">
+                    New Game
+                </div>
+                <div class="menu-button">
+                    Load Game
+                </div>
+                <div class="menu-button">
+                    Settings
+                </div>
+            </div>
+        </section>
 
         <div class="hangar-menu-base-container">
             <div class="hangar-menu-background-wrapper">
@@ -97,8 +114,24 @@
                         Ship Colour
                     </div>
                     <div class="hangar-sub-menu-no-grid">
-                        <div class="hue-slider-container">
-                            <input id="shipHueSlider" class="hue-slider" type="range" min="0" max="1" step="0.01">
+                        <div class="hsv-sliders-container">
+                            <input id="shipHueSlider" class="slider hue-slider" type="range" min="0" max="1" step="0.01">
+                            <input id="shipSaturationSlider" class="slider saturation-slider" type="range" min="0" max="1" step="0.01" value=1>
+                            <input id="shipValueSlider" class="slider value-slider" type="range" min="-1" max="1" step="0.01" value=0>
+                            <input id="shipLuminositySlider" class="slider luminosity-slider" type="range" min="0" max="3" step="0.01" value=1.5>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hangar-sub-menu-container">
+                    <div class="hangar-sub-menu-heading">
+                        Ship HSV Masks
+                    </div>
+                    <div class="hangar-sub-menu-no-grid">
+                        <div class="hsv-sliders-container">
+                            <input id="shipHueMaskSlider" type="text" class="js-range-slider" name="shipHueMaskSlider" value="" />
+                            <input id="shipSaturationMaskSlider" type="text" class="js-range-slider" name="shipSaturationMaskSlider" value="" />
+                            <input id="shipValueMaskSlider" type="text" class="js-range-slider" name="shipValueMaskSlider" value="" />
                         </div>
                     </div>
                 </div>

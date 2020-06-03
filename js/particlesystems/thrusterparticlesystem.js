@@ -202,7 +202,6 @@ class ThrusterParticleSystemGlobalPos extends ParticleSystem {
 class ThrusterParticleSystemLocalPos extends ParticleSystem {
     #spawnTimeCounter = 0;
     #velocity;
-    #velSpread;
     #options;
     #speed = 0;
 
@@ -211,8 +210,9 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
     /**
      * @param {THREE.Object3D} parent 
      * @param {THREE.Vector3} direction 
-     * @param {THREE.Vector2} velSpread 
-     * @param {number} duration
+     * @param {number} particleAgeLimit 
+     * @param {number} particlesPerSecond
+     * @param {number} particleSize
      * @param {object} extraOptions
      * {
      *     velSpread: THREE.Vector3,
@@ -224,6 +224,8 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
         super(parent, window.GameHandler.AssetHandler.LoadedImages.sprites.thrusterSprite, particleAgeLimit, particlesPerSecond, particleSize);
         
         this._parent.add(this._points);
+        
+        this._points.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         this.Direction = direction;
         this.#velocity = new THREE.Vector3();
@@ -235,9 +237,8 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
 
     #initialise = () => {
         for (let i = 0; i < this._numParticles; i++) {
-            //just randomising velocity for now, will be customisable later
-            //let vel = new THREE.Vector3(Math.random() / 2 - 0.25, Math.random() / 2 - 0.25, 1).multiplyScalar(1);
             let particle = new ThrusterParticle(
+                this.#options.originSpread,
                 new THREE.Vector3(0, 150, 255),
                 this._particleAgeLimit,
                 new THREE.Vector3(),
@@ -281,7 +282,7 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
                     this._activeParticles.push(activatedParticle);
                 }
                 else {
-                    console.log("ERROR: NOT ENOUGH PARTICLES FOR SYSTEM");
+                    console.warn("WARNING: NOT ENOUGH PARTICLES FOR SYSTEM");
                 }
     
                 this.#spawnTimeCounter -= this._spawnTimeInterval;
@@ -293,21 +294,28 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
     }
 
     Main(dt) {
-        this.#spawnParticles(dt);
+        if (this.Active) {
+            if (!this._didFlush) {
+                for (let i = this._activeParticles.length - 1; i >= 0; i--) {
+                    let particle = this._activeParticles[i];
+                    if (particle.IsExpired) {
+                        particle.Deactivate();
+                        this._activeParticles.splice(i, 1);
+                        this._availableParticles.push(particle);
+                    }
+                    else {
+                        particle.Main(dt);
+                    }
+                }
 
-        for (let i = this._activeParticles.length - 1; i >= 0; i--) {
-            let particle = this._activeParticles[i];
-            if (particle.IsExpired) {
-                particle.Deactivate();
-                this._activeParticles.splice(i, 1);
-                this._availableParticles.push(particle);
+                this.#spawnParticles(dt);
+                
+                this._geometry.computeBoundingSphere();
             }
             else {
-                particle.Main(dt);
+                this._didFlush = false;
             }
         }
-        
-        this._geometry.computeBoundingSphere();
     }
 
     get Speed() {
@@ -321,6 +329,14 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
 }
 
 class ThrusterParticle extends Particle {
+    #blueThreshold;
+
+    constructor(originSpread, colour, ageLimit, velocity, attributes, index) {
+        super(colour, ageLimit, velocity, attributes, index);
+
+        this.#blueThreshold = originSpread.lengthSq() * 0.3;
+    }
+
     Main(dt) {
         this.Age += dt;
         this.PositionStore.add(this.Velocity.clone().multiplyScalar(dt));
@@ -336,7 +352,9 @@ class ThrusterParticle extends Particle {
         //(255, 50, 0) at reddest
         //x = r, y = g, z = b
         let newColour = new THREE.Vector3();
-        if (agePct < 0.25) {
+        let positionXY = new THREE.Vector2(this.PositionStore.x, this.PositionStore.y);
+        let distFromCentre = positionXY.lengthSq();
+        if (agePct < 0.4 && distFromCentre < this.#blueThreshold) {
             newColour.x = 255 * agePct;
             newColour.y = 150 - 100 * agePct;
             newColour.z = 255 * (1 - agePct)

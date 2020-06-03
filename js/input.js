@@ -42,8 +42,8 @@ function OnMouseUp(event) {
 }
 
 function OnContextMenu(event) {
-    event.preventDefault();
-    event.stopPropagation();
+    //event.preventDefault();
+    //event.stopPropagation();
 }
 
 function OnKeyDown(event) {

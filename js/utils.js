@@ -14,10 +14,10 @@ function SubVectors(...vectors) {
     return total;
 }
 
-function LimitMagnitude(float, maxMagnitude) {
-    if (float > maxMagnitude) { return maxMagnitude; }
-    if (float < -maxMagnitude) { return -maxMagnitude; }
-    return float;
+function LimitToRange(value, lowerBound, upperBound) {
+    if (value < lowerBound) { return lowerBound; }
+    if (value > upperBound) { return upperBound; }
+    return value;
 }
 
 function Mod(num1, modNum) {
@@ -72,7 +72,7 @@ const Constants = {
 export {
     AddVectors,
     SubVectors,
-    LimitMagnitude,
+    LimitToRange,
     Mod,
     RedDebugLine,
     RandomFloatInRange,
