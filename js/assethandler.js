@@ -18,6 +18,7 @@ class AssetHandler {
         gattling_gun_base_plate: '../assets/guns/gattling_gun/base_plate_origin.fbx',
         gattling_gun_struts: '../assets/guns/gattling_gun/struts_origin.fbx',
         gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
+        asteroid: '../assets/asteroids/asteroid1.fbx'
     }
 
     //not required at the moment

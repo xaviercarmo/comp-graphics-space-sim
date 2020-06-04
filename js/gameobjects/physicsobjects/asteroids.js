@@ -2,7 +2,9 @@ import * as THREE from '../../../libraries/three.module.js';
 import * as INPUT from '../../input.js';
 import * as UTILS from '../../utils.js';
 
+import GameHandler from '../../gamehandler.js';
 import PhysicsObject from '../physics.js';
+import { FBXLoader } from '../../../libraries/FBXLoader.js';
 
 class AsteroidObject extends PhysicsObject {
     //icosaherdon geo
@@ -16,17 +18,24 @@ class AsteroidObject extends PhysicsObject {
 
     constructor() {
         let rad = 5;
-        let det = 1;
+        let det = THREE.MathUtils.randInt(1,3);
         let numObjects = 10;
 
         let geo = new THREE.IcosahedronGeometry(rad, det);
         //lambertian better for matte surfaces, ideal for stone not shiny surfaces
-        let mat = new THREE.MeshLambertMaterial( { color: 0xDEB887 });
+        let mat = new THREE.MeshLambertMaterial({ color: 0xb7b1ab});
         let obj = new THREE.Mesh(geo, mat);
+        obj.position.copy( new THREE.Vector3(10, 10, 10));
         super(obj);
-        this.#asteroid = obj; 
-
-        this.ParameterSetup();
+        
+        const loader = new FBXLoader();
+        loader.load('../../../assets/asteroids/asteroid1.fbx', function(fbx) {
+            fbx.scale.set(100,100,100);
+            fbx.position.x += 20; 
+            window.GameHandler.Scene.add(fbx);
+        });
+        
+        this.#ParameterSetup();
         /*
         //Generates a circular field of asteroids 
         //Doesn't get passed into super class, so won't count as mainObject? 
@@ -49,20 +58,21 @@ class AsteroidObject extends PhysicsObject {
 
     Main(dt){
         super.Main(dt);
-        this.AsteroidRotation(); 
-        this.AutoMovement();
+        this.#AsteroidRotation(); 
+        this.#AutoMovement();
     }
 
-    AsteroidRotation(){
+    #AsteroidRotation = () => {
         this._mainObject.rotation.y += this.#rotDir;//this.#randFloat;
+         
     }
 
-    AutoMovement(){
+    #AutoMovement = () => {
         //increment positional changes
         this._mainObject.position.add(this.#random);
     }
 
-    ParameterSetup(){
+    #ParameterSetup = () => {
         //object rotation
         this.#rotDir = THREE.MathUtils.randFloat(-0.005, 0.005);;
 
@@ -75,5 +85,7 @@ class AsteroidObject extends PhysicsObject {
     }
 
 }
+
+
 
 export default AsteroidObject;
