@@ -228,7 +228,9 @@ class AssetHandler {
             { name: 'thruster_sprite.png', size: 12000, key: 'thrusterSprite' },
             { name: 'white_square.png', size: 131, key: 'whiteSquare' },
             { name: 'sun_texture.png', size: 395, key: 'sunTexture' },
-            { name: 'rock.png', size: 87800, key: 'rockSprite' }
+            { name: 'rock.png', size: 87800, key: 'rockSprite' },
+            { name: 'rock_texture.png', size: 628000, key: 'rockTexture' }
+            
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 

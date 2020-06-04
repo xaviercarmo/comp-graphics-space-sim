@@ -250,7 +250,7 @@ class PlayerObject extends PhysicsObject {
         if (this.#useMainCloud) {
             this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
         } else {
-            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 50, camera);
+            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockTexture, 50, camera);
         }
         
     }

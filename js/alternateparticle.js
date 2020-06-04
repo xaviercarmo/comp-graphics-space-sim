@@ -6,7 +6,7 @@ class AlternateParticle {
     #parent;
     #texture;
     #numParticles;
-    #obstacle = []; 
+    #particle = []; 
     #camera; 
 
     constructor(parent, texture, maxParticles, camera){
@@ -29,18 +29,18 @@ class AlternateParticle {
     #SpawnParticles = (numPart) => {
         //generat n obstacles
         for (let i = 0; i < numPart; i++) {
-            this.#obstacle[i] = new SpawnParticle(this.#parent, this.#texture); 
+            this.#particle[i] = new SpawnParticle(this.#parent, this.#texture); 
             //console.log(i, "index", this.#obstacle[i].Position);
         } 
     }
     
     #SpawnNewObstacles = () => {
-        for (let i = 0; i < this.#obstacle.length; i++) {
+        for (let i = 0; i < this.#particle.length; i++) {
             //store obstacle position
-            let x = this.#obstacle[i].Particle.position.x, 
-                y = this.#obstacle[i].Particle.position.y, 
-                z = this.#obstacle[i].Particle.position.z;
-            let obstPos = new THREE.Vector3(x,y,z);
+            let x = this.#particle[i].Particle.position.x, 
+                y = this.#particle[i].Particle.position.y, 
+                z = this.#particle[i].Particle.position.z;
+            let partPos = new THREE.Vector3(x,y,z);
 
             //random spawn range per axis -- for respawning
             let rx = THREE.MathUtils.randFloat(-50, 50),
@@ -72,8 +72,8 @@ class AlternateParticle {
 
             //if coordinates of current object is not within camera's view.
             //and if the object is close enough while the player turns the camera, the object won't move. 
-            if (!frustum.containsPoint(obstPos) && playerPos.distanceTo(obstPos) > 50){
-                this.#obstacle[i].Particle.position.copy(frontPos);
+            if (!frustum.containsPoint(partPos) && playerPos.distanceTo(partPos) > 50){
+                this.#particle[i].Particle.position.copy(frontPos);
             }
         }
 
@@ -85,7 +85,7 @@ class SpawnParticle {
     #parent;
     #texture;
     #position
-    #obst; 
+    #part; 
 
     constructor(parent, texture){
         this.#parent = parent; 
@@ -93,17 +93,17 @@ class SpawnParticle {
         this.#initialise(); 
     }
     #initialise = () => {
-        /*
-        let rad = THREE.MathUtils.randInt(5, 20);
+        let rad = THREE.MathUtils.randFloat(1, 5);
         let det = THREE.MathUtils.randInt(1, 3);
     
         let geo = new THREE.IcosahedronGeometry(rad, det);
-        let mat = new THREE.MeshBasicMaterial( { map: this.#texture});
-        this.#obst = new THREE.Mesh(geo, mat);
-        */
-        let spriteMaterial = new THREE.SpriteMaterial({map: this.#texture});
-        this.#obst = new THREE.Sprite(spriteMaterial);
-        
+        //lambertian for matte/diffuse reflections
+        let mat = new THREE.MeshLambertMaterial( { map: this.#texture});
+        this.#part = new THREE.Mesh(geo, mat);
+        this.#part.scale.set(0.03, 0.03, 0.03);
+        //let spriteMaterial = new THREE.SpriteMaterial({map: this.#texture});
+        //this.#part = new THREE.Sprite(spriteMaterial);
+
         //random spawn
         //Random range via random int per axis.
         let x = THREE.MathUtils.randFloat(-50, 50);
@@ -117,18 +117,16 @@ class SpawnParticle {
         let newPos = this.#parent.position.add(ranPos); //vector3
         
         //Set new position and add object to scene
-        this.#obst.scale.set(0.4, 0.4, 1);
-        this.#obst.position.copy(newPos); 
-        this.#position = this.#obst.position; 
+        this.#part.position.copy(newPos); 
+        this.#position = this.#part.position; 
 
         //console.log(this.#obst.position);
         //console.log("position of obst",this._mainObject.position, );
-        window.GameHandler.Scene.add(this.#obst);
-
+        window.GameHandler.Scene.add(this.#part);
     }
     
     get Particle() {
-        return this.#obst; 
+        return this.#part; 
     }
     get Position() {
         return this.#position; 
