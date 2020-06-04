@@ -210,8 +210,9 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
     /**
      * @param {THREE.Object3D} parent 
      * @param {THREE.Vector3} direction 
-     * @param {THREE.Vector2} velSpread 
-     * @param {number} duration
+     * @param {number} particleAgeLimit 
+     * @param {number} particlesPerSecond
+     * @param {number} particleSize
      * @param {object} extraOptions
      * {
      *     velSpread: THREE.Vector3,
@@ -224,7 +225,7 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
         
         this._parent.add(this._points);
         
-        this._points.layers.enable(window.GameHandler.RenderLayers.BLOOM);
+        this._points.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         this.Direction = direction;
         this.#velocity = new THREE.Vector3();
@@ -236,8 +237,6 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
 
     #initialise = () => {
         for (let i = 0; i < this._numParticles; i++) {
-            //just randomising velocity for now, will be customisable later
-            //let vel = new THREE.Vector3(Math.random() / 2 - 0.25, Math.random() / 2 - 0.25, 1).multiplyScalar(1);
             let particle = new ThrusterParticle(
                 this.#options.originSpread,
                 new THREE.Vector3(0, 150, 255),
@@ -283,7 +282,7 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
                     this._activeParticles.push(activatedParticle);
                 }
                 else {
-                    console.log("ERROR: NOT ENOUGH PARTICLES FOR SYSTEM");
+                    console.warn("WARNING: NOT ENOUGH PARTICLES FOR SYSTEM");
                 }
     
                 this.#spawnTimeCounter -= this._spawnTimeInterval;
@@ -297,8 +296,6 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
     Main(dt) {
         if (this.Active) {
             if (!this._didFlush) {
-                this.#spawnParticles(dt);
-
                 for (let i = this._activeParticles.length - 1; i >= 0; i--) {
                     let particle = this._activeParticles[i];
                     if (particle.IsExpired) {
@@ -310,6 +307,8 @@ class ThrusterParticleSystemLocalPos extends ParticleSystem {
                         particle.Main(dt);
                     }
                 }
+
+                this.#spawnParticles(dt);
                 
                 this._geometry.computeBoundingSphere();
             }

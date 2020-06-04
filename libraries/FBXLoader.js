@@ -659,7 +659,7 @@ var FBXLoader = ( function () {
 					case 'SpecularFactor': // AKA specularLevel
 					case 'VectorDisplacementColor': // NOTE: Seems to be a copy of DisplacementColor
 					default:
-						console.warn( 'THREE.FBXLoader: %s map is not supported in three.js, skipping texture.', type );
+						// console.warn( 'THREE.FBXLoader: %s map is not supported in three.js, skipping texture.', type );
 						break;
 
 				}
@@ -3293,7 +3293,7 @@ var FBXLoader = ( function () {
 
 			var version = reader.getUint32();
 
-			console.log( 'THREE.FBXLoader: FBX binary version: ' + version );
+			// console.log( 'THREE.FBXLoader: FBX binary version: ' + version );
 
 			var allNodes = new FBXTree();
 

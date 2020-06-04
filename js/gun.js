@@ -126,6 +126,11 @@ class Gun {
     set FireRate(value) {
         this._fireInterval = 1 / value;
     }
+
+    Flush() {
+        this._projectiles.forEach(projectile => projectile.Dispose());
+        this._projectiles = [];
+    }
 }
 
 class Projectile {
