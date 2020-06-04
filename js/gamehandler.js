@@ -249,9 +249,15 @@ class GameHandler {
     }
 
     #setupMainMenuEvents = () => {
+        //need to call this whenever the main menu is accessed...right now the player could create infinite profiles if they could get back
+        //to the main menu
+        if (this.#getAllSaveGameIds().length >= 10) {
+            $('#newGame').addClass('menu-button-disabled');
+        }
+
         $(".menu-button, .back-menu-button").hover(
             (event) => {
-                if (event.target.id != 'newGame' || this.#getAllSaveGameIds().length < 10) {
+                if (!$(event.target).is('.menu-button-disabled')) {
                     $(event.target).addClass('menu-button-hover');
                 }
             },
@@ -259,15 +265,9 @@ class GameHandler {
                 $(event.target).removeClass('menu-button-hover');
             }
         );
-
-        //need to call this whenever the main menu is accessed...right now the player could create infinite profiles if they could get back
-        //to the main menu
-        if (this.#getAllSaveGameIds().length >= 10) {
-            $('#newGame').addClass('menu-button-disabled');
-        }
         
         $('#newGame').click(() => {
-            if (!this.#isMainMenuTransitioning) {
+            if (!this.#isMainMenuTransitioning && !$('#newGame').is('.menu-button-disabled')) {
                 this.#transitionMainMenu(true, '#menuItems');
                 $('#title').css('opacity', 0);
                 this.#player.CameraPosition = 'HANGAR';
@@ -294,14 +294,29 @@ class GameHandler {
             this.#player.Class = 'heavy';
         });
 
-        $('#classMenuStartButton').click(() => {
-            let playerName = window.prompt("Please enter a callsign: ");
+        // setup events related to the call sign input (and all menu inputs)
+        $('.menu-input').focus(function() {
+            $(this).parent().addClass('menu-input-container-focused');
+        });
 
-            //manual call here so that dt isnt very large due to the prompt
-            this.#clock.getDelta();
+        $('.menu-input').focusout(function() {
+            $(this).parent().removeClass('menu-input-container-focused');
+        });
 
-            if (playerName != null) {
-                this.#player.SaveToLocalStorage(playerName);
+        $('#callSignInput').on('input', function() {
+            if ($(this).val() != '' && localStorage.getItem(PlayerObject.SaveGamePrefix + $(this).val().toLowerCase()) == null) {
+                $(this).css('background-color', '#005e61');
+                $('#classMenuStartButton').removeClass('menu-button-disabled');
+            }
+            else {
+                $(this).css('background-color', '#690000');
+                $('#classMenuStartButton').addClass('menu-button-disabled');
+            }
+        });
+
+        $('#classMenuStartButton').click((event) => {
+            if (!$(event.target).is('.menu-button-disabled')) {
+                this.#player.SaveToLocalStorage($('#callSignInput').val());
                 $('#classMenu').removeClass('hangar-menu-base-container-expanded');
 
                 this.#startGameRunning();
@@ -512,6 +527,8 @@ class GameHandler {
     }
 
     #startMainMenu = () => {
+        INPUT.ShouldPreventDefaultEvents(false);
+
         this.#mode = this.#modes.MAINMENU;
 
         $('#mainMenu').css('display', 'flex');
@@ -523,6 +540,7 @@ class GameHandler {
     }
 
     #startGameRunning = () => {
+        INPUT.ShouldPreventDefaultEvents(true);
         this.#player.CameraPosition = 'FOLLOW';
         this.#player.InputEnabled = true;
         this.#player.SetupPointerLock();
@@ -545,10 +563,9 @@ class GameHandler {
         }
         
         //for debug purposes
-        if (INPUT.KeyPressedOnce("t")) {
-            this.SkyBox.visible = !this.SkyBox.visible;
-            console.log(this.SkyBox.visible);
-        }
+        // if (INPUT.KeyPressedOnce("t")) {
+        //     this.SkyBox.visible = !this.SkyBox.visible;
+        // }
 
         let playerOldPosition = this.#player.Position;
 

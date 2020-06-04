@@ -1096,7 +1096,7 @@ class PlayerObject extends PhysicsObject {
 
     SaveToLocalStorage(newPlayerName) {
         if (newPlayerName != undefined) {
-            this.#saveId = PlayerObject.SaveGamePrefix + newPlayerName;
+            this.#saveId = PlayerObject.SaveGamePrefix + newPlayerName.toLowerCase();
         }
 
         let saveObj = {};
