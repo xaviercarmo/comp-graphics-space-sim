@@ -54,6 +54,7 @@ class GameHandler {
     #sun;
     #ambientLight;
     #sunLight;
+    #asteroids = {};
 
     #scene = new THREE.Scene();
 
@@ -253,10 +254,15 @@ class GameHandler {
 
     #initialiseAsteroid = () => {
         //Testing method - check if object appears in scene. 
-        let asteroid = new AsteroidObject(); 
-        this.AddGameObject(asteroid); 
-
+        //later change to have another class with amount inputted into its new object constructor.
+            for (let i = 0; i < 20; i++) {
+                this.#asteroids[i] = new AsteroidObject();
+                //console.log(this.#asteroids);
+                this.AddGameObject(this.#asteroids[i]);
+            } 
+        
     }
+    
 
     #setupMainMenuEvents = () => {
         $(".menu-button, .back-menu-button").hover(

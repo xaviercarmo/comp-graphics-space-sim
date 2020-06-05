@@ -14,57 +14,58 @@ class AsteroidObject extends PhysicsObject {
     //temp - not sure if needed yet. 
     #asteroid;
     #rotDir; 
-    #random;   
+    #random;
+    #player;
+    #camera;
 
     constructor() {
-        let rad = 5;
-        let det = THREE.MathUtils.randInt(1,3);
-        let numObjects = 10;
-
-        let geo = new THREE.IcosahedronGeometry(rad, det);
-        //lambertian better for matte surfaces, ideal for stone not shiny surfaces
-        let mat = new THREE.MeshLambertMaterial({ color: 0xb7b1ab});
-        let obj = new THREE.Mesh(geo, mat);
-        obj.position.copy( new THREE.Vector3(10, 10, 10));
-        super(obj);
-        
-        const loader = new FBXLoader();
-        loader.load('../../../assets/asteroids/asteroid1.fbx', function(fbx) {
-            fbx.scale.set(100,100,100);
-            fbx.position.x += 20; 
-            window.GameHandler.Scene.add(fbx);
-        });
-        
-        this.#ParameterSetup();
-        /*
-        //Generates a circular field of asteroids 
-        //Doesn't get passed into super class, so won't count as mainObject? 
-        for (var i = 0; i < numObjects; i++) {
-            let theta = i * 2 * Math.PI / numObjects;
-            let x = Math.sin(theta)*rad*10;
-            let y = Math.cos(theta)*rad*10;
-            let z = Math.cos(theta)*rad*10;
-
-            let ast = new THREE.Mesh(geo, mat);
-            ast.position.x = x;
-            ast.position.y = y;
-            ast.position.z = z; 
-            window.GameHandler.Scene.add(ast);
+        //random asteroid selection.
+        let indexNo = THREE.MathUtils.randInt(1,4);
+        let asteroid; 
+        if (indexNo == 1) {
+            asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid1.clone(); 
+        }else if (indexNo == 2) {
+            asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid2.clone(); 
+        }else if (indexNo == 3) {
+            asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid8.clone(); 
+        }else if (indexNo == 4) {
+            asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid9.clone(); 
         }
-        */
-        //add object to scene. 
-        //window.GameHandler.Scene.add(this._mainObject);
+        console.log(asteroid);
+
+        //radomise size of each asteroid. 
+        asteroid.scale.set(
+            THREE.MathUtils.randFloat(200, 200),
+            THREE.MathUtils.randFloat(200, 200),
+            THREE.MathUtils.randFloat(200, 200)
+        );
+        asteroid.position.add(new THREE.Vector3(
+            THREE.MathUtils.randInt(-200, 200),
+            THREE.MathUtils.randInt(-200, 200),
+            THREE.MathUtils.randInt(-200, 200)
+        ));
+        //only rendered if in camera view.
+        //doesn't really seem to work.? 
+        asteroid.frustumCulled = true; 
+        super(asteroid);
+        this.#asteroid = asteroid;
+        
+        this.#camera = window.GameHandler.Camera;
+        this.#player = window.GameHandler.Player;
+        this.#ParameterSetup();
     }
 
     Main(dt){
         super.Main(dt);
+
         this.#AsteroidRotation(); 
         this.#AutoMovement();
+        this.#collisionDetection();
+        
     }
-
+    
     #AsteroidRotation = () => {
         this._mainObject.rotation.y += this.#rotDir;//this.#randFloat;
-         
     }
 
     #AutoMovement = () => {
@@ -76,16 +77,38 @@ class AsteroidObject extends PhysicsObject {
         //object rotation
         this.#rotDir = THREE.MathUtils.randFloat(-0.005, 0.005);;
 
-        //object movement
-        let x = THREE.MathUtils.randFloat(-0.01, 0.01),
-            y = THREE.MathUtils.randFloat(-0.01, 0.01),
-            z = THREE.MathUtils.randFloat(-0.01, 0.01);
-        this.#random = new THREE.Vector3(x, y, z);
+        //object movement along xyz
+        this.#random = new THREE.Vector3(
+            THREE.MathUtils.randFloat(-0.01, 0.01),
+            THREE.MathUtils.randFloat(-0.01, 0.01),
+            THREE.MathUtils.randFloat(-0.01, 0.01)
+        );
+    }
 
+    #collisionDetection = () => {
+        //console.log(this._mainObject.position);
+        //console.log(playerPos);
+        let vec = new THREE.Vector3();
+        let camDir = this.#camera.getWorldDirection(vec);
+        let distance = 80; 
+        if(this.#player.Position.distanceToSquared(this._mainObject.position) < distance) {
+            //Pushes object forward with repsect to camera direction
+            //note since updates are called so quickly, it looks like its shifting away.
+            //added random numbers to make it less consistent.
+            //will need to change to more realistic way. 
+            let newPos = new THREE.Vector3(
+                this._mainObject.position.x + camDir.x* + THREE.MathUtils.randFloat(0, 2),
+                this._mainObject.position.y + camDir.y* + THREE.MathUtils.randFloat(0, 2),
+                this._mainObject.position.z + camDir.z* + THREE.MathUtils.randFloat(0, 2)
+            );
+            this._mainObject.position.copy(newPos);
+        }
+    }
+    
+    get Asteroid(){
+        return this.#asteroid;
     }
 
 }
-
-
 
 export default AsteroidObject;

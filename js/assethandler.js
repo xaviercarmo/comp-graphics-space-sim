@@ -18,7 +18,16 @@ class AssetHandler {
         gattling_gun_base_plate: '../assets/guns/gattling_gun/base_plate_origin.fbx',
         gattling_gun_struts: '../assets/guns/gattling_gun/struts_origin.fbx',
         gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
-        asteroid: '../assets/asteroids/asteroid1.fbx'
+        asteroid1: '../assets/asteroids/asteroid1.fbx',
+        asteroid2: '../assets/asteroids/asteroid2.fbx',
+        asteroid3: '../assets/asteroids/asteroid3.fbx',
+        asteroid4: '../assets/asteroids/asteroid4.fbx',
+        asteroid5: '../assets/asteroids/asteroid5.fbx',
+        asteroid6: '../assets/asteroids/asteroid6.fbx',
+        asteroid7: '../assets/asteroids/asteroid7.fbx',
+        asteroid8: '../assets/asteroids/asteroid8.fbx',
+        asteroid9: '../assets/asteroids/asteroid9.fbx',
+        asteroid10: '../assets/asteroids/asteroid10.fbx'
     }
 
     //not required at the moment
