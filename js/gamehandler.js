@@ -6,6 +6,7 @@ import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
 import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
+import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
@@ -15,9 +16,7 @@ import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
 import { FXAAShader } from '../libraries/FXAAShader.js';
 
 class GameHandler {
-    //debug
-    get Camera() { return this.#camera; }
-
+    
     //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
     
@@ -133,7 +132,7 @@ class GameHandler {
 
         let renderScene = new RenderPass(this.#scene, this.#camera);
         
-        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.6, 0.0);
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.6, 0.0);
         //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
         this.#bloomComposer.renderToScreen = false;
         this.#bloomComposer.addPass(renderScene);
@@ -195,6 +194,40 @@ class GameHandler {
 
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
+
+        let test = new EnemyObject();
+        this.test = test;
+        this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
+
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -274,7 +307,7 @@ class GameHandler {
                 window.setTimeout(() => {
                     $('#classMenu').addClass('hangar-menu-base-container-expanded');
                     window.setTimeout(() => {
-                        $('#mediumClassHeading').click();
+                        $(`#${this.#player.Class}ClassHeading`).click();
                     }, 300);
                 }, 1000);
             }
@@ -536,6 +569,8 @@ class GameHandler {
 
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
+        this.#startGameRunning();
+
         this.#animate();
     }
 
@@ -563,9 +598,9 @@ class GameHandler {
         }
         
         //for debug purposes
-        // if (INPUT.KeyPressedOnce("t")) {
-        //     this.SkyBox.visible = !this.SkyBox.visible;
-        // }
+        if (INPUT.KeyPressedOnce("t")) {
+            this.SkyBox.visible = !this.SkyBox.visible;
+        }
 
         let playerOldPosition = this.#player.Position;
 
@@ -766,6 +801,19 @@ class GameHandler {
     get IsGameRunning() { return this.#mode == this.#modes.GAMERUNNING; }
 
     get Clock() { return this.#clock; }
+
+    get Camera() { return this.#camera; }
+
+    get EnemyObjects() {
+        let result = [];
+        this.#gameObjects.forEach(object => {
+            if (object instanceof EnemyObject) {
+                result.push(object);
+            }
+        });
+
+        return result;
+    }
 }
 
 export default GameHandler;

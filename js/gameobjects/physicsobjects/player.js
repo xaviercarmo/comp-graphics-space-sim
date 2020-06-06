@@ -234,11 +234,18 @@ class PlayerObject extends PhysicsObject {
     };
     #currentShipSettings;
 
+    #enemyTrackerObject;
+    #enemyTrackerObjects = [];
+
+    //ability fields
+    #isCloaked = false;
+
     //publics
     InputEnabled = true;
     
     //statics
     static SaveGamePrefix = 'playerSave-';
+
     
     //debug
     //#debugLine = new UTILS.RedDebugLine();
@@ -255,7 +262,8 @@ class PlayerObject extends PhysicsObject {
         this.#setupCamera(camera);
 
         this.#setupCrosshair();
-
+        this.#setupEnemyTrackers();
+        
         window.addEventListener("wheel", this.#handleScroll);
 
         this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
@@ -792,6 +800,22 @@ class PlayerObject extends PhysicsObject {
         }
     }
 
+    #setupEnemyTrackers = () => {
+        // this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
+        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker_2;
+        this.#enemyTrackerObject.scale.set(0.003, 0.003, 0.003);
+        let enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        enemyTrackerMaterial.depthWrite = false;
+        enemyTrackerMaterial.depthTest = false;
+
+        this.#enemyTrackerObject.traverse(child => {
+            if (child.isMesh) {
+                child.material = enemyTrackerMaterial;
+                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+            }
+        });
+    }
+
     #handleScroll = (event) => {
         if (!window.GameHandler.IsPaused && event.deltaY != 0 && this.InputEnabled) {
             //initialise a scrollDelta so we know how much their mouse wheel is scrolling each time
@@ -830,9 +854,9 @@ class PlayerObject extends PhysicsObject {
 
     #adjustRotationAmounts = (dt) => {
         this.#mouseOffsetPct.set(this.#mouseOffset.x / this.#maxMouseOffset, this.#mouseOffset.y / this.#maxMouseOffset);
-        let adjustedMoustOffsetPct = this.#mouseOffsetPct.clone().multiplyScalar(this.#currentShipStats.maxTurnSpeedMultiplier);
+        let adjustedMouseOffsetPct = this.#mouseOffsetPct.clone().multiplyScalar(this.#currentShipStats.maxTurnSpeedMultiplier);
 
-        let deltaRotAmt = UTILS.SubVectors(adjustedMoustOffsetPct, this.#rotAmt);
+        let deltaRotAmt = UTILS.SubVectors(adjustedMouseOffsetPct, this.#rotAmt);
 
         let timePct = Math.sqrt(this.#rotAmt.length());
         let maxMagnitude = (0.6 + timePct) * this.#currentShipStats.turnAccelMultiplier * dt;
@@ -841,9 +865,9 @@ class PlayerObject extends PhysicsObject {
         this._objectGroup.rotateX(-this.#rotAmt.y * dt);
         this._objectGroup.rotateY(this.#rotAmt.x * dt);
 
-        let targetXAngle = this.#baseTargetAngles.x * -adjustedMoustOffsetPct.y; // back and forth
+        let targetXAngle = this.#baseTargetAngles.x * -adjustedMouseOffsetPct.y; // back and forth
         let targetYAngle = this.#baseTargetAngles.y * this.#rotAmt.x; // side to side
-        let targetZAngle = this.#baseTargetAngles.z * -adjustedMoustOffsetPct.x; // barrel roll
+        let targetZAngle = this.#baseTargetAngles.z * -adjustedMouseOffsetPct.x; // barrel roll
         this.#targetEuler.set(targetXAngle, targetYAngle, targetZAngle);
         this.#targetQuaternion.setFromEuler(this.#targetEuler);
 
@@ -978,7 +1002,7 @@ class PlayerObject extends PhysicsObject {
 
         //handle all visual effects associated with current movement
         if (this.#cameraPosition.name != "ORBIT") {
-            if (this.InputEnabled && INPUT.KeyPressed("space")) {
+            if (this.InputEnabled && INPUT.KeyPressed("rightMouse")) {
                 this.#mouseOffset.set(0, 0);
             }
 
@@ -999,6 +1023,55 @@ class PlayerObject extends PhysicsObject {
         });
 
         this.#rockParticleCloud.Main(dt);
+
+        //create objects that point towards enemies
+        let enemyObjects = window.GameHandler.EnemyObjects;
+        let lengthDiff = enemyObjects.length - this.#enemyTrackerObjects.length;
+        if (lengthDiff > 0) {
+            for (let i = 0; i < lengthDiff; i++) {
+                // let trackerGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
+                // let trackerMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                // let trackerObj = new THREE.Mesh(trackerGeo, trackerMat);
+                // trackerObj.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+
+                let trackerObj = this.#enemyTrackerObject.clone();
+
+                window.GameHandler.Scene.add(trackerObj);
+
+                this.#enemyTrackerObjects.push(trackerObj);
+            }
+        }
+        else if (lengthDiff < 0) {
+            for (let i = 0; i < -lengthDiff; i++) {
+                window.GameHandler.Scene.remove(trackerObj);
+                // this._objectGroup.remove(this.#enemyTrackerObjects.pop());
+            }
+        }
+
+        let currForwardDirection = new THREE.Vector3();
+        this._objectGroup.getWorldDirection(currForwardDirection);
+
+        let mainObjWorldPos = new THREE.Vector3();
+        this._mainObject.getWorldPosition(mainObjWorldPos);
+            
+        for (let i = 0; i < enemyObjects.length; i++) {
+            let dirToEnemy = enemyObjects[i].Position.sub(mainObjWorldPos);
+            if (currForwardDirection.angleTo(dirToEnemy) > 1) {
+                this.#enemyTrackerObjects[i].visible = true;
+
+                dirToEnemy.normalize();
+                dirToEnemy.multiplyScalar(4);
+                let worldPos = mainObjWorldPos.clone();
+                worldPos.add(dirToEnemy);
+                
+                this.#enemyTrackerObjects[i].position.copy(worldPos);
+                this.#enemyTrackerObjects[i].lookAt(enemyObjects[i].Position);
+                this.#enemyTrackerObjects[i].rotateX(Math.PI / 2);
+            }
+            else {
+                this.#enemyTrackerObjects[i].visible = false;
+            }
+        }
     }
 
     MainNoPause(dt) {
@@ -1049,6 +1122,10 @@ class PlayerObject extends PhysicsObject {
             moveVec.multiplyScalar(0.1);
             rotVec.multiplyScalar(0.1);
             scaleAmt *= 0.1;
+        }
+
+        if (this.#cameraPosition.name == "FOLLOW") {
+            this.#camera.rotation.y = INPUT.KeyPressed("space") ? Math.PI : 0;
         }
 
         // this._mediumThrusters.mid_mid.target.position.add(moveVec);
@@ -1178,7 +1255,7 @@ class PlayerObject extends PhysicsObject {
     }
 
     get Speed() {
-        return this.#targetSpeed;
+        return this.#currentSpeed;
     }
 
     /**
@@ -1233,6 +1310,14 @@ class PlayerObject extends PhysicsObject {
             this.#currentShipSettings.vMask = mask;
             this.#refreshShaderUniformsFromSettings();
         }
+    }
+
+    get Class() {
+        return this._currentClass;
+    }
+
+    get IsCloaked() {
+        return this.#isCloaked;
     }
 
     /**
