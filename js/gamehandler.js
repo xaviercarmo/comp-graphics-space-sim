@@ -256,7 +256,7 @@ class GameHandler {
 
         this.SkyBox.add(this.#sun.Object); // for debugging purposes
         
-        this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.2);
+        this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.4);
         this.#scene.add(this.#ambientLight);
         this.RegisterBloomLight(this.#ambientLight);
 
@@ -520,7 +520,6 @@ class GameHandler {
         });
 
         $('#shipLuminositySlider').on('input', (event) => {
-            console.log(event.target.value);
             this.#player.ShipLuminosity = event.target.value;
             this.#variableBloomPass.strength = event.target.value;
         });

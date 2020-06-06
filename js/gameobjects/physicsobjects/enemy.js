@@ -7,6 +7,12 @@ import PhysicsObject from '../physics.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
 
+/** TODO
+ * when evade state activated, evade for a minimum 3-seconds before returning to any other state
+ * cut-off is very important, as the gun is quite useless right now...
+ * abrupt stop when player stops (switching to sentry mode) is ugly - need to fix
+ */
+
 class EnemyObject extends PhysicsObject {
     #playerRef = window.GameHandler.Player;
     #forward = new THREE.Vector3(0, 0, 1);
@@ -14,7 +20,7 @@ class EnemyObject extends PhysicsObject {
     #clone;
     #currentSpeed = 0;
     #targetSpeed = 0;
-    #maxSpeed = 800;
+    #maxSpeed = 200;
     #acceleration = 0.5;
 
     #turnAccel = 0.5;
@@ -38,6 +44,7 @@ class EnemyObject extends PhysicsObject {
     #currentPatrolWaypoint = new THREE.Vector3();
     
     #states = {
+        IDLE: 'idle',
         PATROL: 'patrol',
         FOLLOW: 'follow',
         CUTOFF: 'cutoff',
@@ -46,6 +53,14 @@ class EnemyObject extends PhysicsObject {
     }
     #currentState;
 
+    #evadeCounter = 0;
+    #evadeTimeLimit = 0;
+    #evadeTurnAmts = new THREE.Vector2();
+    #targetEvadeTurnAmts = new THREE.Vector2();
+
+    #gunObj = new THREE.Object3D();
+    #gun;
+
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
 
@@ -53,6 +68,9 @@ class EnemyObject extends PhysicsObject {
 
         this.#setupModel();
         this.#setupSprites();
+
+        this.#setupGuns();
+        this.#setupThrusters();
 
         // let bulletGeo = new THREE.SphereBufferGeometry(50, 30, 30);
         // let bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
@@ -86,6 +104,25 @@ class EnemyObject extends PhysicsObject {
         this.#circleSprite.scale.set(0.05, 0.05, 0.05);
         this._objectGroup.add(this.#circleSprite);
         window.testing = this.#circleSprite;
+    }
+
+    #setupGuns = () => {
+        let bulletGeo = new THREE.SphereBufferGeometry(0.3, 30, 30);
+        let bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        let bullet = new THREE.Mesh(bulletGeo, bulletMat);
+        bullet.castShadow = true;
+        bullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+
+        let gunBulletSpeed = 750;
+        let gunFireRate = 15;
+        let projectileDuration = 5;
+
+        this.#gunObj.position.set(0, -0.04, 5);
+        this.Object.add(this.#gunObj);
+        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+    }
+
+    #setupThrusters = () => {
     }
 
     // "visiblity" of player right now is just 500m radius sphere when player hasnt already been found, and 2500m radius sphere if they were discovered - really
@@ -146,7 +183,7 @@ class EnemyObject extends PhysicsObject {
             // otherwise if the player is not coming towards the enemy
             else {
                 // chase the player if the distance between is moderate and their difference in speed is not great
-                if (this.#currDistToPlayer < 200) {
+                if (this.#currDistToPlayer < 800 && this.#playerRef.Speed <= this.#maxSpeed) {
                     this.#currentState = this.#states.FOLLOW;
                 }
                 // otherwise try to cut them off
@@ -167,6 +204,8 @@ class EnemyObject extends PhysicsObject {
     // moves at 1/3 max speed while patrolling.
     // NOTE: Potentially handle rotation the same as player (get direction to player and rotate fixed amount in that direction). Not "needed" for now
     #handlePatrolState = (dt) => {
+        this.#gun.Firing = false;
+
         if (UTILS.SubVectors(this.#currentPatrolWaypoint, this.Position).lengthSq() < 50 * 50) {
             this.#currentPatrolWaypoint = this.#generateNewWaypoint();
             // this.testObj.position.copy(this.#currentPatrolWaypoint);
@@ -175,7 +214,7 @@ class EnemyObject extends PhysicsObject {
         this.#clone.lookAt(this.#currentPatrolWaypoint);
         this._objectGroup.quaternion.slerp(this.#clone.quaternion, this.#turnAccel * dt);
 
-        this.#targetSpeed = this.#maxSpeed / 1;
+        this.#targetSpeed = this.#maxSpeed;
         //this needs to not be a cutoff, the speed of the ship needs to scale with how hard it has to turn to reach the waypoint.
         //it needs to drop off to the minimum (10) QUICKLY once its gets past ~0.4
         let angleToWaypoint = this.#getAngleToPoint(this.#currentPatrolWaypoint);
@@ -215,13 +254,117 @@ class EnemyObject extends PhysicsObject {
     }
 
     #handleFollowState = (dt) => {
+        this.#gun.Firing = true;
+
+        // if within distance of player, track at 80% speed until 3 seconds behind player
+        // if within 3 seconds of player, track speed, limiting to player's speed
+        // if more than 3 seconds behind, go at max speed to try and catch
+
+        // limit the target speed based on the angle to player, as above
+
+        // the "target" should be 3 seconds behind the player or 100 units behind the player, whichever is bigger.
+
+        // assumptions for this state are that the enemy is behind the player and that the player is not facing the enemy (otherwise would be evading or sentry mode)
+
+        let targetPos = this.#getFollowTargetPos(0.5, 100);
         
+        // if approaching the player faster than they are moving and going to collide soon, or within min distance of player, track them 
+        if (this.#getTimeToPos(targetPos) < 1.5 || this.#currDistToPlayer < 100) {
+        // if (this.#getTimeToPos(targetPos) < 0.5 || this.#currDistToPlayer < 100) {
+            this.#clone.lookAt(this.#playerRef.Position);
+
+            this.#targetSpeed = UTILS.LimitToRange(this.#playerRef.Speed, 0, this.#maxSpeed);
+        }
+        else {
+            this.#clone.lookAt(targetPos);
+
+            this.#targetSpeed = this.#maxSpeed;
+
+            let angleToTarget = this.#getAngleToPoint(targetPos);
+
+            //asymptote of < 0.3 graph
+            if (angleToTarget < 0.07) {
+                this.#targetSpeed = this.#maxSpeed;
+            }
+            else if (angleToTarget <= 0.3) {
+
+                this.#targetSpeed = 10 / (angleToTarget - 0.07) + 10;
+            }
+            //0.74 is the asymptote of >0.3 graph, after that point it crosses to high numbers again
+            else if (angleToTarget < 0.74) {
+                this.#targetSpeed = 10 / (angleToTarget - 0.74) + 76;
+            }
+            //if it crosses the asymptote, set it to the minimum
+            else {
+                this.#targetSpeed = 10;
+            }
+
+            this.#targetSpeed = UTILS.LimitToRange(this.#targetSpeed, 10, this.#maxSpeed);
+
+
+            this.#targetSpeed = this.#maxSpeed;
+        }
+
+        this._objectGroup.quaternion.slerp(this.#clone.quaternion, this.#turnAccel * dt);
+
+        let accel = this.#targetSpeed < this.#currentSpeed
+            ? this.#acceleration * 2
+            : this.#acceleration * 2;
+
+        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, accel * dt);
+        // console.log(this.#currentSpeed.toFixed(2));
+        this._objectGroup.translateZ(this.#currentSpeed * dt);
+    }
+
+    #getFollowTargetPos = (seconds, minDist) => {
+        let distBehindPlayer = Math.max(this.#playerRef.Speed * seconds, minDist);
+
+        let backwards = new THREE.Vector3(0, 0, -(distBehindPlayer));
+        return this.#playerRef.Object.localToWorld(backwards);
+    }
+
+    #getTimeToPos = (pos) => {
+        return UTILS.SubVectors(pos, this.Position).length() / this.#currentSpeed;
     }
 
     #handleEvadeState = (dt) => {
+        this.#gun.Firing = false;
+        
+        // assumptions for this state are that player is a) facing the enemy and b) chasing the enemy (not standing still or very far away)
+
+        this.#evadeCounter += dt;
+        if (this.#evadeCounter >= this.#evadeTimeLimit) {
+            this.#evadeCounter = 0;
+            this.#evadeTimeLimit = 1 + Math.random() * 4;
+            this.#targetEvadeTurnAmts.set(Math.random() - 0.5, Math.random() - 0.5);
+        }
+
+        // accelerate to max speed
+        this.#targetSpeed = this.#maxSpeed * 0.8;
+
+        // if the angle to the player is large, then dampen the turn amounts so that we dont start facing the player
+        if (this.#getAngleToPlayer() > 1) {
+            this.#evadeTimeLimit = 1; //don't turn for too long
+            // this.#targetEvadeTurnAmts.multiplyScalar(0.5);
+        }
+
+        this.#evadeTurnAmts.lerp(this.#targetEvadeTurnAmts, 0.7 * dt);
+
+        this._objectGroup.rotateX(this.#evadeTurnAmts.x * dt);
+        this._objectGroup.rotateY(this.#evadeTurnAmts.y * dt);
+
+        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, this.#acceleration * dt);
+        this._objectGroup.translateZ(this.#currentSpeed * dt);
     }
 
-    #handleCutoffState = (st) => {
+    #handleCutoffState = (dt) => {
+    }
+
+    #handleSentryState = (dt) => {
+        this.#gun.Firing = true;
+
+        this.#clone.lookAt(this.#playerRef.Position);
+        this._objectGroup.quaternion.slerp(this.#clone.quaternion, this.#turnAccel * 2.5 * dt);
     }
 
     #getAngleToPlayer = () => {
@@ -255,9 +398,11 @@ class EnemyObject extends PhysicsObject {
         
         //act based on current state
         //DEBUG
-        this.#currentState = this.#states.FOLLOW;
+        // this.#currentState = this.#states.IDLE;
         //END DEBUG
         switch (this.#currentState) {
+            case this.#states.IDLE:
+                break;
             case this.#states.PATROL:
                 this.#handlePatrolState(dt);
                 break;
@@ -268,91 +413,22 @@ class EnemyObject extends PhysicsObject {
                 this.#handleEvadeState(dt);
                 break;
             case this.#states.CUTOFF:
-                this.#handleCutoffState(dt);
+                this.#handleFollowState(dt); //until cutoff handler implemented
+                // this.#handleCutoffState(dt);
+                break;
+            case this.#states.SENTRY:
+                this.#handleSentryState(dt);
         }
 
-        // console.log(this.#currentState);
+        this.#gun.Main(dt);
 
         this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
         this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
     }
 
-    // Main(dt) {
-    //     // this.#clone.lookAt(this.testObj.position);
-    //     this.#clone.position.copy(this.Position);
-    //     this.#clone.lookAt(this.#playerRef.Position);
-    //     this._objectGroup.quaternion.slerp(this.#clone.quaternion, this.#turnAccel * dt);
-
-    //     //could also just do (if dist > min dist) -> accel else -> deccel
-    //     let maxSpeed = this.#maxSpeed;
-
-    //     let distToPlayerSq = this.#playerRef.Position.sub(this.Position).lengthSq();
-    //     // console.log(this.#playerRef.Position.sub(this.Position).length());
-    //     //if close to the player, then try to track
-    //     if (distToPlayerSq <= this.#minDistToPlayerSq) {
-    //         maxSpeed = Math.round(this.#playerRef.Speed);
-    //     }
-    //     else {
-    //         //limit the maxSpeed based on the angle to the player - a larger angle to player means we want a sharper turn, so slow down
-    //         let dirToPlayer = UTILS.SubVectors(this.#playerRef.Position, this.Position);
-    //         let forward = new THREE.Vector3();
-    //         this._objectGroup.getWorldDirection(forward);
-    //         //what i want: as angle approaches half pi, speed should approach zero
-    //         let angle = forward.angleTo(dirToPlayer);
-
-    //         maxSpeed *= UTILS.LimitToRange((1 / angle) - 0.637, 0, 1);
-    //     }
-
-    //     // maxSpeed *= (Math.PI - Math.abs(angle)) / Math.PI;
-    //     // console.log((Math.PI - Math.abs(angle)) / Math.PI);
-    //     // console.log((1 / angle) - 0.637);
-
-    //     this.#targetSpeed = (distToPlayerSq - this.#minDistToPlayerSq) * maxSpeed;
-    //     this.#targetSpeed = UTILS.LimitToRange(this.#targetSpeed, 0, maxSpeed);
-        
-    //     // console.log(this.#targetSpeed);
-    //     this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, this.#acceleration * dt);
-    //     // console.log(this.#currentSpeed);
-    //     this._objectGroup.translateZ(this.#currentSpeed * dt);
-
-        
-    //     // this._objectGroup.worldToLocal(dirToPlayer);
-
-    //     // let forward = this.#forward.clone();
-
-    //     // console.log(angle * 180 / Math.PI);
-
-    //     // var mx = new THREE.Matrix4().lookAt(dirToPlayer, new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
-    //     // var qt = new THREE.Quaternion().setFromRotationMatrix(mx);
-    //     // this._objectGroup.quaternion.rotateTowards(qt, 1 * dt);
-
-    //     //this._objectGroup.lookAt(this.#playerRef.Position);
-
-    //     let moveVec = new THREE.Vector3();
-    //     if (INPUT.KeyPressed("w")) {
-    //         moveVec.z = 0.1;
-    //     }
-    //     if (INPUT.KeyPressed("a")) {
-    //         moveVec.x = 0.1;
-    //     }
-    //     if (INPUT.KeyPressed("s")) {
-    //         moveVec.z = -0.1;
-    //     }
-    //     if (INPUT.KeyPressed("d")) {
-    //         moveVec.x = -0.1;
-    //     }
-    //     if (INPUT.KeyPressed("r")) {
-    //         moveVec.y = 0.1;
-    //     }
-    //     if (INPUT.KeyPressed("f")) {
-    //         moveVec.y = -0.1;
-    //     }
-
-    //     this.testObj.position.add(moveVec);
-
-    //     this.#circleSpriteTargetOpacity = distToPlayerSq <= 100 * 100 ? 0 : 1;
-    //     this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
-    // }
+    get Speed() {
+        return this.#currentSpeed;
+    }
 }
 
 export default EnemyObject;

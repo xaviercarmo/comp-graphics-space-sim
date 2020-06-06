@@ -9,6 +9,15 @@ import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
 
+/** TODO
+ * make the enemy trackers fade with distance and/or angle
+ * make boosters last duration
+ * screen shake during boosters
+ * lock onto enemy
+ * track enemy speed functionality
+ * shot-prediction circle for locked-on enemy (draw line from enemy helper circle to prediction circle) (circle is point to shoot for shots to hit, assuming straight line motion by enemy)
+ */
+
 class PlayerObject extends PhysicsObject {
     //privates
     //camera vars
@@ -189,21 +198,21 @@ class PlayerObject extends PhysicsObject {
     _lightShipStats = {
         turnAccelMultiplier: 2.8,
         maxTurnSpeedMultiplier: 2,
-        maxSpeed: 1400,
+        maxSpeed: 400,
         acceleration: 3.5,
         targetSpeedIncrementMultiplier: 3
     };
     _mediumShipStats = {
         turnAccelMultiplier: 1.5,
         maxTurnSpeedMultiplier: 1.4,
-        maxSpeed: 800,
+        maxSpeed: 200,
         acceleration: 1,
         targetSpeedIncrementMultiplier: 1.5
     };
     _heavyShipStats = {
         turnAccelMultiplier: 1,
         maxTurnSpeedMultiplier: 1,
-        maxSpeed: 500,
+        maxSpeed: 125,
         acceleration: 1,
         targetSpeedIncrementMultiplier: 1
     };
@@ -817,7 +826,7 @@ class PlayerObject extends PhysicsObject {
     }
 
     #handleScroll = (event) => {
-        if (!window.GameHandler.IsPaused && event.deltaY != 0 && this.InputEnabled) {
+        if (window.GameHandler.IsGameRunning && event.deltaY != 0 && this.InputEnabled) {
             //initialise a scrollDelta so we know how much their mouse wheel is scrolling each time
             if (this.#scrollDelta == 0) {
                 this.#scrollDelta = Math.abs(event.deltaY);
@@ -996,8 +1005,20 @@ class PlayerObject extends PhysicsObject {
     Main(dt) {
         super.Main(dt);
 
-        //move forward by current speed
-        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, this.#currentShipStats.acceleration * dt);
+        //later: this should be pressedOnce, and booster should be locked-in
+        //if boosting
+        if (INPUT.KeyPressed('shift')) {
+            this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed * 4, this.#currentShipStats.acceleration * 4 * dt);
+        }
+        else {
+            // if deccelerating from booster
+            if (this.#currentSpeed > this.#currentShipStats.maxSpeed) {
+                this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, this.#currentShipStats.acceleration * 4 * dt);
+            }
+            else {
+                this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed, this.#currentShipStats.acceleration * dt);
+            }
+        }
         this._objectGroup.translateZ(this.#currentSpeed * dt);
 
         //handle all visual effects associated with current movement
