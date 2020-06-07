@@ -149,8 +149,6 @@ class Projectile {
 
     #oldPos = new THREE.Vector3();
 
-    #debugLine = new UTILS.RedDebugLine();
-
     constructor(parent, object, vel, maxAge) {
         this._parent = parent;
 
@@ -171,9 +169,6 @@ class Projectile {
             this.#oldPos.copy(this._object.position);
             this._object.position.add(this._velocity.clone().multiplyScalar(dt));
 
-            this.#debugLine.From = this.#oldPos;
-            this.#debugLine.To = this._object.position;
-
             for (let object of window.GameHandler.GameObjects) {
                 let sphere = object.BoundingSphere;
                 if (object != this._parent && object instanceof PhysicsObject && UTILS.RayIntersectsSphere(this.#oldPos, this._object.position, sphere)) {
@@ -193,13 +188,11 @@ class Projectile {
         }
         else {
             this._object.visible = false;
-            this.#debugLine.visible = false;
         }
     }
 
     Dispose() {
         window.GameHandler.Scene.remove(this._object);
-        this.#debugLine.Dispose();
     }
 
     get IsExpired() {

@@ -217,27 +217,6 @@ class GameHandler {
 
         test = new EnemyObject();
         this.AddGameObject(test);
-
-        test = new EnemyObject();
-        this.AddGameObject(test);
-
-        test = new EnemyObject();
-        this.AddGameObject(test);
-
-        test = new EnemyObject();
-        this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
