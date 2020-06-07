@@ -5,7 +5,25 @@ class PhysicsObject extends GameObject {
     _mass = 0;
     _forces = {};
 
-    // THESE ALL NEED TO BE MOVED INTO A PHYSICS-USER SUBCLASS THAT THE PLAYER CAN INHERIT FROM
+    _colliderRadius = 0;
+
+    constructor(object) {
+        super(object);
+    }
+
+    Main(dt) {
+        super.Main(dt);
+    }
+
+    get BoundingSphere() {
+        let centre = new THREE.Vector3();
+        this._mainObject.getWorldPosition(centre);
+        return {
+            centre: centre,
+            radius: this._colliderRadius
+        };
+    }
+
     get Mass() { return this._mass; }
 
     get Acceleration() { return this.CalcNetForce().divideScalar(this._mass); }

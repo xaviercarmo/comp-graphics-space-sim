@@ -18,6 +18,9 @@ class AssetHandler {
         gattling_gun_base_plate: '../assets/guns/gattling_gun/base_plate_origin.fbx',
         gattling_gun_struts: '../assets/guns/gattling_gun/struts_origin.fbx',
         gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
+        enemy_ship: '../assets/enemy_ships/enemy_ship.fbx',
+        enemy_tracker: '../assets/enemy_tracker.fbx',
+        enemy_tracker_2: '../assets/enemy_tracker_2.fbx',
         asteroid1: '../assets/asteroids/asteroid1.fbx',
         asteroid2: '../assets/asteroids/asteroid2.fbx',
         asteroid3: '../assets/asteroids/asteroid3.fbx',
@@ -42,13 +45,16 @@ class AssetHandler {
             baseUv: 'baseUv',
             sun: 'sun',
             rockParticle: 'rockParticle',
-            particleColoured: 'particleColoured'
+            particleColoured: 'particleColoured',
+            shield: 'shield'
         },
         frag: {
             sceneAndBloomAdditive: 'sceneAndBloomAdditive',
             sun: 'sun',
             rockParticle: 'rockParticle',
-            particleColoured: 'particleColoured'
+            particleColoured: 'particleColoured',
+            shield: 'shield',
+            shieldMasked: 'shieldMasked'
         }
     }
 
@@ -248,7 +254,9 @@ class AssetHandler {
             { name: 'thruster_sprite.png', size: 12000, key: 'thrusterSprite' },
             { name: 'white_square.png', size: 131, key: 'whiteSquare' },
             { name: 'sun_texture.png', size: 395, key: 'sunTexture' },
-            { name: 'rock.png', size: 87800, key: 'rockSprite' }
+            { name: 'rock.png', size: 87800, key: 'rockSprite' },
+            { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' },
+            { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' }
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 
@@ -259,6 +267,11 @@ class AssetHandler {
             { name: 'heavy_ship_texture.jpg', size: 375000, key: 'heavyShipTexture' }
         ];
         this.#downloadImages('assets/player_ships/', 'playerShipTextures', shipTextureFiles);
+        
+        let enemyShipTextureFiles = [
+            { name: 'enemy_ship_texture.jpg', size: 228000, key: 'enemyShipTexture' }
+        ];
+        this.#downloadImages('assets/enemy_ships/', 'enemyShipTextures', enemyShipTextureFiles);
 
         // download all shaders
         this.#downloadShaders();

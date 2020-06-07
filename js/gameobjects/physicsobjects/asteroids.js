@@ -4,14 +4,19 @@ import * as UTILS from '../../utils.js';
 
 import GameHandler from '../../gamehandler.js';
 import PhysicsObject from '../physics.js';
-import { FBXLoader } from '../../../libraries/FBXLoader.js';
+import Shield from '../../shield.js';
+
 class AsteroidField {
     //IMPLEMENT THE FIELD GENERATION HERE. 
     #asteroids = [];
     #number;
+    
     constructor(number){
         this.#number = number; 
+        
         this.#Initialise(); 
+        
+        
     }
     Main(dt) {
 
@@ -27,6 +32,7 @@ class AsteroidField {
         for(let i = 0; i < num; i++) {
             this.#asteroids[i] = new AsteroidObject();
             window.GameHandler.AddGameObject(this.#asteroids[i]); 
+            
         }
     }
 
@@ -71,8 +77,6 @@ class AsteroidObject extends PhysicsObject {
             THREE.MathUtils.randInt(-200, 200)
         ));
         super(asteroid);
-        this.#asteroid = this._mainObject;
-        
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
         this.#ParameterSetup();
@@ -81,7 +85,6 @@ class AsteroidObject extends PhysicsObject {
 
     Main(dt){
         super.Main(dt);
-        
         this.#AsteroidRotation(); 
         this.#AutoMovement();
         this.#collisionDetection();
@@ -97,6 +100,8 @@ class AsteroidObject extends PhysicsObject {
     }
 
     #ParameterSetup = () => {
+        //
+
         //object rotation
         this.#rotDir = THREE.MathUtils.randFloat(-0.005, 0.005);;
 
@@ -107,6 +112,7 @@ class AsteroidObject extends PhysicsObject {
             THREE.MathUtils.randFloat(-0.01, 0.01)
         );
     }
+    
 
     #collisionDetection = () => {
         //console.log(this._mainObject.position);
@@ -142,11 +148,11 @@ class AsteroidObject extends PhysicsObject {
                 this._mainObject.position.z + camDir.z* + THREE.MathUtils.randFloat(0, 2)
             );
             this._mainObject.position.copy(newPos);
-        }
+        } 
     }
     
     get Asteroid(){
-        return this.#asteroid;
+        return this._mainObject;
     }
 
 }

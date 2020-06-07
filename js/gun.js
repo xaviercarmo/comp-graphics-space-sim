@@ -1,4 +1,11 @@
 import * as THREE from '../libraries/three.module.js';
+import * as UTILS from './utils.js';
+import PhysicsObject from './gameobjects/physics.js';
+
+/** TODO
+ * ADD TRAILING PARTICLES TO THE BULLETS IT WILL BE SO COOL. SHOULD BE A VERY LONG, THIN TRAIL WITH SAME COLOUR AS PROJECTILE. SHOULD ONLY BE ACTIVE FOR ~1s BEFORE SWITCHING OFF
+ * ALSO MAYBE A SPRITE THAT STRETCHES (SCALES) BACKWARDS ALONG THE DIRECTION OF TRAVEL
+ */
 
 class Gun {
     _parent;
@@ -61,7 +68,7 @@ class Gun {
         // projectiles only get created when firing, so this time gets invalidated
         this._timeSinceLastShot = 0;
 
-        return new Projectile(object, vel, this._projectileMaxAge);
+        return new Projectile(this._speedRefParent, object, vel, this._projectileMaxAge);
     }
 
     Main(dt) {
@@ -134,12 +141,17 @@ class Gun {
 }
 
 class Projectile {
+    _parent;
     _object;
     _velocity;
     _age = 0;
     _maxAge;
 
-    constructor(object, vel, maxAge) {
+    #oldPos = new THREE.Vector3();
+
+    constructor(parent, object, vel, maxAge) {
+        this._parent = parent;
+
         window.GameHandler.Scene.add(object);
         this._object = object;
         this._velocity = vel;
@@ -152,7 +164,31 @@ class Projectile {
 
     Main(dt) {
         this._age += dt;
-        this._object.position.add(this._velocity.clone().multiplyScalar(dt));
+
+        if (!this.IsExpired) {
+            this.#oldPos.copy(this._object.position);
+            this._object.position.add(this._velocity.clone().multiplyScalar(dt));
+
+            for (let object of window.GameHandler.GameObjects) {
+                let sphere = object.BoundingSphere;
+                if (object != this._parent && object instanceof PhysicsObject && UTILS.RayIntersectsSphere(this.#oldPos, this._object.position, sphere)) {
+                    // on a path towards or away from the enemy object, now just need to detect if moving crossed over the object
+
+                    // can cache old delta for every object rather than re-calculating if performance is a concern
+                    let oldDelta = UTILS.SubVectors(sphere.centre, this.#oldPos);
+                    let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
+
+                    if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
+                        object.HitByBullet?.();
+                        this._age = this._maxAge;
+                        break;
+                    }
+                }
+            }
+        }
+        else {
+            this._object.visible = false;
+        }
     }
 
     Dispose() {

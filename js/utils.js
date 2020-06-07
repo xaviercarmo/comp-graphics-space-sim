@@ -58,11 +58,38 @@ class RedDebugLine {
 
         this.#geometry.attributes.position.needsUpdate = true;
     }
+
+    Dispose() {
+        window.GameHandler.Scene.remove(this.#line);
+    }
 }
 
 function RandomFloatInRange(min, max) {
     return Math.random() * (max - min) + min;
 }
+
+function RayIntersectsSphere(lineStart, lineEnd, sphere) {
+    let a = SubVectors(sphere.centre, lineStart).cross(SubVectors(sphere.centre, lineEnd));
+    let b = SubVectors(lineEnd, lineStart);
+
+    let perpDistFromLineToSphereSq = a.lengthSq() / b.lengthSq();
+
+    return perpDistFromLineToSphereSq <= sphere.radius * sphere.radius;
+}
+
+// //also ray collision...
+// function LineSegmentIntersectsSphereOld2(lineStart, lineEnd, sphere) {
+//     let a = SubVectors(lineEnd, lineStart).lengthSq();
+//     let b = -2 * ((lineEnd.x - lineStart.x) * (sphere.centre.x - lineStart.x) + (lineEnd.y - lineStart.y) * (sphere.centre.y - lineStart.y) + (sphere.centre.z - lineStart.z) * (lineEnd.z - lineStart.z));
+//     //c = (xc − x1)2 + (yc − y1)2 + (zc − z1)2 − r2
+//     let c = SubVectors(sphere.centre, lineStart).lengthSq() - Math.pow(sphere.radius, 2);
+
+//     return Math.pow(b, 2) - 4 * a * c >= 0;
+// }
+
+// function LineSegmentIntersectsSphere(lineStart, lineEnd, sphere) {
+
+// }
 
 const Constants = {
     degToRad: 0.0174533,
@@ -76,5 +103,6 @@ export {
     Mod,
     RedDebugLine,
     RandomFloatInRange,
+    RayIntersectsSphere,
     Constants
 }

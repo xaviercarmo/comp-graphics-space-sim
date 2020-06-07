@@ -10,6 +10,7 @@ let keyAliases = {
     tab: ["Tab"],
     caps: ["CapsLock"]
 }
+let preventDefault = true;
 
 function OnMouseDown(event) {
     switch (event.button) {
@@ -49,7 +50,7 @@ function OnContextMenu(event) {
 function OnKeyDown(event) {
     keyPressed[event.code] = 1;
 
-    if (event.code[0] != "F") {
+    if (event.code[0] != "F" && preventDefault) {
         event.preventDefault();
         event.stopPropagation();
     }
@@ -58,8 +59,10 @@ function OnKeyDown(event) {
 function OnKeyUp(event) {
     keyPressed[event.code] = 0;
 
-    event.preventDefault();
-    event.stopPropagation();
+    if (preventDefault) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 }
 
 function KeyPressed(keyName) {
@@ -124,10 +127,14 @@ function GetKeyCodeFromName(keyName) {
     }
 }
 
+function ShouldPreventDefaultEvents(value) {
+    preventDefault = value;
+}
+
 window.addEventListener("keydown", OnKeyDown);
 window.addEventListener("keyup", OnKeyUp);
 window.addEventListener("mousedown", OnMouseDown); //moisueupp
 window.addEventListener("mouseup", OnMouseUp); //moisueupp
 window.addEventListener("contextmenu", OnContextMenu);
 
-export { KeyPressed, KeyPressedOnce, UpdateKeyPressedOnce, FlushKeyPressedOnce };
+export { KeyPressed, KeyPressedOnce, UpdateKeyPressedOnce, FlushKeyPressedOnce, ShouldPreventDefaultEvents };

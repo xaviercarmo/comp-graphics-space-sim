@@ -17,7 +17,7 @@
         </script>
 
         <section id="mainMenu">
-            <h1 id="title">Starfighter</h1>
+            <h1 id="title">Starmelter</h1>
 
             <div class="menu-button menu-button-template">
                 Text
@@ -36,15 +36,6 @@
             </div>
 
             <div id="loadGameItems" class="main-menu-screen main-menu-screen-hidden">
-                <!-- <div id="saveGame1" class="menu-button menu-button-right">
-                    Save 1
-                </div>
-                <div id="saveGame2" class="menu-button menu-button-right">
-                    Save 2
-                </div>
-                <div id="saveGame3" class="menu-button menu-button-right">
-                    Save 3
-                </div> -->
                 <div id="loadGameBack" class="back-menu-button menu-button-right">
                     Back
                 </div>
@@ -70,7 +61,7 @@
                         <br>
                         Shields: 800
                         <br>
-                        Top Speed: 1400 m/s
+                        Top speed: 1400 m/s
                         <br>
                         Weaponry (rpm, muzzle vel., damage):
                         <br>
@@ -91,7 +82,7 @@
                         <br>
                         Shields: 1200
                         <br>
-                        Top Speed: 800 m/s
+                        Top speed: 800 m/s
                         <br>
                         Weaponry (rpm, muzzle vel., damage):
                         <br>
@@ -114,20 +105,29 @@
                         <br>
                         Shields: 1600
                         <br>
-                        Top Speed: 500 m/s
+                        Top speed: 500 m/s
                         <br>
                         Weaponry (rpm, muzzle vel., damage):
                         <br>
                         &emsp;- Left gun: 480rpm, 1000 m/s, 0.85
                         <br>
-                        &emsp;- Center Gun: 120rpm, 450 m/s, 5
+                        &emsp;- Center gun: 120rpm, 450 m/s, 5
                         <br>
                         &emsp;- Right gun: 480rpm, 1000 m/s, 0.85
                     </div>
                 </div>
-                <div class="class-menu-buttons-container">
-                    <div id="classMenuStartButton" class="class-menu-button">Start Game</div>
-                    <div id="classMenuBackButton" class="class-menu-button">Main Menu</div>
+
+                <div class="class-menu-bottom">
+                    <div class="class-menu-call-sign-input-container">
+                        <div>Callsign</div>
+                        <div class="menu-input-container">
+                            <input type="text" id="callSignInput" class="menu-input">
+                        </div>
+                    </div>
+                    <div class="class-menu-buttons-container">
+                        <div id="classMenuStartButton" class="class-menu-button menu-button-disabled">Start Game</div>
+                        <div id="classMenuBackButton" class="class-menu-button">Main Menu</div>
+                    </div>
                 </div>
             </div>
         </div>

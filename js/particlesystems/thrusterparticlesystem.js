@@ -84,6 +84,8 @@ class ThrusterParticleSystemGlobalPos extends ParticleSystem {
             }
             else {
                 console.log("ERROR: NOT ENOUGH PARTICLES FOR SYSTEM");
+                this.#spawnTimeCounter %= this._spawnTimeInterval;
+                break;
             }
 
             this.#spawnTimeCounter -= this._spawnTimeInterval;

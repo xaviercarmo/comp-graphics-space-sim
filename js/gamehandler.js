@@ -6,6 +6,7 @@ import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
 import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
+import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
 import AsteroidField from './gameobjects/physicsobjects/asteroids.js';
 
@@ -16,19 +17,18 @@ import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
 import { FXAAShader } from '../libraries/FXAAShader.js';
 
 class GameHandler {
-    //debug
-    get Camera() { return this.#camera; }
-
+    
     //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
     
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #bloomEnabled = true;
     #bloomComposer = new EffectComposer(this.#renderer);
+    #bloomHighComposer = new EffectComposer(this.#renderer);
     #variableBloomComposer = new EffectComposer(this.#renderer);
     #variableBloomPass;
     #finalComposer = new EffectComposer(this.#renderer);
-    #darkMaterial = new THREE.MeshBasicMaterial( { color: "black" } );
+    #darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
     #materials = {};
     #bloomLights = {};
     #nonBloomLightIntensities = {};
@@ -63,7 +63,8 @@ class GameHandler {
     //public so that other classes can assign themselves to a layer
     RenderLayers = {
         BLOOM_STATIC: 1,
-        BLOOM_VARYING: 2
+        BLOOM_STATIC_HIGH: 2,
+        BLOOM_VARYING: 3
     };
 
     constructor() {
@@ -131,16 +132,23 @@ class GameHandler {
         this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#bloomHighComposer.setSize(window.innerWidth, window.innerHeight);
         this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
 
         let renderScene = new RenderPass(this.#scene, this.#camera);
         
-        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.6, 0.0);
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.6, 0.0);
         //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
         this.#bloomComposer.renderToScreen = false;
         this.#bloomComposer.addPass(renderScene);
         this.#bloomComposer.addPass(bloomPass);
+
+        //alternate bloom pass for items requiring a high bloom
+        let bloomHighPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 4.0, 0.01, 0.0);
+        this.#bloomHighComposer.renderToScreen = false;
+        this.#bloomHighComposer.addPass(renderScene);
+        this.#bloomHighComposer.addPass(bloomHighPass);
 
         this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2, 0.5, 0.0);
         this.#variableBloomComposer.renderToScreen = false;
@@ -155,6 +163,7 @@ class GameHandler {
             uniforms: {
                 baseTexture: { value: null },
                 bloomTexture: { value: this.#bloomComposer.readBuffer.texture }, //note: readBuffer contains result of last pass in the composer
+                bloomHighTexture: { value: this.#bloomHighComposer.readBuffer.texture },
                 variableBloomTexture: {value: this.#variableBloomComposer.readBuffer.texture }
             },
             vertexShader: this.AssetHandler.LoadedShaders.vert.baseUv,
@@ -198,6 +207,19 @@ class GameHandler {
 
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
+
+        let test = new EnemyObject();
+        this.test = test;
+        this.AddGameObject(test);
+
+        test = new EnemyObject();
+        this.AddGameObject(test);
+
+        test = new EnemyObject();
+        this.AddGameObject(test);
+
+        test = new EnemyObject();
+        this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -226,7 +248,7 @@ class GameHandler {
 
         this.SkyBox.add(this.#sun.Object); // for debugging purposes
         
-        this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.2);
+        this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.4);
         this.#scene.add(this.#ambientLight);
         this.RegisterBloomLight(this.#ambientLight);
 
@@ -261,9 +283,15 @@ class GameHandler {
     
 
     #setupMainMenuEvents = () => {
+        //need to call this whenever the main menu is accessed...right now the player could create infinite profiles if they could get back
+        //to the main menu
+        if (this.#getAllSaveGameIds().length >= 10) {
+            $('#newGame').addClass('menu-button-disabled');
+        }
+
         $(".menu-button, .back-menu-button").hover(
             (event) => {
-                if (event.target.id != 'newGame' || this.#getAllSaveGameIds().length < 10) {
+                if (!$(event.target).is('.menu-button-disabled')) {
                     $(event.target).addClass('menu-button-hover');
                 }
             },
@@ -271,22 +299,16 @@ class GameHandler {
                 $(event.target).removeClass('menu-button-hover');
             }
         );
-
-        //need to call this whenever the main menu is accessed...right now the player could create infinite profiles if they could get back
-        //to the main menu
-        if (this.#getAllSaveGameIds().length >= 10) {
-            $('#newGame').addClass('menu-button-disabled');
-        }
         
         $('#newGame').click(() => {
-            if (!this.#isMainMenuTransitioning) {
+            if (!this.#isMainMenuTransitioning && !$('#newGame').is('.menu-button-disabled')) {
                 this.#transitionMainMenu(true, '#menuItems');
                 $('#title').css('opacity', 0);
                 this.#player.CameraPosition = 'HANGAR';
                 window.setTimeout(() => {
                     $('#classMenu').addClass('hangar-menu-base-container-expanded');
                     window.setTimeout(() => {
-                        $('#mediumClassHeading').click();
+                        $(`#${this.#player.Class}ClassHeading`).click();
                     }, 300);
                 }, 1000);
             }
@@ -306,14 +328,29 @@ class GameHandler {
             this.#player.Class = 'heavy';
         });
 
-        $('#classMenuStartButton').click(() => {
-            let playerName = window.prompt("Please enter a callsign: ");
+        // setup events related to the call sign input (and all menu inputs)
+        $('.menu-input').focus(function() {
+            $(this).parent().addClass('menu-input-container-focused');
+        });
 
-            //manual call here so that dt isnt very large due to the prompt
-            this.#clock.getDelta();
+        $('.menu-input').focusout(function() {
+            $(this).parent().removeClass('menu-input-container-focused');
+        });
 
-            if (playerName != null) {
-                this.#player.SaveToLocalStorage(playerName);
+        $('#callSignInput').on('input', function() {
+            if ($(this).val() != '' && localStorage.getItem(PlayerObject.SaveGamePrefix + $(this).val().toLowerCase()) == null) {
+                $(this).css('background-color', '#005e61');
+                $('#classMenuStartButton').removeClass('menu-button-disabled');
+            }
+            else {
+                $(this).css('background-color', '#690000');
+                $('#classMenuStartButton').addClass('menu-button-disabled');
+            }
+        });
+
+        $('#classMenuStartButton').click((event) => {
+            if (!$(event.target).is('.menu-button-disabled')) {
+                this.#player.SaveToLocalStorage($('#callSignInput').val());
                 $('#classMenu').removeClass('hangar-menu-base-container-expanded');
 
                 this.#startGameRunning();
@@ -484,7 +521,6 @@ class GameHandler {
         });
 
         $('#shipLuminositySlider').on('input', (event) => {
-            console.log(event.target.value);
             this.#player.ShipLuminosity = event.target.value;
             this.#variableBloomPass.strength = event.target.value;
         });
@@ -524,6 +560,8 @@ class GameHandler {
     }
 
     #startMainMenu = () => {
+        INPUT.ShouldPreventDefaultEvents(false);
+
         this.#mode = this.#modes.MAINMENU;
 
         $('#mainMenu').css('display', 'flex');
@@ -531,10 +569,13 @@ class GameHandler {
 
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
+        this.#startGameRunning();
+
         this.#animate();
     }
 
     #startGameRunning = () => {
+        INPUT.ShouldPreventDefaultEvents(true);
         this.#player.CameraPosition = 'FOLLOW';
         this.#player.InputEnabled = true;
         this.#player.SetupPointerLock();
@@ -559,7 +600,6 @@ class GameHandler {
         //for debug purposes
         if (INPUT.KeyPressedOnce("t")) {
             this.SkyBox.visible = !this.SkyBox.visible;
-            console.log(this.SkyBox.visible);
         }
 
         let playerOldPosition = this.#player.Position;
@@ -600,9 +640,14 @@ class GameHandler {
         
         if (this.#bloomEnabled) {
             this.#turnOffNonBloomLights();
+
             // this.#scene.background = new THREE.Color(0x000);
-            this.#darkenNonBloomTargets();
+            this.#darkenNonBloomTargets(this.RenderLayers.BLOOM_STATIC);
             this.#bloomComposer.render();
+            this.#restoreOriginalMaterials();
+
+            this.#darkenNonBloomTargets(this.RenderLayers.BLOOM_STATIC_HIGH);
+            this.#bloomHighComposer.render();
             this.#restoreOriginalMaterials();
 
             this.#darkenOrMaskNonVariableBloomTargets();
@@ -640,11 +685,20 @@ class GameHandler {
         });
     }
 
-    #darkenNonBloomTargets = () => {
+    #darkenNonBloomTargets = (bloomMask) => {
         this.#scene.traverse(obj => {
-            if (obj.material && obj.layers && !this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_STATIC)){
-                this.#materials[obj.uuid] = obj.material;
-                obj.material = this.#darkMaterial;
+            if (obj.material && obj.layers) {
+                if (!this.#testRenderLayer(obj.layers.mask, bloomMask)) {
+                    this.#materials[obj.uuid] = obj.material;
+                    obj.material = obj.customMaskMaterial ?? this.#darkMaterial;
+                }
+                else if (obj.material.opacityForBloom != undefined) {
+                    this.#materials[obj.uuid] = obj.material.opacity;
+                    obj.material.opacity = obj.material.opacityForBloom;
+                }
+                else {
+                    obj.setMaskInverse?.(true);
+                }
             }
         });
     }
@@ -660,7 +714,7 @@ class GameHandler {
                 // otherwise just darken the material
                 else {
                     this.#materials[obj.uuid] = obj.material;
-                    obj.material = this.#darkMaterial;
+                    obj.material = obj.customMaskMaterial ?? this.#darkMaterial;
                 }
             }
         });
@@ -668,8 +722,14 @@ class GameHandler {
 
     #restoreOriginalMaterials = () => {
         this.#scene.traverse(obj => {
-            if (this.#materials[obj.uuid]) {
-                obj.material = this.#materials[obj.uuid];
+            if (this.#materials[obj.uuid] != undefined) {
+                if (obj.material.opacityForBloom != undefined) {
+                    obj.material.opacity = this.#materials[obj.uuid];
+                }
+                else {
+                    obj.material = this.#materials[obj.uuid];
+                }
+
                 delete this.#materials[obj.uuid];
             }
             else {
@@ -700,6 +760,8 @@ class GameHandler {
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
 
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#bloomHighComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
     }
 
@@ -761,6 +823,23 @@ class GameHandler {
     get IsGameRunning() { return this.#mode == this.#modes.GAMERUNNING; }
 
     get Clock() { return this.#clock; }
+
+    get Camera() { return this.#camera; }
+
+    get EnemyObjects() {
+        let result = [];
+        this.#gameObjects.forEach(object => {
+            if (object instanceof EnemyObject) {
+                result.push(object);
+            }
+        });
+
+        return result;
+    }
+
+    get GameObjects() {
+        return this.#gameObjects;
+    }
 }
 
 export default GameHandler;

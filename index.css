@@ -120,8 +120,8 @@ canvas {
 }
 
 .menu-button-disabled {
-    background-color: #292424;
-    color: rgb(53, 53, 53);
+    background-color: #292424 !important;
+    color: rgb(53, 53, 53) !important;
 }
 
 .menu-button-template {
@@ -161,6 +161,7 @@ canvas {
 .class-selection-base-container {
     min-width: 400px;
     max-width: 500px;
+    min-height: 670px;
     transform: perspective(1500px) translateZ(-100px) translateX(-710px) rotateY(-90deg);
 }
 
@@ -259,11 +260,53 @@ canvas {
     font-family: SpaceBodyFont;
     font-size: 16px;
     color: white;
+    overflow-y: auto;
 }
+
+.class-menu-bottom {
+    position: absolute;
+    bottom: 38px;
+    width: 100%;
+}
+
+.class-menu-call-sign-input-container {
+    font-family: SpaceFont;
+    font-size: 24px;
+    color: rgb(160, 228, 222);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.menu-input-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    transition: 150ms;
+}
+
+.menu-input-container-focused {
+    filter: drop-shadow(0px 0px 2px rgb(0, 247, 255));
+}
+
+.menu-input {
+    font-family: SpaceBodyFont;
+    font-size: 16px;
+    background-color: #005e61;
+    border: none;
+    color: white;
+    clip-path: polygon(0% 0%, 0% calc(100% - 14px), 16px 100%, calc(100% - 16px) 100%, 100% calc(100% - 14px), 100% 0%);
+    height: 40px;
+    width: calc(80% + 20px);
+    padding: 5px 10px;
+    text-align: center;
+    outline: none;
+    transition: 150ms;
+}
+
 
 .class-menu-buttons-container {
     filter: drop-shadow(0px 0px 2px rgb(0, 247, 255));
-    margin-top: 25px;
 }
 
 .class-menu-button {
