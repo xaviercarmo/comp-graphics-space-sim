@@ -390,7 +390,7 @@ class PlayerObject extends PhysicsObject {
                     shader.uniforms.uHueMask = { value: hueMask };
                     shader.uniforms.uSaturationMask = { value: saturationMask };
                     shader.uniforms.uValueMask = { value: valueMask };
-                    shader.uniforms.uMaskInverse = { value: true };
+                    shader.uniforms.uMaskInverse = { value: false };
 
                     //rgb to hsv/hsv to rgb methods
                     //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness

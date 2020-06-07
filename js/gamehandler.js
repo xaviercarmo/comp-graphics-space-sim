@@ -23,6 +23,7 @@ class GameHandler {
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #bloomEnabled = true;
     #bloomComposer = new EffectComposer(this.#renderer);
+    #bloomHighComposer = new EffectComposer(this.#renderer);
     #variableBloomComposer = new EffectComposer(this.#renderer);
     #variableBloomPass;
     #finalComposer = new EffectComposer(this.#renderer);
@@ -61,7 +62,8 @@ class GameHandler {
     //public so that other classes can assign themselves to a layer
     RenderLayers = {
         BLOOM_STATIC: 1,
-        BLOOM_VARYING: 2
+        BLOOM_STATIC_HIGH: 2,
+        BLOOM_VARYING: 3
     };
 
     constructor() {
@@ -127,6 +129,7 @@ class GameHandler {
         this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#bloomHighComposer.setSize(window.innerWidth, window.innerHeight);
         this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
 
@@ -137,6 +140,12 @@ class GameHandler {
         this.#bloomComposer.renderToScreen = false;
         this.#bloomComposer.addPass(renderScene);
         this.#bloomComposer.addPass(bloomPass);
+
+        //alternate bloom pass for items requiring a high bloom
+        let bloomHighPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 4.0, 0.01, 0.0);
+        this.#bloomHighComposer.renderToScreen = false;
+        this.#bloomHighComposer.addPass(renderScene);
+        this.#bloomHighComposer.addPass(bloomHighPass);
 
         this.#variableBloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2, 0.5, 0.0);
         this.#variableBloomComposer.renderToScreen = false;
@@ -151,6 +160,7 @@ class GameHandler {
             uniforms: {
                 baseTexture: { value: null },
                 bloomTexture: { value: this.#bloomComposer.readBuffer.texture }, //note: readBuffer contains result of last pass in the composer
+                bloomHighTexture: { value: this.#bloomHighComposer.readBuffer.texture },
                 variableBloomTexture: {value: this.#variableBloomComposer.readBuffer.texture }
             },
             vertexShader: this.AssetHandler.LoadedShaders.vert.baseUv,
@@ -205,29 +215,29 @@ class GameHandler {
         test = new EnemyObject();
         this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -639,9 +649,14 @@ class GameHandler {
         
         if (this.#bloomEnabled) {
             this.#turnOffNonBloomLights();
+
             // this.#scene.background = new THREE.Color(0x000);
-            this.#darkenNonBloomTargets();
+            this.#darkenNonBloomTargets(this.RenderLayers.BLOOM_STATIC);
             this.#bloomComposer.render();
+            this.#restoreOriginalMaterials();
+
+            this.#darkenNonBloomTargets(this.RenderLayers.BLOOM_STATIC_HIGH);
+            this.#bloomHighComposer.render();
             this.#restoreOriginalMaterials();
 
             this.#darkenOrMaskNonVariableBloomTargets();
@@ -679,16 +694,19 @@ class GameHandler {
         });
     }
 
-    #darkenNonBloomTargets = () => {
+    #darkenNonBloomTargets = (bloomMask) => {
         this.#scene.traverse(obj => {
             if (obj.material && obj.layers) {
-                if (!this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_STATIC)) {
+                if (!this.#testRenderLayer(obj.layers.mask, bloomMask)) {
                     this.#materials[obj.uuid] = obj.material;
                     obj.material = this.#darkMaterial;
                 }
                 else if (obj.material.opacityForBloom != undefined) {
                     this.#materials[obj.uuid] = obj.material.opacity;
                     obj.material.opacity = obj.material.opacityForBloom;
+                }
+                else {
+                    obj.setMaskInverse?.(true);
                 }
             }
         });
@@ -751,6 +769,8 @@ class GameHandler {
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
 
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#bloomHighComposer.setSize(window.innerWidth, window.innerHeight);
+        this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
     }
 
