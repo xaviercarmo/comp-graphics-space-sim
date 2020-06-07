@@ -244,6 +244,7 @@ class PlayerObject extends PhysicsObject {
     #currentShipSettings;
 
     #enemyTrackerObject;
+    #enemyTrackerMaterial;
     #enemyTrackerObjects = [];
 
     //ability fields
@@ -813,16 +814,10 @@ class PlayerObject extends PhysicsObject {
         // this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
         this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker_2;
         this.#enemyTrackerObject.scale.set(0.003, 0.003, 0.003);
-        let enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        enemyTrackerMaterial.depthWrite = false;
-        enemyTrackerMaterial.depthTest = false;
 
-        this.#enemyTrackerObject.traverse(child => {
-            if (child.isMesh) {
-                child.material = enemyTrackerMaterial;
-                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
-            }
-        });
+        this.#enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        this.#enemyTrackerMaterial.depthTest = false;
+        this.#enemyTrackerMaterial.transparent = true;
     }
 
     #handleScroll = (event) => {
@@ -1001,6 +996,70 @@ class PlayerObject extends PhysicsObject {
         });
     }
 
+    #handleEnemyTrackerObjects = () => {
+        //create objects that point towards enemies
+        let enemyObjects = window.GameHandler.EnemyObjects;
+        let lengthDiff = enemyObjects.length - this.#enemyTrackerObjects.length;
+        if (lengthDiff > 0) {
+            for (let i = 0; i < lengthDiff; i++) {
+                let trackerObj = this.#spawnTracker();
+
+                window.GameHandler.Scene.add(trackerObj);
+                this.#enemyTrackerObjects.push(trackerObj);
+            }
+        }
+        else if (lengthDiff < 0) {
+            for (let i = 0; i < -lengthDiff; i++) {
+                window.GameHandler.Scene.remove(trackerObj);
+            }
+        }
+
+        let currForwardDirection = new THREE.Vector3();
+        this._objectGroup.getWorldDirection(currForwardDirection);
+
+        let mainObjWorldPos = new THREE.Vector3();
+        this._mainObject.getWorldPosition(mainObjWorldPos);
+            
+        for (let i = 0; i < enemyObjects.length; i++) {
+            let dirToEnemy = enemyObjects[i].Position.sub(mainObjWorldPos);
+            let angleToEnemy = currForwardDirection.angleTo(dirToEnemy);
+
+            dirToEnemy.normalize();
+            dirToEnemy.multiplyScalar(4);
+            let worldPos = mainObjWorldPos.clone();
+            worldPos.add(dirToEnemy);
+            
+            this.#enemyTrackerObjects[i].position.copy(worldPos);
+            this.#enemyTrackerObjects[i].lookAt(enemyObjects[i].Position);
+            this.#enemyTrackerObjects[i].rotateX(Math.PI / 2);
+
+            this.#applyOpacityToTracker(this.#enemyTrackerObjects[i], angleToEnemy - 0.5, angleToEnemy - 0.5);
+        }
+    }
+
+    #spawnTracker = () => {
+        let trackerObj = this.#enemyTrackerObject.clone();
+        let trackerMat = this.#enemyTrackerMaterial.clone();
+        trackerMat.opacityForBloom = 1;
+        trackerObj.traverse(child => {
+            if (child.isMesh) {
+                child.material = trackerMat;
+                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+            }
+        });
+
+        return trackerObj;
+    }
+
+    #applyOpacityToTracker = (tracker, opacity, bloomOpacity) => {
+        tracker.traverse(child => {
+            if (child.material) {
+                child.material.opacity = opacity;
+                child.material.opacityForBloom = bloomOpacity;
+            }
+        });
+    }
+
     //public methods
     Main(dt) {
         super.Main(dt);
@@ -1045,54 +1104,7 @@ class PlayerObject extends PhysicsObject {
 
         this.#rockParticleCloud.Main(dt);
 
-        //create objects that point towards enemies
-        let enemyObjects = window.GameHandler.EnemyObjects;
-        let lengthDiff = enemyObjects.length - this.#enemyTrackerObjects.length;
-        if (lengthDiff > 0) {
-            for (let i = 0; i < lengthDiff; i++) {
-                // let trackerGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
-                // let trackerMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                // let trackerObj = new THREE.Mesh(trackerGeo, trackerMat);
-                // trackerObj.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
-
-                let trackerObj = this.#enemyTrackerObject.clone();
-
-                window.GameHandler.Scene.add(trackerObj);
-
-                this.#enemyTrackerObjects.push(trackerObj);
-            }
-        }
-        else if (lengthDiff < 0) {
-            for (let i = 0; i < -lengthDiff; i++) {
-                window.GameHandler.Scene.remove(trackerObj);
-                // this._objectGroup.remove(this.#enemyTrackerObjects.pop());
-            }
-        }
-
-        let currForwardDirection = new THREE.Vector3();
-        this._objectGroup.getWorldDirection(currForwardDirection);
-
-        let mainObjWorldPos = new THREE.Vector3();
-        this._mainObject.getWorldPosition(mainObjWorldPos);
-            
-        for (let i = 0; i < enemyObjects.length; i++) {
-            let dirToEnemy = enemyObjects[i].Position.sub(mainObjWorldPos);
-            if (currForwardDirection.angleTo(dirToEnemy) > 1) {
-                this.#enemyTrackerObjects[i].visible = true;
-
-                dirToEnemy.normalize();
-                dirToEnemy.multiplyScalar(4);
-                let worldPos = mainObjWorldPos.clone();
-                worldPos.add(dirToEnemy);
-                
-                this.#enemyTrackerObjects[i].position.copy(worldPos);
-                this.#enemyTrackerObjects[i].lookAt(enemyObjects[i].Position);
-                this.#enemyTrackerObjects[i].rotateX(Math.PI / 2);
-            }
-            else {
-                this.#enemyTrackerObjects[i].visible = false;
-            }
-        }
+        this.#handleEnemyTrackerObjects();
     }
 
     MainNoPause(dt) {

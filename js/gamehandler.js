@@ -199,35 +199,35 @@ class GameHandler {
         this.test = test;
         this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -681,9 +681,15 @@ class GameHandler {
 
     #darkenNonBloomTargets = () => {
         this.#scene.traverse(obj => {
-            if (obj.material && obj.layers && !this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_STATIC)){
-                this.#materials[obj.uuid] = obj.material;
-                obj.material = this.#darkMaterial;
+            if (obj.material && obj.layers) {
+                if (!this.#testRenderLayer(obj.layers.mask, this.RenderLayers.BLOOM_STATIC)) {
+                    this.#materials[obj.uuid] = obj.material;
+                    obj.material = this.#darkMaterial;
+                }
+                else if (obj.material.opacityForBloom != undefined) {
+                    this.#materials[obj.uuid] = obj.material.opacity;
+                    obj.material.opacity = obj.material.opacityForBloom;
+                }
             }
         });
     }
@@ -707,8 +713,14 @@ class GameHandler {
 
     #restoreOriginalMaterials = () => {
         this.#scene.traverse(obj => {
-            if (this.#materials[obj.uuid]) {
-                obj.material = this.#materials[obj.uuid];
+            if (this.#materials[obj.uuid] != undefined) {
+                if (obj.material.opacityForBloom != undefined) {
+                    obj.material.opacity = this.#materials[obj.uuid];
+                }
+                else {
+                    obj.material = this.#materials[obj.uuid];
+                }
+
                 delete this.#materials[obj.uuid];
             }
             else {

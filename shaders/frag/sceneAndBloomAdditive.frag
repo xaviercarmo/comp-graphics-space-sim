@@ -12,4 +12,5 @@ vec4 getTexture(sampler2D texelToLinearTexture) {
 
 void main() {
     gl_FragColor = getTexture(baseTexture) + getTexture(bloomTexture) + getTexture(variableBloomTexture);
+    // gl_FragColor = getTexture(baseTexture);
 }

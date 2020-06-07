@@ -10,7 +10,8 @@ import { Gun } from '../../gun.js';
 /** TODO
  * when evade state activated, evade for a minimum 3-seconds before returning to any other state
  * cut-off is very important, as the gun is quite useless right now...
- * abrupt stop when player stops (switching to sentry mode) is ugly - need to fix
+ * FOLLOW - choose a point that is not within 10units of another enemy's chosen point
+ * ADD GLOWING BITS TO THE ENEMY, MASK OUT THE WHITE
  */
 
 class EnemyObject extends PhysicsObject {
@@ -60,6 +61,10 @@ class EnemyObject extends PhysicsObject {
 
     #gunObj = new THREE.Object3D();
     #gun;
+
+    #thrusterSystem;
+    #thrusterTarget = new THREE.Object3D;
+    #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
@@ -114,7 +119,7 @@ class EnemyObject extends PhysicsObject {
         bullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
 
         let gunBulletSpeed = 750;
-        let gunFireRate = 15;
+        let gunFireRate = 5;
         let projectileDuration = 5;
 
         this.#gunObj.position.set(0, -0.04, 5);
@@ -123,6 +128,25 @@ class EnemyObject extends PhysicsObject {
     }
 
     #setupThrusters = () => {
+        this.#thrusterLight.position.set(0, 0.68, -5);
+        this.Object.add(this.#thrusterLight);
+
+        let extraOptions = {
+            velSpread: new THREE.Vector3(1.5, 1.5, 0),
+            originSpread: new THREE.Vector3(0.15, 0.15, 0)
+        };
+
+        this.#thrusterTarget.position.set(0, 0, -2.85)
+        this.Object.add(this.#thrusterTarget);
+
+        this.#thrusterSystem = new ThrusterParticleSystemLocalPos(
+            this.#thrusterTarget,
+            new THREE.Vector3(0, 0, -1),
+            0.1,
+            500,
+            1.5,
+            extraOptions
+        )
     }
 
     // "visiblity" of player right now is just 500m radius sphere when player hasnt already been found, and 2500m radius sphere if they were discovered - really
@@ -340,9 +364,8 @@ class EnemyObject extends PhysicsObject {
         }
 
         // accelerate to max speed
-        this.#targetSpeed = this.#maxSpeed * 0.8;
+        this.#targetSpeed = this.#maxSpeed;
 
-        // if the angle to the player is large, then dampen the turn amounts so that we dont start facing the player
         if (this.#getAngleToPlayer() > 1) {
             this.#evadeTimeLimit = 1; //don't turn for too long
             // this.#targetEvadeTurnAmts.multiplyScalar(0.5);
@@ -365,6 +388,9 @@ class EnemyObject extends PhysicsObject {
 
         this.#clone.lookAt(this.#playerRef.Position);
         this._objectGroup.quaternion.slerp(this.#clone.quaternion, this.#turnAccel * 2.5 * dt);
+        
+        this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, 0, this.#acceleration * 2 * dt);
+        this._objectGroup.translateZ(this.#currentSpeed * dt);
     }
 
     #getAngleToPlayer = () => {
@@ -421,6 +447,12 @@ class EnemyObject extends PhysicsObject {
         }
 
         this.#gun.Main(dt);
+
+        let speedPct = this.#targetSpeed / this.#maxSpeed;
+        this.#thrusterSystem.Speed = speedPct * 50;
+        let newIntensity = speedPct * 7;
+        this.#thrusterLight.intensity = newIntensity;
+        this.#thrusterSystem.Main(dt);
 
         this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
         this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
