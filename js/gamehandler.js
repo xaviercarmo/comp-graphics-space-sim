@@ -7,7 +7,7 @@ import GameObject from './gameobject.js';
 import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import SunObject from './gameobjects/sun.js';
-import AsteroidObject from './gameobjects/physicsobjects/asteroids.js';
+import AsteroidField from './gameobjects/physicsobjects/asteroids.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
 import { RenderPass } from '../libraries/RenderPass.js';
@@ -54,7 +54,6 @@ class GameHandler {
     #sun;
     #ambientLight;
     #sunLight;
-    #asteroids = {};
 
     #scene = new THREE.Scene();
 
@@ -255,11 +254,8 @@ class GameHandler {
     #initialiseAsteroid = () => {
         //Testing method - check if object appears in scene. 
         //later change to have another class with amount inputted into its new object constructor.
-            for (let i = 0; i < 20; i++) {
-                this.#asteroids[i] = new AsteroidObject();
-                //console.log(this.#asteroids);
-                this.AddGameObject(this.#asteroids[i]);
-            } 
+            let asteroid = new AsteroidField(20);
+            //this.AddGameObject(asteroid);
         
     }
     

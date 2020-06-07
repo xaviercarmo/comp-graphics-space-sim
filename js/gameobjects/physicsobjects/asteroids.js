@@ -5,7 +5,32 @@ import * as UTILS from '../../utils.js';
 import GameHandler from '../../gamehandler.js';
 import PhysicsObject from '../physics.js';
 import { FBXLoader } from '../../../libraries/FBXLoader.js';
+class AsteroidField {
+    //IMPLEMENT THE FIELD GENERATION HERE. 
+    #asteroids = [];
+    #number;
+    constructor(number){
+        this.#number = number; 
+        this.#Initialise(); 
+    }
+    Main(dt) {
 
+    }
+
+    //Implement a position changer 
+
+    #Initialise = () => {
+        this.#SpawnMultipleAsteroids(this.#number);
+    }
+
+    #SpawnMultipleAsteroids = (num) => {
+        for(let i = 0; i < num; i++) {
+            this.#asteroids[i] = new AsteroidObject();
+            window.GameHandler.AddGameObject(this.#asteroids[i]); 
+        }
+    }
+
+}
 class AsteroidObject extends PhysicsObject {
     //icosaherdon geo
     //procedurally generate via perlin noise
@@ -17,6 +42,7 @@ class AsteroidObject extends PhysicsObject {
     #random;
     #player;
     #camera;
+    #helper; 
 
     constructor() {
         //random asteroid selection.
@@ -31,7 +57,7 @@ class AsteroidObject extends PhysicsObject {
         }else if (indexNo == 4) {
             asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid9.clone(); 
         }
-        console.log(asteroid);
+        
 
         //radomise size of each asteroid. 
         asteroid.scale.set(
@@ -44,24 +70,21 @@ class AsteroidObject extends PhysicsObject {
             THREE.MathUtils.randInt(-200, 200),
             THREE.MathUtils.randInt(-200, 200)
         ));
-        //only rendered if in camera view.
-        //doesn't really seem to work.? 
-        asteroid.frustumCulled = true; 
         super(asteroid);
-        this.#asteroid = asteroid;
+        this.#asteroid = this._mainObject;
         
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
         this.#ParameterSetup();
+   
     }
 
     Main(dt){
         super.Main(dt);
-
+        
         this.#AsteroidRotation(); 
         this.#AutoMovement();
         this.#collisionDetection();
-        
     }
     
     #AsteroidRotation = () => {
@@ -91,6 +114,23 @@ class AsteroidObject extends PhysicsObject {
         let vec = new THREE.Vector3();
         let camDir = this.#camera.getWorldDirection(vec);
         let distance = 80; 
+        /*
+        this.#player.Object.geometry.computeBoundingSphere(); 
+        this._mainObject.geometry.computeBoundingSphere()
+        this.#player.updateMatrixWorld();
+        this._mainObject.updateMatrixWorld();
+
+        let box1 = this.#player.geometry.boundingSphere.clone();
+        box1.applyMatrix4(this.#player.matrixWorld);
+
+        var box2 = this._mainObject.geometry.boundingSphere.clone();
+        box2.applyMatrix4(this._mainObject.matrixWorld);
+
+        if(box1.intersectsSphere(box2)) {
+            console.log("Collision Occured");
+        }*/
+
+        console.log(this.#player);
         if(this.#player.Position.distanceToSquared(this._mainObject.position) < distance) {
             //Pushes object forward with repsect to camera direction
             //note since updates are called so quickly, it looks like its shifting away.
@@ -111,4 +151,4 @@ class AsteroidObject extends PhysicsObject {
 
 }
 
-export default AsteroidObject;
+export default AsteroidField;
