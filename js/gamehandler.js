@@ -27,7 +27,7 @@ class GameHandler {
     #variableBloomComposer = new EffectComposer(this.#renderer);
     #variableBloomPass;
     #finalComposer = new EffectComposer(this.#renderer);
-    #darkMaterial = new THREE.MeshBasicMaterial( { color: "black" } );
+    #darkMaterial = new THREE.MeshBasicMaterial({ color: "black" });
     #materials = {};
     #bloomLights = {};
     #nonBloomLightIntensities = {};
@@ -215,17 +215,17 @@ class GameHandler {
         test = new EnemyObject();
         this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
         // test = new EnemyObject();
         // this.AddGameObject(test);
@@ -699,7 +699,7 @@ class GameHandler {
             if (obj.material && obj.layers) {
                 if (!this.#testRenderLayer(obj.layers.mask, bloomMask)) {
                     this.#materials[obj.uuid] = obj.material;
-                    obj.material = this.#darkMaterial;
+                    obj.material = obj.customMaskMaterial ?? this.#darkMaterial;
                 }
                 else if (obj.material.opacityForBloom != undefined) {
                     this.#materials[obj.uuid] = obj.material.opacity;
@@ -723,7 +723,7 @@ class GameHandler {
                 // otherwise just darken the material
                 else {
                     this.#materials[obj.uuid] = obj.material;
-                    obj.material = this.#darkMaterial;
+                    obj.material = obj.customMaskMaterial ?? this.#darkMaterial;
                 }
             }
         });
@@ -844,6 +844,10 @@ class GameHandler {
         });
 
         return result;
+    }
+
+    get GameObjects() {
+        return this.#gameObjects;
     }
 }
 

@@ -4,13 +4,13 @@ import * as UTILS from '../../utils.js';
 
 import PhysicsObject from '../physics.js';
 import RockParticleCloud from '../../rockparticlecloud.js';
+import Shield from '../../shield.js';
 
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
 
 /** TODO
- * make the enemy trackers fade with distance and/or angle
  * make boosters last duration
  * screen shake during boosters
  * lock onto enemy
@@ -34,11 +34,15 @@ class PlayerObject extends PhysicsObject {
     #cameraLookTransition = new THREE.Vector3();
     #cameraLookMatrix = new THREE.Matrix4();
     #orbitControls;
+    #orbitControlsPositionTracking = {
+        old: new THREE.Vector3(),
+        new: new THREE.Vector3()
+    }
 
     //speed vars
     #currentSpeed = 0;
     #targetSpeed = 0;
-    #targetSpeedIncrement = 25;
+    #targetSpeedIncrement = 10;
 
     //mouse vars
     #scrollDelta = 0;
@@ -155,16 +159,31 @@ class PlayerObject extends PhysicsObject {
         left: {
             light_position: new THREE.Vector3(0.3, 0.68, -5),
             medium_position: new THREE.Vector3(0.8, 0.68, -6.8),
-            heavy_position: new THREE.Vector3(2.8, 2.48, -11),
+            heavy_position: new THREE.Vector3(1.4, 1.24, -5.5),
             light: new THREE.PointLight(0xff1000, 0, 10)
         },
         right: {
             light_position: new THREE.Vector3(-0.3, 0.68, -5),
             medium_position: new THREE.Vector3(-0.8, 0.68, -6.8),
-            heavy_position: new THREE.Vector3(-2.8, 2.48, -11),
+            heavy_position: new THREE.Vector3(-1.4, 1.24, -5.5),
             light: new THREE.PointLight(0xff1000, 0, 10)
         }
     };
+
+    //shields
+    _lightShield = {
+        radius: 4.6,
+        object: undefined
+    };
+    _mediumShield = {
+        radius: 5,
+        object: undefined
+    };
+    _heavyShield = {
+        radius: 5.4,
+        object: undefined
+    };
+    #currentShield;
 
     //general
     #meshes;
@@ -255,24 +274,20 @@ class PlayerObject extends PhysicsObject {
     
     //statics
     static SaveGamePrefix = 'playerSave-';
-
     
-    //debug
-    //#debugLine = new UTILS.RedDebugLine();
-
     constructor(assets, camera) {
         super(assets.meshes.heavy_ship);
 
         this.#meshes = assets.meshes;
         this.#textures = assets.textures;
 
-        this.#setupShipClasses(this.#classes.MEDIUM);
+        this.#setupShipClasses(this.#classes.LIGHT);
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
         this.#setupCamera(camera);
 
         this.#setupCrosshair();
-        this.#setupEnemyTrackers();
+        this.#setupEnemyTrackers(); // change to match radius of shield, also change their radius for each class
         
         window.addEventListener("wheel", this.#handleScroll);
 
@@ -283,7 +298,6 @@ class PlayerObject extends PhysicsObject {
         this.#camera = camera;
         this._objectGroup.add(this.#camera);
         this.CameraPosition = "FOLLOW";
-        // this.CameraPosition = "ORBIT";
     }
 
     //these models will be used for auto-turrets on the ship later, for now this is unused
@@ -316,14 +330,18 @@ class PlayerObject extends PhysicsObject {
         this._mediumShip.add(this.#meshes.medium_ship);
         this.#meshes.medium_ship.scale.set(4.3, 4.3, 4.3);
 
-        this._heavyShip = this.#meshes.heavy_ship;
-        this._heavyShip.scale.set(0.5, 0.5, 0.5);
+        this._heavyShip.add(this.#meshes.heavy_ship);
+        this.#meshes.heavy_ship.scale.set(0.5, 0.5, 0.5);
+        // this._heavyShip = this.#meshes.heavy_ship;
+        // this._heavyShip.scale.set(0.5, 0.5, 0.5);
 
         this.#setupShipMaterials();
 
         this.#setupShipThrusters();
 
         this.#setupGuns();
+
+        this.#setupShipShields(); // try putting this before enemy trackers (they should be added last so they get drawn in front)
 
         this.Class = defaultClass;
     }
@@ -574,8 +592,8 @@ class PlayerObject extends PhysicsObject {
 
     #setupHeavyShipThrusters = () => {
         let extraOptions = {
-            velSpread: new THREE.Vector3(5, 5, 0),
-            originSpread: new THREE.Vector3(0.5, 0, 0)
+            velSpread: new THREE.Vector3(2.5, 2.5, 0),
+            originSpread: new THREE.Vector3(0.25, 0, 0)
         };
 
         let setupHeavyThruster = (thrusterObj, targetPos, direction) => {
@@ -584,7 +602,7 @@ class PlayerObject extends PhysicsObject {
             thrusterObj.system = new ThrusterParticleSystemLocalPos(
                 thrusterObj.target,
                 direction.clone(),
-                0.2,
+                0.1,
                 1000,
                 1.75,
                 extraOptions
@@ -592,7 +610,7 @@ class PlayerObject extends PhysicsObject {
         }
         
         // top left
-        let thrusterPos = new THREE.Vector3(2.8, 2.48, -8.74);
+        let thrusterPos = new THREE.Vector3(1.4, 1.24, -4.37);
         let thrusterDir = new THREE.Vector3(-0.05, 0, -1);
         setupHeavyThruster(this._heavyThrusters.top_left, thrusterPos, thrusterDir);
 
@@ -676,7 +694,7 @@ class PlayerObject extends PhysicsObject {
 
         let projectileDuration = 5;
 
-        let gunObjectPos = new THREE.Vector3(-4, -0.15, 5.5);
+        let gunObjectPos = new THREE.Vector3(-2, -0.075, 2.75);
         this._heavyGuns.left.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.left.object);
         this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
@@ -697,31 +715,27 @@ class PlayerObject extends PhysicsObject {
             name: "ORIGIN",
             posnTarg: new THREE.Vector3(0, 0, -5),
             lookTarg: new THREE.Vector3()
-        }
+        };
 
         this.#cameraPositions.FOLLOW = {
             name: "FOLLOW",
             posnTarg: new THREE.Vector3(0, 3.8, -15.95),
             lookTarg: new THREE.Vector3(0, 7.75, 7.5)
-        }
+        };
 
         this.#cameraPositions.HANGAR = {
             name: "HANGAR",
             posnTarg: new THREE.Vector3(1, 2.5, 7.5),
             lookTarg: new THREE.Vector3(-0.5, 1.5, 5)
-        }
+        };
 
         this.#cameraPositions.HANGAR_GUN_SLOT = {
             name: "HANGAR_GUN_SLOT",
             posnTarg: new THREE.Vector3(1, -2.5, 7.5),
             lookTarg: new THREE.Vector3(0.5, -1.5, 5)
-        }
+        };
 
-        this.#cameraPositions.ORBIT = {
-            name: "ORBIT",
-            posnTarg: new THREE.Vector3(0, 0, -5),
-            lookTarg: new THREE.Vector3()
-        }
+        this.#cameraPositions.ORBIT = { name: "ORBIT" };
 
         this.#cameraPositionOrder = ["FOLLOW", "HANGAR", "HANGAR_GUN_SLOT"];
 
@@ -818,6 +832,12 @@ class PlayerObject extends PhysicsObject {
         this.#enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         this.#enemyTrackerMaterial.depthTest = false;
         this.#enemyTrackerMaterial.transparent = true;
+    }
+
+    #setupShipShields = () => {
+        this._lightShield.object = new Shield(this._lightShip, this._lightShield.radius);
+        this._mediumShield.object = new Shield(this._mediumShip, this._mediumShield.radius);
+        this._heavyShield.object = new Shield(this._heavyShip, this._heavyShield.radius);
     }
 
     #handleScroll = (event) => {
@@ -945,6 +965,9 @@ class PlayerObject extends PhysicsObject {
             }
         }
         else if (this.#cameraPosition.name == "ORBIT") {
+            this._mainObject.getWorldPosition(this.#orbitControls.target);
+            let deltaPos = this.#orbitControlsPositionTracking.new.sub(this.#orbitControlsPositionTracking.old);
+            this.#camera.position.add(deltaPos);
             this.#orbitControls.update();
         }
     }
@@ -1064,9 +1087,11 @@ class PlayerObject extends PhysicsObject {
     Main(dt) {
         super.Main(dt);
 
+        this.#orbitControlsPositionTracking.old.copy(this._objectGroup.position);
+
         //later: this should be pressedOnce, and booster should be locked-in
         //if boosting
-        if (INPUT.KeyPressed('shift')) {
+        if (INPUT.KeyPressed('shift') && this.InputEnabled) {
             this.#currentSpeed = THREE.Math.lerp(this.#currentSpeed, this.#targetSpeed * 4, this.#currentShipStats.acceleration * 4 * dt);
         }
         else {
@@ -1080,15 +1105,15 @@ class PlayerObject extends PhysicsObject {
         }
         this._objectGroup.translateZ(this.#currentSpeed * dt);
 
-        //handle all visual effects associated with current movement
-        if (this.#cameraPosition.name != "ORBIT") {
-            if (this.InputEnabled && INPUT.KeyPressed("rightMouse")) {
-                this.#mouseOffset.set(0, 0);
-            }
+        this.#orbitControlsPositionTracking.new.copy(this._objectGroup.position);
 
-            this.#adjustRotationAmounts(dt);
-            this.#adjustPositionOffset(dt);
+        //handle all visual effects associated with current movement
+        if (this.InputEnabled && INPUT.KeyPressed("rightMouse")) {
+            this.#mouseOffset.set(0, 0);
         }
+
+        this.#adjustRotationAmounts(dt);
+        this.#adjustPositionOffset(dt);
 
         this.#updateCrosshairHitMarkerOpacity(dt);
 
@@ -1105,6 +1130,8 @@ class PlayerObject extends PhysicsObject {
         this.#rockParticleCloud.Main(dt);
 
         this.#handleEnemyTrackerObjects();
+
+        this.#currentShield.object.Main(dt);
     }
 
     MainNoPause(dt) {
@@ -1230,6 +1257,10 @@ class PlayerObject extends PhysicsObject {
         this.Class = this._currentClass;
     }
 
+    HitByBullet() {
+        this.#currentShield.object.Hit();
+    }
+
     get CameraPosition() { return this.#cameraPosition; }
 
     /**
@@ -1238,15 +1269,14 @@ class PlayerObject extends PhysicsObject {
     set CameraPosition(positionName) {
         if (positionName != this.#cameraPosition.name) {
             if (this.#cameraPositions[positionName] != undefined) {
-                this.#oldCameraPosition = this.#cameraPosition == undefined
-                    ? this.#cameraPositions.ORIGIN
-                    : this.#cameraPosition;
+                this.#oldCameraPosition = this.#cameraPosition ?? this.#cameraPositions.ORIGIN;
 
                 this.#cameraPosition = this.#cameraPositions[positionName];
 
                 if (positionName != "ORBIT") {
                     if (this.#oldCameraPosition.name == "ORBIT") {
                         this.#orbitControls.enabled = false;
+                        this._objectGroup.add(this.#camera);
                         this.#camera.position.copy(this.#cameraPosition.posnTarg);
                         this.#camera.lookAt(this.#cameraPosition.lookTarg);
                     }
@@ -1273,9 +1303,16 @@ class PlayerObject extends PhysicsObject {
                         let canvas = window.GameHandler.Renderer.domElement;
                         this.#orbitControls = new OrbitControls(this.#camera, canvas);
                     }
+                    console.log(this.#camera.position.clone());
+                    let relativePosGlobal = this._objectGroup.localToWorld(this.#camera.position.clone());
+
+                    window.GameHandler.Scene.add(this.#camera);
+                    console.log(this.#camera.position.clone());
+
+                    this.#camera.position.copy(relativePosGlobal);
 
                     this.#cameraCurve = undefined;
-                    this.#cameraTransitioning = true;
+                    // this.#cameraTransitioning = true;
                     this.#orbitControls.enabled = true;
 
                     this.InputEnabled = false;
@@ -1379,15 +1416,27 @@ class PlayerObject extends PhysicsObject {
             // this.#thrusterLights.left.light.position.copy(this.#thrusterLights.left[positionKey]);
             // this.#thrusterLights.right.light.position.copy(this.#thrusterLights.right[positionKey]);
 
-            // activate the new current thruster, deactivate all others
+            // activate the new current thruster and current shield, deactivate all others
             for (let className of Object.values(this.#classes)) {
+                let isCurrentClass = className == this._currentClass;
+
                 let thrusterName = `_${className}Thrusters`;
                 for (let thrusterKey in this[thrusterName]) {
                     if (this[thrusterName][thrusterKey].system != undefined) {
                         this[thrusterName][thrusterKey].system.Speed = 0;
-                        this[thrusterName][thrusterKey].system.Active = className == this._currentClass;
+                        this[thrusterName][thrusterKey].system.Active = isCurrentClass;
                         this[thrusterName][thrusterKey].system.Flush();
                     }
+                }
+
+                let shieldName = `_${className}Shield`;
+                if (isCurrentClass) {
+                    this.#currentShield = this[shieldName];
+                    this._colliderRadius = this.#currentShield.radius;
+                    this[shieldName].object.Activate();
+                }
+                else {
+                    this[shieldName].object.Deactivate();
                 }
             }
 

@@ -3,6 +3,7 @@ import * as INPUT from '../../input.js';
 import * as UTILS from '../../utils.js';
 
 import PhysicsObject from '../physics.js';
+import Shield from '../../shield.js';
 
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
@@ -11,7 +12,6 @@ import { Gun } from '../../gun.js';
  * when evade state activated, evade for a minimum 3-seconds before returning to any other state
  * cut-off is very important, as the gun is quite useless right now...
  * FOLLOW - choose a point that is not within 10units of another enemy's chosen point
- * ADD GLOWING BITS TO THE ENEMY, MASK OUT THE WHITE
  */
 
 class EnemyObject extends PhysicsObject {
@@ -66,6 +66,8 @@ class EnemyObject extends PhysicsObject {
     #thrusterTarget = new THREE.Object3D;
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
+    #shield;
+
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
 
@@ -77,10 +79,8 @@ class EnemyObject extends PhysicsObject {
         this.#setupGuns();
         this.#setupThrusters();
 
-        // let bulletGeo = new THREE.SphereBufferGeometry(50, 30, 30);
-        // let bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        // this.testObj = new THREE.Mesh(bulletGeo, bulletMat);
-        // window.GameHandler.Scene.add(this.testObj);
+        this._colliderRadius = 6;
+        this.#shield = new Shield(this._objectGroup, this._colliderRadius);
     }
 
     #setupModel = () => {
@@ -509,6 +509,7 @@ class EnemyObject extends PhysicsObject {
         }
 
         this.#gun.Main(dt);
+        this.#shield.Main(dt);
 
         let speedPct = this.#targetSpeed / this.#maxSpeed;
         this.#thrusterSystem.Speed = speedPct * 50;
@@ -518,6 +519,10 @@ class EnemyObject extends PhysicsObject {
 
         this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
         this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
+    }
+
+    HitByBullet() {
+        this.#shield.Hit();
     }
 
     get Speed() {

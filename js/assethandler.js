@@ -35,13 +35,16 @@ class AssetHandler {
             baseUv: 'baseUv',
             sun: 'sun',
             rockParticle: 'rockParticle',
-            particleColoured: 'particleColoured'
+            particleColoured: 'particleColoured',
+            shield: 'shield'
         },
         frag: {
             sceneAndBloomAdditive: 'sceneAndBloomAdditive',
             sun: 'sun',
             rockParticle: 'rockParticle',
-            particleColoured: 'particleColoured'
+            particleColoured: 'particleColoured',
+            shield: 'shield',
+            shieldMasked: 'shieldMasked'
         }
     }
 
@@ -242,7 +245,8 @@ class AssetHandler {
             { name: 'white_square.png', size: 131, key: 'whiteSquare' },
             { name: 'sun_texture.png', size: 395, key: 'sunTexture' },
             { name: 'rock.png', size: 87800, key: 'rockSprite' },
-            { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' }
+            { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' },
+            { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' }
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 
