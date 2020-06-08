@@ -205,18 +205,18 @@ class GameHandler {
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
-        let test = new EnemyObject();
-        this.test = test;
-        this.AddGameObject(test);
+        // let test = new EnemyObject();
+        // this.test = test;
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // test = new EnemyObject();
+        // this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -559,6 +559,20 @@ class GameHandler {
 
         this.#startGameRunning();
 
+        // let extraOptionsLight = {
+        //     velSpread: new THREE.Vector3(0.5, 0.5, 0),
+        //     originSpread: new THREE.Vector3(0.05, 0.05, 0)
+        // };
+        // this.particles = new ThrusterParticleSystemLocalPos(
+        //     this._object,
+        //     new THREE.Vector3(0, 1, -1),
+        //     0.05,
+        //     1000,
+        //     1.25,
+        //     extraOptionsLight
+        // );
+        // this.particles.Speed = 25;
+
         this.#animate();
     }
 
@@ -687,6 +701,9 @@ class GameHandler {
                 else {
                     obj.setMaskInverse?.(true);
                 }
+            }
+            else if (obj.layers && this.#testRenderLayer(obj.layers.mask, bloomMask)) {
+                console.log(obj);
             }
         });
     }

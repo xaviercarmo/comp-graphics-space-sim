@@ -11,7 +11,7 @@ class Shield {
                 type: "t",
                 value: window.GameHandler.AssetHandler.LoadedImages.sprites.shieldTexture
             },
-            alphaMult: { value: 1 },
+            alphaMult: { value: 0 },
             time: { value: 0 }
         };
         let material = new THREE.ShaderMaterial({

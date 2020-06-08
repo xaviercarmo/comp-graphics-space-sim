@@ -5,6 +5,7 @@ import * as UTILS from '../../utils.js';
 import PhysicsObject from '../physics.js';
 import RockParticleCloud from '../../rockparticlecloud.js';
 import Shield from '../../shield.js';
+import HelixGun from '../../guns/helixgun.js'
 
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
@@ -339,7 +340,7 @@ class PlayerObject extends PhysicsObject {
 
         this.#setupShipThrusters();
 
-        this.#setupGuns();
+        this.#setupShipGuns();
 
         this.#setupShipShields(); // try putting this before enemy trackers (they should be added last so they get drawn in front)
 
@@ -628,30 +629,36 @@ class PlayerObject extends PhysicsObject {
         setupHeavyThruster(this._heavyThrusters.top_right, thrusterPos, thrusterDir);
     }
 
-    #setupGuns = () => {
-        this.#setupLightGuns();
-        this.#setupMediumGuns();
-        this.#setupHeavyGuns();
+    #setupShipGuns = () => {
+        this.#setupLightShipGuns();
+        this.#setupMediumShipGuns();
+        this.#setupHeavyShipGuns();
     }
 
-    #setupLightGuns = () => {
-        let bulletGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
-        let bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        let bullet = new THREE.Mesh(bulletGeo, bulletMat);
-        bullet.castShadow = true;
-        bullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+    #setupLightShipGuns = () => {
+        let bullet = window.GameHandler.AssetHandler.LoadedAssets.diamond_bullet;
+        bullet.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC_HIGH);
+                child.material.color = new THREE.Color(0x5eff00);
+            }
+        });
+        bullet.scale.set(0.01, 0.01, 0.2);
+        let bulletParent = new THREE.Object3D();
+        bulletParent.add(bullet);
 
         let gunBulletSpeed = 750;
         let gunFireRate = 15;
-        let projectileDuration = 5;
+        let projectileDuration = 3;
 
-        let gunObjectPos = new THREE.Vector3(0, -0.4, 3);
+        let gunObjectPos = new THREE.Vector3(0, -0.4, 6);
         this._lightGuns.middle.object.position.copy(gunObjectPos);
         this._lightShip.add(this._lightGuns.middle.object);
-        this._lightGuns.middle.gun = new Gun(this._lightGuns.middle.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._lightGuns.middle.gun = new HelixGun(this._lightGuns.middle.object, this, bulletParent, gunBulletSpeed, gunFireRate, projectileDuration);
     }
 
-    #setupMediumGuns = () => {
+    #setupMediumShipGuns = () => {
         let bulletGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
         let bulletMat = new THREE.MeshBasicMaterial({ color: 0x8000ff });
         let bullet = new THREE.Mesh(bulletGeo, bulletMat);
@@ -673,7 +680,7 @@ class PlayerObject extends PhysicsObject {
         this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
     }
 
-    #setupHeavyGuns = () => {
+    #setupHeavyShipGuns = () => {
         let smallBulletGeo = new THREE.SphereBufferGeometry(0.4, 30, 30);
         let smallBulletMat = new THREE.MeshBasicMaterial({ color: 0xff7700 });
         let smallBullet = new THREE.Mesh(smallBulletGeo, smallBulletMat);
@@ -826,7 +833,7 @@ class PlayerObject extends PhysicsObject {
 
     #setupEnemyTrackers = () => {
         // this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
-        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker_2;
+        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
         this.#enemyTrackerObject.scale.set(0.003, 0.003, 0.003);
 
         this.#enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
@@ -1299,6 +1306,8 @@ class PlayerObject extends PhysicsObject {
                     this.InputEnabled = true;
                 }
                 else {
+                    this.#cameraTransitioning = false;
+
                     if (this.#orbitControls == undefined) {
                         let canvas = window.GameHandler.Renderer.domElement;
                         this.#orbitControls = new OrbitControls(this.#camera, canvas);

@@ -20,7 +20,7 @@ class AssetHandler {
         gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
         enemy_ship: '../assets/enemy_ships/enemy_ship.fbx',
         enemy_tracker: '../assets/enemy_tracker.fbx',
-        enemy_tracker_2: '../assets/enemy_tracker_2.fbx'
+        diamond_bullet: '../assets/diamond_bullet.fbx'
     }
 
     //not required at the moment
