@@ -9,6 +9,7 @@ import Shield from '../../shield.js';
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
+import GameObject from '../../gameobject.js';
 
 /** TODO
  * make boosters last duration
@@ -648,11 +649,12 @@ class PlayerObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 15;
         let projectileDuration = 5;
+        let gunDamage = 1;
 
         let gunObjectPos = new THREE.Vector3(0, -0.4, 3);
         this._lightGuns.middle.object.position.copy(gunObjectPos);
         this._lightShip.add(this._lightGuns.middle.object);
-        this._lightGuns.middle.gun = new Gun(this._lightGuns.middle.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._lightGuns.middle.gun = new Gun(this._lightGuns.middle.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupMediumGuns = () => {
@@ -665,16 +667,17 @@ class PlayerObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 8;
         let projectileDuration = 5;
+        let gunDamage = 2;
 
         let gunObjectPos = new THREE.Vector3(-0.38, -0.32, 2.31);
         this._mediumGuns.left.object.position.copy(gunObjectPos);
         this._mediumShip.add(this._mediumGuns.left.object);
-        this._mediumGuns.left.gun = new Gun(this._mediumGuns.left.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._mediumGuns.left.gun = new Gun(this._mediumGuns.left.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
 
         gunObjectPos.x *= -1;
         this._mediumGuns.right.object.position.copy(gunObjectPos);
         this._mediumShip.add(this._mediumGuns.right.object);
-        this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupHeavyGuns = () => {
@@ -697,21 +700,22 @@ class PlayerObject extends PhysicsObject {
         let bigGunFireRate = 2;
 
         let projectileDuration = 5;
+        let gunDamage = 3; 
 
         let gunObjectPos = new THREE.Vector3(-2, -0.075, 2.75);
         this._heavyGuns.left.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.left.object);
-        this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
+        this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration, gunDamage);
 
         gunObjectPos.x *= -1;
         this._heavyGuns.right.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.right.object);
-        this._heavyGuns.right.gun = new Gun(this._heavyGuns.right.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
+        this._heavyGuns.right.gun = new Gun(this._heavyGuns.right.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration, gunDamage);
 
         gunObjectPos.set(0, -1.5, 9.7);
         this._heavyGuns.middle.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.middle.object);
-        this._heavyGuns.middle.gun = new Gun(this._heavyGuns.middle.object, this, largeBullet, bigGunBulletSpeed, bigGunFireRate, projectileDuration);
+        this._heavyGuns.middle.gun = new Gun(this._heavyGuns.middle.object, this, largeBullet, bigGunBulletSpeed, bigGunFireRate, projectileDuration, gunDamage);
     }
 
     #setupCameraPositions = () => {
@@ -1265,6 +1269,7 @@ class PlayerObject extends PhysicsObject {
         this.#currentShield.object.Hit();
         this.#health -= damage; 
         console.log("Player: ",this.#health);
+        //console.log(this._mainObject.Object);
     }
 
     get CameraPosition() { return this.#cameraPosition; }

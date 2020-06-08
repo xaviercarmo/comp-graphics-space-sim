@@ -185,10 +185,11 @@ class EnemyObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 5;
         let projectileDuration = 5;
+        let gunDamage = 1; 
 
         this.#gunObj.position.set(0, -0.04, 5);
         this.Object.add(this.#gunObj);
-        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupThrusters = () => {
@@ -526,7 +527,7 @@ class EnemyObject extends PhysicsObject {
     HitByBullet(damage) {
         this.#shield.Hit();
         this.#health -= damage; 
-        console.log("Enemy: ",this.#health);
+        console.log("Enemy: ",this.#health, this._objectGroup.uuid);
     }
 
     get Speed() {

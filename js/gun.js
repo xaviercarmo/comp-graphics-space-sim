@@ -70,7 +70,7 @@ class Gun {
         // projectiles only get created when firing, so this time gets invalidated
         this._timeSinceLastShot = 0;
 
-        return new Projectile(this._speedRefParent, object, vel, this._projectileMaxAge);
+        return new Projectile(this._speedRefParent, object, vel, this._projectileMaxAge, this._damage);
     }
 
     Main(dt) {
@@ -148,16 +148,18 @@ class Projectile {
     _velocity;
     _age = 0;
     _maxAge;
+    _damage; 
 
     #oldPos = new THREE.Vector3();
 
-    constructor(parent, object, vel, maxAge) {
+    constructor(parent, object, vel, maxAge, damage) {
         this._parent = parent;
 
         window.GameHandler.Scene.add(object);
         this._object = object;
         this._velocity = vel;
         this._maxAge = maxAge;
+        this._damage = damage; 
 
         //this murders performance, need to use a hidden light on the player and just do muzzle flash instead i think
         // let testLight = new THREE.PointLight(0xff1000, 5, 20);
@@ -181,7 +183,7 @@ class Projectile {
                     let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
 
                     if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
-                        object.HitByBullet?.(1);
+                        object.HitByBullet?.(this._damage);
                         this._age = this._maxAge;
                         break;
                     }
