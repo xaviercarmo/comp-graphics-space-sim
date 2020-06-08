@@ -67,6 +67,7 @@ class EnemyObject extends PhysicsObject {
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     #shield;
+    #health; 
 
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
@@ -81,6 +82,7 @@ class EnemyObject extends PhysicsObject {
 
         this._colliderRadius = 6;
         this.#shield = new Shield(this._objectGroup, this._colliderRadius);
+        this.#health = 100; 
     }
 
     #setupModel = () => {
@@ -521,8 +523,10 @@ class EnemyObject extends PhysicsObject {
         this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
     }
 
-    HitByBullet() {
+    HitByBullet(damage) {
         this.#shield.Hit();
+        this.#health -= damage; 
+        console.log("Enemy: ",this.#health);
     }
 
     get Speed() {

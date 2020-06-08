@@ -198,6 +198,9 @@ class PlayerObject extends PhysicsObject {
         '_mediumShipSettings',
         '_heavyShipSettings'
     ];
+    
+    //health
+    #health = 100; 
 
     //classes
     #classes = {
@@ -292,6 +295,7 @@ class PlayerObject extends PhysicsObject {
         window.addEventListener("wheel", this.#handleScroll);
 
         this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
+        this.#health = 100; 
     }
 
     #setupCamera = (camera) => {
@@ -1257,8 +1261,10 @@ class PlayerObject extends PhysicsObject {
         this.Class = this._currentClass;
     }
 
-    HitByBullet() {
+    HitByBullet(damage) {
         this.#currentShield.object.Hit();
+        this.#health -= damage; 
+        console.log("Player: ",this.#health);
     }
 
     get CameraPosition() { return this.#cameraPosition; }

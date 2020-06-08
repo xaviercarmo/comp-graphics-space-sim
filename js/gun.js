@@ -16,6 +16,7 @@ class Gun {
     _fireCounter = 0;
     _fireInterval;
     _projectileMaxAge; //can use this later to recycle projectile objects rather than remove them
+    _damage; 
 
     _projectiles = [];
 
@@ -32,7 +33,7 @@ class Gun {
      * @param {THREE.Object3D} projectile
      * Object3D to clone when spawning projectiles
      */
-    constructor(parent, speedRefParent, projectile, projectileSpeed, fireRate, projectileMaxAge) {
+    constructor(parent, speedRefParent, projectile, projectileSpeed, fireRate, projectileMaxAge, damage) {
         this._parent = parent;
         this._speedRefParent = speedRefParent && speedRefParent.Speed != undefined
             ? speedRefParent
@@ -42,6 +43,7 @@ class Gun {
         this.FireRate = fireRate;
         this._projectileMaxAge = projectileMaxAge;
         this._timeSinceLastShot = this._fireInterval;
+        this._damage = damage; 
 
         // THIS IS A MUZZLE FLASH LIGHT - MAY INTRODUCE LATER DUNNO
         // this._muzzleFlashLight = new THREE.PointLight(0x00ffea, 0, 14);
@@ -179,7 +181,7 @@ class Projectile {
                     let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
 
                     if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
-                        object.HitByBullet?.();
+                        object.HitByBullet?.(1);
                         this._age = this._maxAge;
                         break;
                     }
