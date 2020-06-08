@@ -84,8 +84,9 @@ class AsteroidObject extends PhysicsObject {
         let pPos = window.GameHandler.Player.Object.position.clone();
         let newPos = pPos.add(spawnPoint);
         asteroid.position.copy(newPos);
-
+        
         super(asteroid);
+        this._objectGroup.frustumCulled = true; 
         this.#playerId = asteroid.id; 
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
@@ -130,6 +131,7 @@ class AsteroidObject extends PhysicsObject {
         let camDir = this.#camera.getWorldDirection(vec);
         let distance = 80; 
         let playerToAst = this.#player.Position.distanceToSquared(this._mainObject.position); 
+        let playerPos = window.GameHandler.Player.Object.position.clone();
         /*
         this.#player.Object.geometry.computeBoundingSphere(); 
         this._mainObject.geometry.computeBoundingSphere()
@@ -154,7 +156,7 @@ class AsteroidObject extends PhysicsObject {
             //scene.remove() only works if the object is a direct child of scene
             
     
-        } if (playerToAst > distance * 50000) { //since distance squared is so large. 
+        } if (playerToAst > distance * 20000) { //since distance squared is so large. 
             //console.log(window.GameHandler.Scene.getObjectById( this._mainObject.id));
             console.log(playerToAst);
             //console.log(distanceSq*10000);
@@ -169,8 +171,13 @@ class AsteroidObject extends PhysicsObject {
             UTILS.RandomFloatInRange(-400, 400)
             );
             spawnPoint.clampLength(-400, 400);
-            let pPos = window.GameHandler.Player.Object.position.clone();
-            let newPos = pPos.add(spawnPoint);
+            let frontPos = new THREE.Vector3; 
+            //multiply by arbitrary number for distance, note: higher it is more vertically displaced it gets. 
+            frontPos.set(playerPos.x + camDir.x *800, playerPos.y + camDir.y*800, playerPos.z + camDir.z *800);
+
+            //Randomise object spawn
+            frontPos.add(spawnPoint);
+            let newPos = playerPos.add(spawnPoint);
             this._mainObject.position.copy(newPos);
         }
     }
