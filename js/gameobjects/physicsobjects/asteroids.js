@@ -11,6 +11,7 @@ class AsteroidField {
     #asteroids = [];
     #number;
     
+    
     constructor(number){
         this.#number = number; 
         
@@ -19,7 +20,7 @@ class AsteroidField {
         
     }
     Main(dt) {
-
+        
     }
 
     //Implement a position changer 
@@ -48,7 +49,8 @@ class AsteroidObject extends PhysicsObject {
     #random;
     #player;
     #camera;
-    #helper; 
+    #helper;
+    #playerId; 
 
     constructor() {
         //random asteroid selection.
@@ -64,6 +66,7 @@ class AsteroidObject extends PhysicsObject {
             asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid9.clone(); 
         }
         
+        
 
         //radomise size of each asteroid. 
         asteroid.scale.set(
@@ -71,12 +74,19 @@ class AsteroidObject extends PhysicsObject {
             THREE.MathUtils.randFloat(200, 200),
             THREE.MathUtils.randFloat(200, 200)
         );
-        asteroid.position.add(new THREE.Vector3(
-            THREE.MathUtils.randInt(-200, 200),
-            THREE.MathUtils.randInt(-200, 200),
-            THREE.MathUtils.randInt(-200, 200)
-        ));
+        
+        //location spawn around player with within 400 unit distance. 
+        let spawnPoint = new THREE.Vector3(
+            THREE.MathUtils.randInt(-400, 400),
+            THREE.MathUtils.randInt(-400, 400),
+            THREE.MathUtils.randInt(-400, 400)
+        );
+        let pPos = window.GameHandler.Player.Object.position.clone();
+        let newPos = pPos.add(spawnPoint);
+        asteroid.position.copy(newPos);
+
         super(asteroid);
+        this.#playerId = asteroid.id; 
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
         this.#ParameterSetup();
@@ -101,15 +111,14 @@ class AsteroidObject extends PhysicsObject {
 
     #ParameterSetup = () => {
         //
-
         //object rotation
         this.#rotDir = THREE.MathUtils.randFloat(-0.005, 0.005);;
 
         //object movement along xyz
         this.#random = new THREE.Vector3(
-            THREE.MathUtils.randFloat(-0.01, 0.01),
-            THREE.MathUtils.randFloat(-0.01, 0.01),
-            THREE.MathUtils.randFloat(-0.01, 0.01)
+            THREE.MathUtils.randFloat(-0.05, 0.05),
+            THREE.MathUtils.randFloat(-0.05, 0.05),
+            THREE.MathUtils.randFloat(-0.05, 0.05)
         );
     }
     
@@ -120,24 +129,16 @@ class AsteroidObject extends PhysicsObject {
         let vec = new THREE.Vector3();
         let camDir = this.#camera.getWorldDirection(vec);
         let distance = 80; 
+        let playerToAst = this.#player.Position.distanceToSquared(this._mainObject.position); 
         /*
         this.#player.Object.geometry.computeBoundingSphere(); 
         this._mainObject.geometry.computeBoundingSphere()
         this.#player.updateMatrixWorld();
         this._mainObject.updateMatrixWorld();
+        */
 
-        let box1 = this.#player.geometry.boundingSphere.clone();
-        box1.applyMatrix4(this.#player.matrixWorld);
-
-        var box2 = this._mainObject.geometry.boundingSphere.clone();
-        box2.applyMatrix4(this._mainObject.matrixWorld);
-
-        if(box1.intersectsSphere(box2)) {
-            console.log("Collision Occured");
-        }*/
-
-        console.log(this.#player);
-        if(this.#player.Position.distanceToSquared(this._mainObject.position) < distance) {
+        //console.log(this.#player);
+        if( playerToAst < distance) {
             //Pushes object forward with repsect to camera direction
             //note since updates are called so quickly, it looks like its shifting away.
             //added random numbers to make it less consistent.
@@ -147,8 +148,31 @@ class AsteroidObject extends PhysicsObject {
                 this._mainObject.position.y + camDir.y* + THREE.MathUtils.randFloat(0, 2),
                 this._mainObject.position.z + camDir.z* + THREE.MathUtils.randFloat(0, 2)
             );
+  
             this._mainObject.position.copy(newPos);
-        } 
+            //mainobject doesn't work, 
+            //scene.remove() only works if the object is a direct child of scene
+            
+    
+        } if (playerToAst > distance * 50000) { //since distance squared is so large. 
+            //console.log(window.GameHandler.Scene.getObjectById( this._mainObject.id));
+            console.log(playerToAst);
+            //console.log(distanceSq*10000);
+
+            //remove object, but how to make them spawn efficiently
+            //window.GameHandler.Scene.remove(this._objectGroup);
+            //for now just move them
+            
+            let spawnPoint = new THREE.Vector3(
+            UTILS.RandomFloatInRange(-400, 400),
+            UTILS.RandomFloatInRange(-400, 400),
+            UTILS.RandomFloatInRange(-400, 400)
+            );
+            spawnPoint.clampLength(-400, 400);
+            let pPos = window.GameHandler.Player.Object.position.clone();
+            let newPos = pPos.add(spawnPoint);
+            this._mainObject.position.copy(newPos);
+        }
     }
     
     get Asteroid(){

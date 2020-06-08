@@ -98,7 +98,11 @@ class SpawnParticle {
     
         let geo = new THREE.IcosahedronGeometry(rad, det);
         //lambertian for matte/diffuse reflections
-        let mat = new THREE.MeshLambertMaterial( { map: this.#texture});
+        let mat = new THREE.MeshLambertMaterial( { 
+            map: this.#texture, 
+            transparent: true, 
+            opacity: 0.7
+        });
         this.#part = new THREE.Mesh(geo, mat);
         this.#part.scale.set(0.03, 0.03, 0.03);
         //let spriteMaterial = new THREE.SpriteMaterial({map: this.#texture});
