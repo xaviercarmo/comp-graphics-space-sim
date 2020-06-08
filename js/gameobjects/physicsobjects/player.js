@@ -282,7 +282,7 @@ class PlayerObject extends PhysicsObject {
         this.#meshes = assets.meshes;
         this.#textures = assets.textures;
 
-        this.#setupShipClasses(this.#classes.LIGHT);
+        this.#setupShipClasses(this.#classes.MEDIUM);
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
         this.#setupCamera(camera);
@@ -1139,6 +1139,10 @@ class PlayerObject extends PhysicsObject {
         this.#handleEnemyTrackerObjects();
 
         this.#currentShield.object.Main(dt);
+
+        if (this.#cameraPosition.name == "FOLLOW" && !this.#cameraTransitioning) {
+            this.#camera.rotation.y = INPUT.KeyPressed("space") ? Math.PI : 0;
+        }
     }
 
     MainNoPause(dt) {
@@ -1190,32 +1194,6 @@ class PlayerObject extends PhysicsObject {
             rotVec.multiplyScalar(0.1);
             scaleAmt *= 0.1;
         }
-
-        if (this.#cameraPosition.name == "FOLLOW") {
-            this.#camera.rotation.y = INPUT.KeyPressed("space") ? Math.PI : 0;
-        }
-
-        // this._mediumThrusters.mid_mid.target.position.add(moveVec);
-        // this._lightThrusters.top.target.position.add(moveVec);
-        
-        // this.testCube.position.x -= moveVec.x;
-        // this.testCube.position.y += moveVec.y;
-        // this.testCube.position.z += moveVec.z;
-
-        // this.testCube2.position.x += moveVec.x;
-        // this.testCube2.position.y += moveVec.y;
-        // this.testCube2.position.z += moveVec.z;
-
-        // this.testCube3.position.x -= moveVec.x;
-        // this.testCube3.position.y += moveVec.y;
-        // this.testCube3.position.z += moveVec.z;
-
-        
-        // this.#thrusterLights.left.light.position.add(moveVec);
-        // this.#thrusterLights.left.light.intensity += intensity;
-        // moveVec.x *= -1;
-        // this.#thrusterLights.right.light.position.add(moveVec);
-        // this.#thrusterLights.right.light.intensity += intensity;
     }
 
     PostPhysicsCallback(dt) {
