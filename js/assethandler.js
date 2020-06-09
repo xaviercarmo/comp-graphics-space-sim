@@ -25,6 +25,7 @@ class AssetHandler {
 
     //not required at the moment
     #glbAssetPaths = {
+        health_capsule: '../assets/healthboost.glb'
         // small_ship: '../assets/player_ships/small_fighter.glb',
         // medium_ship: '../assets/player_ships/medium_fighter.glb',
         // heavy_ship: '../assets/player_ships/large_fighter.glb'
@@ -293,7 +294,7 @@ class AssetHandler {
 
         for (let key in this.#glbAssetPaths) {
             gltfLoader.load(this.#glbAssetPaths[key], (gltf) => {
-                onAssetLoaded(key, gltf.scene);
+                onAssetLoaded(key, gltf);
             });
         }
     }

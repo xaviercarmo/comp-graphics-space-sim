@@ -4,10 +4,10 @@ import * as UTILS from './utils.js';
 
 import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
-import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
+import HealthCapsule from './gameobjects/healthcapsule.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
 import { RenderPass } from '../libraries/RenderPass.js';
@@ -102,8 +102,6 @@ class GameHandler {
 
         this.#initialiseSun();
 
-        this.#initialiseGameObjects();
-
         // a cube for testing bloom
         // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
         // let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
@@ -111,6 +109,9 @@ class GameHandler {
         // randomCube.layers.enable(this.RenderLayers.BLOOM_STATIC);
         // randomCube.position.y += 5;
         // this.#scene.add(randomCube);
+
+        let testCapsule = new HealthCapsule(new THREE.Vector3(0, 0, 5));
+        this.AddGameObject(testCapsule);
     }
 
     #initialiseRenderer = () => {
@@ -206,9 +207,9 @@ class GameHandler {
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
-        let test = new EnemyObject();
-        this.test = test;
-        this.AddGameObject(test);
+        // let test = new EnemyObject();
+        // this.test = test;
+        // this.AddGameObject(test);
 
         // test = new EnemyObject();
         // this.AddGameObject(test);
@@ -242,9 +243,9 @@ class GameHandler {
     #initialiseSun = () => {
         this.#sun = new SunObject();
         this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
+        this.SkyBox.add(this.#sun.Object); // for debugging purposes
         this.AddGameObject(this.#sun);
 
-        this.SkyBox.add(this.#sun.Object); // for debugging purposes
         
         this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.4);
         this.#scene.add(this.#ambientLight);
@@ -540,14 +541,6 @@ class GameHandler {
         $('#shipValueMaskSlider').ionRangeSlider(params);
     }
 
-    #initialiseGameObjects = () => {
-        this.#gameObjects.forEach(g => {
-            if (!g.Object.parent) {
-                this.#scene.add(g.Object);
-            }
-        });
-    }
-
     #startMainMenu = () => {
         INPUT.ShouldPreventDefaultEvents(false);
 
@@ -558,7 +551,7 @@ class GameHandler {
 
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
-        // this.#startGameRunning();
+        this.#startGameRunning();
 
         this.#animate();
     }
@@ -745,6 +738,10 @@ class GameHandler {
     AddGameObject(object) {
         if (object instanceof GameObject) {
             this.#gameObjects.push(object);
+
+            if (!object.Object.parent) {
+                this.#scene.add(object.Object);
+            }
         }
         else {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
