@@ -18,6 +18,7 @@ class Gun {
     _fireCounter = 0;
     _fireInterval;
     _projectileMaxAge; //can use this later to recycle projectile objects rather than remove them
+    _damage; 
 
     _projectiles = [];
 
@@ -34,7 +35,7 @@ class Gun {
      * @param {THREE.Object3D} projectile
      * Object3D to clone when spawning projectiles
      */
-    constructor(parent, speedRefParent, projectile, projectileSpeed, fireRate, projectileMaxAge) {
+    constructor(parent, speedRefParent, projectile, projectileSpeed, fireRate, projectileMaxAge, damage) {
         this._parent = parent;
         this._speedRefParent = speedRefParent && speedRefParent.Speed != undefined
             ? speedRefParent
@@ -44,6 +45,7 @@ class Gun {
         this.FireRate = fireRate;
         this._projectileMaxAge = projectileMaxAge;
         this._timeSinceLastShot = this._fireInterval;
+        this._damage = damage; 
 
         // THIS IS A MUZZLE FLASH LIGHT - MAY INTRODUCE LATER DUNNO
         // this._muzzleFlashLight = new THREE.PointLight(0x00ffea, 0, 14);
@@ -73,7 +75,7 @@ class Gun {
         this._parent.getWorldPosition(object.position);
         this._parent.getWorldQuaternion(object.quaternion);
 
-        return new Projectile(this._speedRefParent, object, vel, this._projectileMaxAge);
+        return new Projectile(this._speedRefParent, object, vel, this._projectileMaxAge, this._damage);
     }
 
     Main(dt) {
@@ -151,18 +153,20 @@ class Projectile {
     _velocity;
     _age = 0;
     _maxAge;
+    _damage; 
 
     #oldPos = new THREE.Vector3();
 
     #testing;
 
-    constructor(parent, object, vel, maxAge) {
+    constructor(parent, object, vel, maxAge, damage) {
         this._parent = parent;
 
         window.GameHandler.Scene.add(object);
         this._object = object;
         this._velocity = vel;
         this._maxAge = maxAge;
+        this._damage = damage; 
 
         // let extraOptionsLight = {
         //     velSpread: new THREE.Vector3(0.5, 0.5, 0),
@@ -193,7 +197,7 @@ class Projectile {
                 let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
 
                 if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
-                    object.HitByBullet?.();
+                    object.HitByBullet?.(this._damage);
                     this._age = this._maxAge;
                     break;
                 }

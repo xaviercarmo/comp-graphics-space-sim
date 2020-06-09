@@ -67,6 +67,7 @@ class EnemyObject extends PhysicsObject {
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     #shield;
+    #health; 
 
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
@@ -81,6 +82,7 @@ class EnemyObject extends PhysicsObject {
 
         this._colliderRadius = 6;
         this.#shield = new Shield(this._objectGroup, this._colliderRadius);
+        this.#health = 100; 
     }
 
     #setupModel = () => {
@@ -183,10 +185,11 @@ class EnemyObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 5;
         let projectileDuration = 5;
+        let gunDamage = 1; 
 
         this.#gunObj.position.set(0, -0.04, 5);
         this.Object.add(this.#gunObj);
-        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupThrusters = () => {
@@ -475,6 +478,29 @@ class EnemyObject extends PhysicsObject {
         return forward.angleTo(dirToPoint);
     }
 
+    #deathHandler = () => {
+        let uuid = this._objectGroup.uuid; 
+        
+        if(this.#health < 0) {
+            let gameobjects = window.GameHandler.GameObjects; 
+            let object = window.GameHandler.Scene.getObjectByProperty('uuid', uuid); //or can just be _objectgroup
+
+            for (let i = 0; i < gameobjects.length; i++) {
+                if(gameobjects[i].Object.uuid == uuid){
+
+                    console.log(gameobjects[i].Object.uuid);
+                    window.GameHandler.Scene.remove(object);
+                    //splice[start, value: how elements deleted after start from start value onwards]
+                    gameobjects.splice(i, 1);
+                }
+            }
+            console.log("enemy dead");
+            //adding and remove point lights are intensive
+            window.GameHandler.Scene.add(this.#thrusterLight);
+        }
+    
+    }
+
     Main(dt) {
         this.#clone.position.copy(this.Position);
 
@@ -521,8 +547,10 @@ class EnemyObject extends PhysicsObject {
         this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
     }
 
-    HitByBullet() {
+    HitByBullet(damage) {
         this.#shield.Hit();
+        this.#health -= damage; 
+        this.#deathHandler();
     }
 
     get Speed() {

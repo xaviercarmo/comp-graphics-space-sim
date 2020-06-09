@@ -10,6 +10,7 @@ import HelixGun from '../../guns/helixgun.js'
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
+import GameObject from '../../gameobject.js';
 
 /** TODO
  * make boosters last duration
@@ -199,6 +200,9 @@ class PlayerObject extends PhysicsObject {
         '_mediumShipSettings',
         '_heavyShipSettings'
     ];
+    
+    //health
+    #health = 100; 
 
     //classes
     #classes = {
@@ -293,6 +297,7 @@ class PlayerObject extends PhysicsObject {
         window.addEventListener("wheel", this.#handleScroll);
 
         this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
+        this.#health = 100; 
     }
 
     #setupCamera = (camera) => {
@@ -651,11 +656,12 @@ class PlayerObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 15;
         let projectileDuration = 3;
+        let gunDamage = 20.5;
 
         let gunObjectPos = new THREE.Vector3(0, -0.4, 6);
         this._lightGuns.middle.object.position.copy(gunObjectPos);
         this._lightShip.add(this._lightGuns.middle.object);
-        this._lightGuns.middle.gun = new HelixGun(this._lightGuns.middle.object, this, bulletParent, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._lightGuns.middle.gun = new HelixGun(this._lightGuns.middle.object, this, bulletParent, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupMediumShipGuns = () => {
@@ -668,16 +674,17 @@ class PlayerObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 8;
         let projectileDuration = 5;
+        let gunDamage = 0.85;
 
         let gunObjectPos = new THREE.Vector3(-0.38, -0.32, 2.31);
         this._mediumGuns.left.object.position.copy(gunObjectPos);
         this._mediumShip.add(this._mediumGuns.left.object);
-        this._mediumGuns.left.gun = new Gun(this._mediumGuns.left.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._mediumGuns.left.gun = new Gun(this._mediumGuns.left.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
 
         gunObjectPos.x *= -1;
         this._mediumGuns.right.object.position.copy(gunObjectPos);
         this._mediumShip.add(this._mediumGuns.right.object);
-        this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupHeavyShipGuns = () => {
@@ -700,21 +707,24 @@ class PlayerObject extends PhysicsObject {
         let bigGunFireRate = 2;
 
         let projectileDuration = 5;
+        
+        let sideGunDamage = 0.85;
+        let centreGunDamage = 5;  
 
         let gunObjectPos = new THREE.Vector3(-2, -0.075, 2.75);
         this._heavyGuns.left.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.left.object);
-        this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
+        this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration, sideGunDamage);
 
         gunObjectPos.x *= -1;
         this._heavyGuns.right.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.right.object);
-        this._heavyGuns.right.gun = new Gun(this._heavyGuns.right.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
+        this._heavyGuns.right.gun = new Gun(this._heavyGuns.right.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration, sideGunDamage);
 
         gunObjectPos.set(0, -1.5, 9.7);
         this._heavyGuns.middle.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.middle.object);
-        this._heavyGuns.middle.gun = new Gun(this._heavyGuns.middle.object, this, largeBullet, bigGunBulletSpeed, bigGunFireRate, projectileDuration);
+        this._heavyGuns.middle.gun = new Gun(this._heavyGuns.middle.object, this, largeBullet, bigGunBulletSpeed, bigGunFireRate, projectileDuration, centreGunDamage);
     }
 
     #setupCameraPositions = () => {
@@ -1040,7 +1050,7 @@ class PlayerObject extends PhysicsObject {
         }
         else if (lengthDiff < 0) {
             for (let i = 0; i < -lengthDiff; i++) {
-                window.GameHandler.Scene.remove(trackerObj);
+                window.GameHandler.Scene.remove(this.#enemyTrackerObjects.pop());
             }
         }
 
@@ -1242,8 +1252,10 @@ class PlayerObject extends PhysicsObject {
         this.Class = this._currentClass;
     }
 
-    HitByBullet() {
+    HitByBullet(damage) {
         this.#currentShield.object.Hit();
+        this.#health -= damage; 
+        console.log("Player: ", this.#health);
     }
 
     get CameraPosition() { return this.#cameraPosition; }
