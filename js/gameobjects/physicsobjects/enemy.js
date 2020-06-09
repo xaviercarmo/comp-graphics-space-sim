@@ -478,6 +478,29 @@ class EnemyObject extends PhysicsObject {
         return forward.angleTo(dirToPoint);
     }
 
+    #deathHandler = () => {
+        let uuid = this._objectGroup.uuid; 
+        
+        if(this.#health < 0) {
+            let gameobjects = window.GameHandler.GameObjects; 
+            let object = window.GameHandler.Scene.getObjectByProperty('uuid', uuid); //or can just be _objectgroup
+
+            for (let i = 0; i < gameobjects.length; i++) {
+                if(gameobjects[i].Object.uuid == uuid){
+
+                    console.log(gameobjects[i].Object.uuid);
+                    window.GameHandler.Scene.remove(object);
+                    //splice[start, value: how elements deleted after start from start value onwards]
+                    gameobjects.splice(i, 1);
+                }
+            }
+            console.log("enemy dead");
+            //adding and remove point lights are intensive
+            window.GameHandler.Scene.add(this.#thrusterLight);
+        }
+    
+    }
+
     Main(dt) {
         this.#clone.position.copy(this.Position);
 
@@ -527,7 +550,7 @@ class EnemyObject extends PhysicsObject {
     HitByBullet(damage) {
         this.#shield.Hit();
         this.#health -= damage; 
-        console.log("Enemy: ",this.#health, this._objectGroup.uuid);
+        this.#deathHandler();
     }
 
     get Speed() {
