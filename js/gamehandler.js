@@ -209,14 +209,14 @@ class GameHandler {
         this.test = test;
         this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -557,7 +557,7 @@ class GameHandler {
 
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
-        // this.#startGameRunning();
+        this.#startGameRunning();
 
         this.#animate();
     }
@@ -687,9 +687,6 @@ class GameHandler {
                 else {
                     obj.setMaskInverse?.(true);
                 }
-            }
-            else if (obj.layers && this.#testRenderLayer(obj.layers.mask, bloomMask)) {
-                console.log(obj);
             }
         });
     }

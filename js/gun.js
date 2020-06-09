@@ -2,8 +2,6 @@ import * as THREE from '../libraries/three.module.js';
 import * as UTILS from './utils.js';
 import PhysicsObject from './gameobjects/physics.js';
 
-import { ThrusterParticleSystemLocalPos } from './particlesystems/thrusterparticlesystem.js';
-
 /** TODO
  * ADD TRAILING PARTICLES TO THE BULLETS IT WILL BE SO COOL. SHOULD BE A VERY LONG, THIN TRAIL WITH SAME COLOUR AS PROJECTILE. SHOULD ONLY BE ACTIVE FOR ~1s BEFORE SWITCHING OFF
  * ALSO MAYBE A SPRITE THAT STRETCHES (SCALES) BACKWARDS ALONG THE DIRECTION OF TRAVEL
@@ -57,15 +55,7 @@ class Gun {
         // this._parent.add(this._muzzleFlashLight);
     }
 
-    #createProjectile = (dt) => {
-        // projectiles only get created when firing, so this time gets invalidated
-        this._timeSinceLastShot = 0;
-
-        return this._createProjectile(dt);
-    }
-
-    //overrideable portion of create projectile
-    _createProjectile(dt) {
+    #createProjectile = () => {
         let vel = this.Direction
             .clone()
             .transformDirection(this._parent.matrixWorld)
@@ -73,7 +63,12 @@ class Gun {
 
         let object = this._projectile.clone();
         this._parent.getWorldPosition(object.position);
+        // object.setRotationFromMatrix(this._parent.matrixWorld);
         this._parent.getWorldQuaternion(object.quaternion);
+        // object.quaternion.setFromRotationMatrix(this._parent.matrixWorld);
+
+        // projectiles only get created when firing, so this time gets invalidated
+        this._timeSinceLastShot = 0;
 
         return new Projectile(this._speedRefParent, object, vel, this._projectileMaxAge, this._damage);
     }
@@ -88,7 +83,7 @@ class Gun {
                 // this shot should consume the firecounter
                 this._fireCounter = 0;
 
-                newProjectiles.push(this.#createProjectile(dt));
+                newProjectiles.push(this.#createProjectile());
             }
             else {
                 this._fireCounter += dt;
@@ -96,7 +91,7 @@ class Gun {
                 while (this._fireCounter >= this._fireInterval) {
                     newProjectiles.forEach(p => p.Main(this._fireInterval));
     
-                    newProjectiles.push(this.#createProjectile(dt));
+                    newProjectiles.push(this.#createProjectile());
     
                     this._fireCounter -= this._fireInterval;
                 }
@@ -157,8 +152,6 @@ class Projectile {
 
     #oldPos = new THREE.Vector3();
 
-    #testing;
-
     constructor(parent, object, vel, maxAge, damage) {
         this._parent = parent;
 
@@ -168,41 +161,9 @@ class Projectile {
         this._maxAge = maxAge;
         this._damage = damage; 
 
-        // let extraOptionsLight = {
-        //     velSpread: new THREE.Vector3(0.5, 0.5, 0),
-        //     originSpread: new THREE.Vector3(0.1, 0.1, 0)
-        // };
-        // this.#testing = new ThrusterParticleSystemLocalPos(
-        //     this._object,
-        //     new THREE.Vector3(0, 0, -1),
-        //     0.15,
-        //     1000,
-        //     1.25,
-        //     extraOptionsLight
-        // );
-        // this.#testing.Speed = 600;
-    }
-
-    _updatePosition(dt) {
-        this._object.position.add(this._velocity.clone().multiplyScalar(dt));
-    }
-
-    _checkForCollisions() {
-        for (let object of window.GameHandler.GameObjects) {
-            let sphere = object.BoundingSphere;
-            if (object != this._parent && object instanceof PhysicsObject && UTILS.RayIntersectsSphere(this.#oldPos, this._object.position, sphere)) {
-                // on a path towards or away from the enemy object, now just need to detect if moving crossed over the object
-
-                let oldDelta = UTILS.SubVectors(sphere.centre, this.#oldPos);
-                let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
-
-                if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
-                    object.HitByBullet?.(this._damage);
-                    this._age = this._maxAge;
-                    break;
-                }
-            }
-        }
+        //this murders performance, need to use a hidden light on the player and just do muzzle flash instead i think
+        // let testLight = new THREE.PointLight(0xff1000, 5, 20);
+        // this._object.add(testLight);
     }
 
     Main(dt) {
@@ -210,11 +171,24 @@ class Projectile {
 
         if (!this.IsExpired) {
             this.#oldPos.copy(this._object.position);
-            this._updatePosition(dt);
+            this._object.position.add(this._velocity.clone().multiplyScalar(dt));
 
-            this._checkForCollisions();
+            for (let object of window.GameHandler.GameObjects) {
+                let sphere = object.BoundingSphere;
+                if (object != this._parent && object instanceof PhysicsObject && UTILS.RayIntersectsSphere(this.#oldPos, this._object.position, sphere)) {
+                    // on a path towards or away from the enemy object, now just need to detect if moving crossed over the object
 
-            // this.#testing.Main(dt);
+                    // can cache old delta for every object rather than re-calculating if performance is a concern
+                    let oldDelta = UTILS.SubVectors(sphere.centre, this.#oldPos);
+                    let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
+
+                    if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
+                        object.HitByBullet?.(this._damage);
+                        this._age = this._maxAge;
+                        break;
+                    }
+                }
+            }
         }
         else {
             this._object.visible = false;

@@ -479,15 +479,24 @@ class EnemyObject extends PhysicsObject {
     }
 
     #deathHandler = () => {
-        if (this.#health < 0) {
+        let uuid = this._objectGroup.uuid; 
+        
+        if(this.#health < 0) {
+            let gameobjects = window.GameHandler.GameObjects; 
+            let object = window.GameHandler.Scene.getObjectByProperty('uuid', uuid); //or can just be _objectgroup
+
+            for (let i = 0; i < gameobjects.length; i++) {
+                if(gameobjects[i].Object.uuid == uuid){
+
+                    console.log(gameobjects[i].Object.uuid);
+                    window.GameHandler.Scene.remove(object);
+                    //splice[start, value: how elements deleted after start from start value onwards]
+                    gameobjects.splice(i, 1);
+                }
+            }
+            console.log("enemy dead");
             //adding and remove point lights are intensive
             window.GameHandler.Scene.add(this.#thrusterLight);
-
-            window.GameHandler.Scene.remove(this._objectGroup);
-            let gameObjectIndex = window.GameHandler.GameObjects.indexOf(this);
-            window.GameHandler.GameObjects.splice(gameObjectIndex, 1);
-
-            console.log("enemy dead");
         }
     
     }
