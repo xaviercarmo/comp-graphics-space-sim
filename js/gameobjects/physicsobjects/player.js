@@ -1443,8 +1443,6 @@ class PlayerObject extends PhysicsObject {
             this.#currentThrusters = this[`_${this._currentClass}Thrusters`];
             this.#updateCurrentThrusterSpeeds();
 
-            // flush the current guns colleciton, and set to the new guns collection
-            Object.values(this.#currentGuns).forEach(gunObj => gunObj.gun.Flush());
             this.#currentGuns = this[`_${this._currentClass}Guns`];
 
             // set the current settings object

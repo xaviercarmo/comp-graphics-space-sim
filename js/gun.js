@@ -20,11 +20,6 @@ class Gun {
     _projectileMaxAge; //can use this later to recycle projectile objects rather than remove them
     _damage; 
 
-    _projectiles = [];
-
-    // _muzzleFlashLight;
-    // _muzzleFlashIntensity = 100;
-
     Firing = false;
     Direction = new THREE.Vector3(0, 0, 1);
 
@@ -46,22 +41,14 @@ class Gun {
         this._projectileMaxAge = projectileMaxAge;
         this._timeSinceLastShot = this._fireInterval;
         this._damage = damage; 
-
-        // THIS IS A MUZZLE FLASH LIGHT - MAY INTRODUCE LATER DUNNO
-        // this._muzzleFlashLight = new THREE.PointLight(0x00ffea, 0, 14);
-        // this._muzzleFlashLight.position.set(0, 5 * 10, 15 * 10);
-        //this._muzzleFlashLight.castShadow = true;
-        // let sphereSize = 1.0 * 10;
-        // let pointLightHelper = new THREE.PointLightHelper(this._muzzleFlashLight, sphereSize);
-        // window.GameHandler.Scene.add(pointLightHelper);
-        // this._parent.add(this._muzzleFlashLight);
     }
 
     #createProjectile = (dt) => {
         // projectiles only get created when firing, so this time gets invalidated
         this._timeSinceLastShot = 0;
-
-        return this._createProjectile(dt);
+        let projectile = this._createProjectile(dt);
+        window.GameHandler.AddProjectile(projectile);
+        return projectile;
     }
 
     //overrideable portion of create projectile
@@ -94,6 +81,7 @@ class Gun {
                 this._fireCounter += dt;
 
                 while (this._fireCounter >= this._fireInterval) {
+                    //could do thsi all at once rather than calling over and over (better for expensive projectiles)
                     newProjectiles.forEach(p => p.Main(this._fireInterval));
     
                     newProjectiles.push(this.#createProjectile(dt));
@@ -117,20 +105,6 @@ class Gun {
         else {
             this._timeSinceLastShot += dt;
         }
-
-        for (let i = this._projectiles.length - 1; i >= 0; i--) {
-            this._projectiles[i].Main(dt);
-            if (this._projectiles[i].IsExpired) {
-                this._projectiles[i].Dispose();
-                this._projectiles.splice(i, 1);
-            }
-        }
-
-        newProjectiles.forEach(p => this._projectiles.push(p));
-
-        // this._muzzleFlashLight.intensity = this._muzzleFlashLight.intensity == 0 && newProjectiles.length > 0
-        //     ? this._muzzleFlashIntensity
-        //     : 0;
     }
 
     /**
@@ -139,11 +113,6 @@ class Gun {
      */
     set FireRate(value) {
         this._fireInterval = 1 / value;
-    }
-
-    Flush() {
-        this._projectiles.forEach(projectile => projectile.Dispose());
-        this._projectiles = [];
     }
 }
 
@@ -198,7 +167,7 @@ class Projectile {
 
                 if (Math.sign(oldDelta.x) != Math.sign(currDelta.x) || Math.sign(oldDelta.y) != Math.sign(currDelta.y) || Math.sign(oldDelta.z) != Math.sign(currDelta.z)) {
                     object.HitByBullet?.(this._damage);
-                    this._age = this._maxAge;
+                    this.Dispose();
                     break;
                 }
             }
@@ -217,11 +186,12 @@ class Projectile {
             // this.#testing.Main(dt);
         }
         else {
-            this._object.visible = false;
+            this.Dispose();
         }
     }
 
     Dispose() {
+        this._age = this._maxAge;
         window.GameHandler.Scene.remove(this._object);
     }
 

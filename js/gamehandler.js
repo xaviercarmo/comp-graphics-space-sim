@@ -35,6 +35,7 @@ class GameHandler {
     #clock = new THREE.Clock();
 
     #gameObjects = [];
+    #projectiles = new Set();
 
     #modes = {
         NONE: 0,
@@ -594,16 +595,23 @@ class GameHandler {
 
         //game logic only runs if game isn't paused
         if (this.#mode == this.#modes.GAMERUNNING) {
-            this.#gameObjects.forEach(g => g.Main(dt));
-    
-            this.#gameObjects.forEach(g => {
-                //physics logic here (later moved to physics handler probably)
-                //[...]
+            this.#gameObjects.forEach(gameObject => gameObject.Main(dt));
 
-                if (g instanceof PhysicsObject) {
-                    g.PostPhysicsCallback(dt);
+            this.#projectiles.forEach(projectile => {
+                projectile.Main(dt);
+                if (projectile.IsExpired) {
+                    this.#projectiles.delete(projectile);
                 }
             });
+
+            // this.#gameObjects.forEach(g => {
+            //     //physics logic here (later moved to physics handler probably)
+            //     //[...]
+
+            //     if (g instanceof PhysicsObject) {
+            //         g.PostPhysicsCallback(dt);
+            //     }
+            // });
 
             //let pos = new THREE.Vector3();
             
@@ -741,6 +749,10 @@ class GameHandler {
         else {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
         }
+    }
+
+    AddProjectile(projectile) {
+        this.#projectiles.add(projectile);
     }
 
     //resizes the renderer to fit the screen
