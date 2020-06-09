@@ -19,7 +19,7 @@ class HelixGun extends Gun {
         this._parent.getWorldPosition(object.position);
         this._parent.getWorldQuaternion(object.quaternion);
 
-        return new HelixProjectile(this._speedRefParent, object, vel, this._projectileMaxAge);
+        return new HelixProjectile(this._speedRefParent, object, vel, this._projectileMaxAge, this._damage);
     }
 }
 
@@ -31,8 +31,8 @@ class HelixProjectile extends Projectile {
     #speedDivided;
     #distanceTravelledDivided = 0;
 
-    constructor(parent, object, vel, maxAge) {
-        super(parent, object, vel, maxAge)
+    constructor(parent, object, vel, maxAge, damage) {
+        super(parent, object, vel, maxAge, damage)
 
         this.#speedDivided = vel.length() / this.#speedDivisionAmount;
     }

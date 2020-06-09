@@ -205,9 +205,9 @@ class GameHandler {
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
-        // let test = new EnemyObject();
-        // this.test = test;
-        // this.AddGameObject(test);
+        let test = new EnemyObject();
+        this.test = test;
+        this.AddGameObject(test);
 
         // test = new EnemyObject();
         // this.AddGameObject(test);
