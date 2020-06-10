@@ -67,7 +67,8 @@ class EnemyObject extends PhysicsObject {
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     #shield;
-    #health; 
+    #health;
+    #pLight;  
 
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
@@ -83,6 +84,7 @@ class EnemyObject extends PhysicsObject {
         this._colliderRadius = 6;
         this.#shield = new Shield(this._objectGroup, this._colliderRadius);
         this.#health = 100; 
+        this.#pLight;
     }
 
     #setupModel = () => {
@@ -479,17 +481,11 @@ class EnemyObject extends PhysicsObject {
     }
 
     #deathHandler = () => {
-        let uuid = this._objectGroup.uuid; 
-        
-        if (this.#health < 0) {
-            //adding and remove point lights are intensive
-            window.GameHandler.Scene.add(this.#thrusterLight);
-
-            window.GameHandler.Scene.remove(this._objectGroup);
-            let gameObjectIndex = window.GameHandler.GameObjects.indexOf(this);
-            window.GameHandler.GameObjects.splice(gameObjectIndex, 1);
-
-            console.log("enemy dead");
+        if (this.#health <= 0) {
+            //adding and remove point lights are performance intensive
+            let gameHandler = window.GameHandler; 
+            gameHandler.Scene.add(this.#thrusterLight);
+            gameHandler.DespawnEnemy(this._objectGroup);
         }
     
     }
@@ -502,7 +498,6 @@ class EnemyObject extends PhysicsObject {
         this.#currPlayerAngleToEnemy = this.#getPlayerAngleToEnemy();
         
         this.#determineCurrentState(dt);
-        
         //act based on current state
         //DEBUG
         // this.#currentState = this.#states.IDLE;
@@ -544,10 +539,27 @@ class EnemyObject extends PhysicsObject {
         this.#shield.Hit();
         this.#health -= damage; 
         this.#deathHandler();
+        console.log("hit by bullet", this.#health);
     }
 
     get Speed() {
         return this.#currentSpeed;
+    }
+
+    get Health() {
+        return this.#health; 
+    }
+
+    get Light(){
+        return this.#pLight; 
+    }
+
+    set Light(light){
+        if (light instanceof THREE.PointLight) {
+            this.#pLight = light;
+        } else {
+            console.log("Cannot set Point Light to something other than Point Light");
+        }
     }
 }
 

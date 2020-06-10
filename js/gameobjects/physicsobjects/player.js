@@ -656,7 +656,7 @@ class PlayerObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 15;
         let projectileDuration = 3;
-        let gunDamage = 20.5;
+        let gunDamage = 20;
 
         let gunObjectPos = new THREE.Vector3(0, -0.4, 6);
         this._lightGuns.middle.object.position.copy(gunObjectPos);
@@ -1255,7 +1255,7 @@ class PlayerObject extends PhysicsObject {
     HitByBullet(damage) {
         this.#currentShield.object.Hit();
         this.#health -= damage; 
-        console.log("Player: ", this.#health);
+        //console.log("Player: ", this.#health);
     }
 
     get CameraPosition() { return this.#cameraPosition; }

@@ -55,6 +55,11 @@ class GameHandler {
     #ambientLight;
     #sunLight;
 
+    //ENEMY
+    #enemyLightsPool = [];
+    #maxEnemies = 5;
+    #currSize;  
+
     #scene = new THREE.Scene();
 
     //publics
@@ -103,6 +108,9 @@ class GameHandler {
         this.#initialiseSun();
 
         this.#initialiseGameObjects();
+
+        this.#setupEnemyLightsPool(this.#maxEnemies);
+        
 
         // a cube for testing bloom
         // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
@@ -210,14 +218,9 @@ class GameHandler {
         this.test = test;
         this.AddGameObject(test);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        test = new EnemyObject();
+        test.Position.add(new THREE.Vector3(100, 100, 50));
+        this.AddGameObject(test);
     }
 
     #initialiseSkyBox = () => {
@@ -740,6 +743,17 @@ class GameHandler {
     #testRenderLayer = (mask, layer) => {
         return mask & Math.pow(2, layer);
     }
+
+    #setupEnemyLightsPool = (quantity) => {
+        //Quantity - specifies number of enemies & number of points lights 
+
+        for(let i = 0; i < quantity; i++){
+            let pLight = new THREE.PointLight(0xff1000, 1, 15);
+            //adding point light to light pool 
+            this.#enemyLightsPool[i] = pLight; 
+            //this.#enemyLightsPool.push(pLight);
+        }
+    }
     
     //public methods
     AddGameObject(object) {
@@ -811,6 +825,32 @@ class GameHandler {
 
     SetVariableBloomPassStrength(strength) {
         this.#variableBloomPass.strength = strength;
+    }
+
+    SpawnEnemy(){
+        //Check if there's less enemies
+        //than what was set
+        this.#currSize = this.EnemyObjects.length;
+        //placeholder value, maxenemies
+        //Generate new enemy; more of a respawner
+        if(this.#currSize != 2) {
+            let newEnemy = new EnemyObject(); 
+            this.AddGameObject(newEnemy);
+            this.#scene.add(newEnemy.Object); //render enemy to scene.
+            console.log("New enemy spawned."); 
+        }          
+    }
+    DespawnEnemy(enemy) {
+        this.#scene.remove(enemy);
+        let gameObjectIndex = this.#gameObjects.indexOf(enemy); 
+        this.#gameObjects.splice(gameObjectIndex, 1);
+        this.#isDead = true;
+        
+        console.log("Enemy dead.");
+        this.#currSize = this.EnemyObjects.length;
+        console.log(this.#currSize, "currentsize");
+        this.SpawnEnemy();
+        
     }
 
     get Scene() { return this.#scene; }
