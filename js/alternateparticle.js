@@ -35,11 +35,7 @@ class AlternateParticle {
     
     #SpawnNewObstacles = () => {
         for (let i = 0; i < this.#particle.length; i++) {
-            //store particle position
-            let x = this.#particle[i].Particle.position.x, 
-                y = this.#particle[i].Particle.position.y, 
-                z = this.#particle[i].Particle.position.z;
-            let partPos = new THREE.Vector3(x,y,z);
+            let particlePos = this.#particle[i].Position;
 
             //random spawn range per axis -- for respawning
             let rx = THREE.MathUtils.randFloat(-50, 50),
@@ -51,7 +47,7 @@ class AlternateParticle {
             let playerPos = this.#parent.position; 
             let vec = new THREE.Vector3(); 
             let camDir = this.#camera.getWorldDirection(vec);
-            
+
             //position in front of player
             let frontPos = new THREE.Vector3; 
             //multiply by arbitrary number for distance, note: higher it is, more vertically displaced it gets. 
@@ -64,7 +60,7 @@ class AlternateParticle {
 
             //if coordinates of current object is not within camera's view.
             //and if the object is close enough while the player turns the camera, the object won't move.
-            if (!frustum.containsPoint(partPos) && playerPos.distanceTo(partPos) > 50 ){
+            if (!frustum.containsPoint(particlePos) && playerPos.distanceTo(particlePos) > 50 ){
                 this.#particle[i].Particle.position.copy(frontPos);
             }
         }
@@ -121,7 +117,7 @@ class SpawnParticle {
         return this.#part; 
     }
     get Position() {
-        return this.#position; 
+        return this.#part.position; 
     }
 
 }
