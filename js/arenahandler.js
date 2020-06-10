@@ -35,8 +35,7 @@ class ArenaHandler {
             result.push(availableEnemies[i]);
 
             //get a random direction
-            let randDirection = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
-            randDirection.normalize();
+            let randDirection = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
 
             //warp in from 10,000 units away in that direction
             let startPoint = window.GameHandler.Player.Position.add(randDirection.clone().multiplyScalar(10000));
@@ -121,7 +120,7 @@ class ArenaHandler {
         newEnemies[1].Warp(startPoint, UTILS.AddVectors(endPoint, perpVec));
         newEnemies[2].Warp(startPoint, UTILS.SubVectors(endPoint, perpVec));
 
-        window.setTimeout(() => newEnemies.forEach(enemy => enemy.ClearStateOverride()), 3000);
+        window.setTimeout(() => newEnemies.forEach(enemy => enemy.ClearStateOverride()), 2000);
     }
 
     ReturnLight(light) {
