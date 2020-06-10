@@ -50,7 +50,8 @@ class AsteroidObject extends PhysicsObject {
     #player;
     #camera;
     #helper;
-    #playerId; 
+    #farEnough = false; 
+
 
     constructor() {
         //random asteroid selection.
@@ -87,7 +88,6 @@ class AsteroidObject extends PhysicsObject {
         
         super(asteroid);
         this._objectGroup.frustumCulled = true; 
-        this.#playerId = asteroid.id; 
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
         this.#ParameterSetup();
@@ -131,6 +131,7 @@ class AsteroidObject extends PhysicsObject {
         let camDir = this.#camera.getWorldDirection(vec);
         let distance = 80; 
         let playerToAst = this.#player.Position.distanceToSquared(this._mainObject.position); 
+        //console.log(playerToAst);
         let playerPos = window.GameHandler.Player.Object.position.clone();
         /*
         this.#player.Object.geometry.computeBoundingSphere(); 
@@ -139,24 +140,60 @@ class AsteroidObject extends PhysicsObject {
         this._mainObject.updateMatrixWorld();
         */
 
+        if(playerToAst < distance) {
+            let newPos = new THREE.Vector3(
+                this._mainObject.position.x + camDir.x*0.25,
+                this._mainObject.position.y + camDir.y*0.25,
+                this._mainObject.position.z + camDir.z*0.25
+            );
+
+            let camDire = new THREE.Vector3(
+                camDir.x*0.55,
+                camDir.y*0.55,
+                camDir.z*0.55
+            );
+
+            this.#random = camDire;
+            this._mainObject.position.copy(newPos);
+        } 
+
+        let travelDist = Math.pow(distance, 2) * 3
+        if(playerToAst > travelDist) {
+            this.#random = new THREE.Vector3(
+                THREE.MathUtils.randFloat(-0.05, 0.05),
+                THREE.MathUtils.randFloat(-0.05, 0.05),
+                THREE.MathUtils.randFloat(-0.05, 0.05)
+            );
+        }
+                
+    
         //console.log(this.#player);
-        if( playerToAst < distance) {
+        /*
+        if( playerToAst < distance && this.#farEnough == false) {
             //Pushes object forward with repsect to camera direction
             //note since updates are called so quickly, it looks like its shifting away.
             //added random numbers to make it less consistent.
             //will need to change to more realistic way. 
-            let newPos = new THREE.Vector3(
-                this._mainObject.position.x + camDir.x* + THREE.MathUtils.randFloat(0, 2),
-                this._mainObject.position.y + camDir.y* + THREE.MathUtils.randFloat(0, 2),
-                this._mainObject.position.z + camDir.z* + THREE.MathUtils.randFloat(0, 2)
-            );
+                
+                let newPos = new THREE.Vector3(
+                    this._mainObject.position.x + camDir.x*2,
+                    this._mainObject.position.y + camDir.y*2,
+                    this._mainObject.position.z + camDir.z*2
+                );
+                this._mainObject.position.copy(newPos);
+                if(playerToAst > distance * 9) {
+                    this.#farEnough = true; 
+                } else {
+                    this.#farEnough = false;
+                }
+            
   
-            this._mainObject.position.copy(newPos);
+            
             //mainobject doesn't work, 
             //scene.remove() only works if the object is a direct child of scene
             
-    
-        } if (playerToAst > distance * 20000) { //since distance squared is so large. 
+        } */
+        if (playerToAst > distance * 20000) { //since distance squared is so large. 
             //console.log(window.GameHandler.Scene.getObjectById( this._mainObject.id));
             console.log(playerToAst);
             //console.log(distanceSq*10000);
