@@ -132,7 +132,8 @@ class AsteroidObject extends PhysicsObject {
         let distance = 80; 
         let playerToAst = this.#player.Position.distanceToSquared(this._mainObject.position); 
         //console.log(playerToAst);
-        let playerPos = window.GameHandler.Player.Object.position.clone();
+        let playerPos = this.#player.Object.position.clone();
+        let pSpeed = this.#player.Speed;
         /*
         this.#player.Object.geometry.computeBoundingSphere(); 
         this._mainObject.geometry.computeBoundingSphere()
@@ -148,9 +149,9 @@ class AsteroidObject extends PhysicsObject {
             );
 
             let camDire = new THREE.Vector3(
-                camDir.x*0.55,
-                camDir.y*0.55,
-                camDir.z*0.55
+                camDir.x*pSpeed * 0.01,
+                camDir.y*pSpeed * 0.01,
+                camDir.z*pSpeed * 0.01
             );
 
             this.#random = camDire;

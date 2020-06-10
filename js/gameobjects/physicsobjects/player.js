@@ -4,12 +4,13 @@ import * as UTILS from '../../utils.js';
 
 import PhysicsObject from '../physics.js';
 import RockParticleCloud from '../../rockparticlecloud.js';
-import AlternateParticle from '../../alternateparticle.js';
 import Shield from '../../shield.js';
+import HelixGun from '../../guns/helixgun.js'
 
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
 import { Gun } from '../../gun.js';
+import GameObject from '../../gameobject.js';
 
 /** TODO
  * make boosters last duration
@@ -199,7 +200,9 @@ class PlayerObject extends PhysicsObject {
         '_mediumShipSettings',
         '_heavyShipSettings'
     ];
-    #useMainCloud = true; 
+    
+    //health
+    #health = 100; 
 
     //classes
     #classes = {
@@ -283,7 +286,7 @@ class PlayerObject extends PhysicsObject {
         this.#meshes = assets.meshes;
         this.#textures = assets.textures;
 
-        this.#setupShipClasses(this.#classes.LIGHT);
+        this.#setupShipClasses(this.#classes.MEDIUM);
         this.#setupCameraPositions();
         this.#setupCameraTransitionCurves();
         this.#setupCamera(camera);
@@ -293,11 +296,8 @@ class PlayerObject extends PhysicsObject {
         
         window.addEventListener("wheel", this.#handleScroll);
 
-        if (this.#useMainCloud) {
-            this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
-        } else {
-            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockTexture, 40, camera);
-        }
+        this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
+        this.#health = 100; 
     }
 
     #setupCamera = (camera) => {
@@ -307,27 +307,27 @@ class PlayerObject extends PhysicsObject {
     }
 
     //these models will be used for auto-turrets on the ship later, for now this is unused
-    #setupGunModels = () => {
-        this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
-        this.#meshes.rail_gun.scale.multiplyScalar(0.1);
+    // #setupGunModels = () => {
+    //     this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
+    //     this.#meshes.rail_gun.scale.multiplyScalar(0.1);
 
-        let gattlingGunGroup = new THREE.Group();
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
-        this.#currentGunBarrelGroup = new THREE.Group();
-        this.#currentGunBarrelGroup.position.y = -7.8;
-        this.#meshes.gattling_gun_new.barrel.position.y = 7.8;
-        this.#currentGunBarrelGroup.add(this.#meshes.gattling_gun_new.barrel);
-        gattlingGunGroup.add(this.#currentGunBarrelGroup);
+    //     let gattlingGunGroup = new THREE.Group();
+    //     gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
+    //     gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
+    //     this.#currentGunBarrelGroup = new THREE.Group();
+    //     this.#currentGunBarrelGroup.position.y = -7.8;
+    //     this.#meshes.gattling_gun_new.barrel.position.y = 7.8;
+    //     this.#currentGunBarrelGroup.add(this.#meshes.gattling_gun_new.barrel);
+    //     gattlingGunGroup.add(this.#currentGunBarrelGroup);
 
-        gattlingGunGroup.scale.multiplyScalar(0.1);
-        gattlingGunGroup.position.set(0, -1.88, 4.29);
-        gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
-        this.#currentGunBarrelGroup.rotation.x = -gattlingGunGroup.rotation.x;
+    //     gattlingGunGroup.scale.multiplyScalar(0.1);
+    //     gattlingGunGroup.position.set(0, -1.88, 4.29);
+    //     gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
+    //     this.#currentGunBarrelGroup.rotation.x = -gattlingGunGroup.rotation.x;
 
-        this.#currentGunObject = gattlingGunGroup;
-        this._mainObject.add(this.#currentGunObject);
-    }
+    //     this.#currentGunObject = gattlingGunGroup;
+    //     this._mainObject.add(this.#currentGunObject);
+    // }
 
     #setupShipClasses = (defaultClass) => {
         this._lightShip.add(this.#meshes.light_ship);
@@ -345,7 +345,7 @@ class PlayerObject extends PhysicsObject {
 
         this.#setupShipThrusters();
 
-        this.#setupGuns();
+        this.#setupShipGuns();
 
         this.#setupShipShields(); // try putting this before enemy trackers (they should be added last so they get drawn in front)
 
@@ -392,7 +392,7 @@ class PlayerObject extends PhysicsObject {
 
     #setupShipMaterial = (object, texture, shadersArray, initialHsv, hueMask, saturationMask = new THREE.Vector2(0.3, 1), valueMask = new THREE.Vector2(0, 1)) => {
         object.traverse(function(child) {
-            if (child.isMesh) {
+            if (child.isMesh && child.material instanceof THREE.MeshPhongMaterial) {
                 child.castShadow = true;
                 child.receiveShadow = true;
 
@@ -404,73 +404,80 @@ class PlayerObject extends PhysicsObject {
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_VARYING);
 
                 child.material.onBeforeCompile = function(shader) {
-                    shadersArray.push(shader);
+                    let shaderName = `shader_${child.uuid}`;
+                    let shaderIndex = shadersArray.findIndex(shader => shader.name == shaderName);
 
-                    child.setMaskInverse = function(value) {
-                        shader.uniforms.uMaskInverse.value = value;
-                    };
-
-                    shader.uniforms.uHSV = { value: initialHsv };
-                    shader.uniforms.uHueMask = { value: hueMask };
-                    shader.uniforms.uSaturationMask = { value: saturationMask };
-                    shader.uniforms.uValueMask = { value: valueMask };
-                    shader.uniforms.uMaskInverse = { value: false };
-
-                    //rgb to hsv/hsv to rgb methods
-                    //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
-                    shader.fragmentShader = shader.fragmentShader.replace(
-                      'void main() {',
-                      [
-                          'uniform vec3 uHSV;',
-                          'uniform vec2 uHueMask;',
-                          'uniform vec2 uSaturationMask;',
-                          'uniform vec2 uValueMask;',
-                          'uniform bool uMaskInverse;',
-                          '',
-                          'vec3 rgbToHsv(vec3 c)',
-                          '{',
-                              '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
-                              '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
-                              '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
-                          
-                              '\tfloat d = q.x - min(q.w, q.y);',
-                              '\tfloat e = 1.0e-10;',
-                              '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
-                          '}',
-                          '',
-                          'vec3 hsvToRgb(vec3 c)',
-                          '{',
-                              '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
-                              '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
-                              '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
-                          '}',
-                          '',
-                          'void main() {'
-                      ].join('\n')
-                    );
+                    if (shaderIndex == -1) {
+                        shadersArray.push(shader);
                     
-                    shader.fragmentShader = shader.fragmentShader.replace(
-                        '\t#include <map_fragment>',
-                        [
-                            '\t#ifdef USE_MAP',
-                                '\t\tvec4 texelColor = texture2D(map, vUv);',
-                                '\t\ttexelColor = mapTexelToLinear(texelColor);',
-                                '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
-                                `\t\tif (hsvColor.x >= uHueMask.x && hsvColor.x <= uHueMask.y && hsvColor.y >= uSaturationMask.x && hsvColor.y <= uSaturationMask.y && hsvColor.z >= uValueMask.x && hsvColor.z <= uValueMask.y) {`,
-                                    '\t\t\thsvColor.x = uHSV.x;',
-                                    '\t\t\thsvColor.y = uHSV.y;',
-                                    '\t\t\thsvColor.z += uHSV.z;',
-                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                '\t\t}',
-                                '\t\telse if (uMaskInverse) {',
-                                    '\t\t\thsvColor.y = 0.0;',
-                                    '\t\t\thsvColor.z = 0.0;',
-                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                '\t\t}',
-                                '\t\tdiffuseColor *= texelColor;',
-                            '\t#endif'
-                        ].join('\n')
-                    );
+                        shader.name = shaderName;
+
+                        child.setMaskInverse = function(value) {
+                            shader.uniforms.uMaskInverse.value = value;
+                        };
+
+                        shader.uniforms.uHSV = { value: initialHsv };
+                        shader.uniforms.uHueMask = { value: hueMask };
+                        shader.uniforms.uSaturationMask = { value: saturationMask };
+                        shader.uniforms.uValueMask = { value: valueMask };
+                        shader.uniforms.uMaskInverse = { value: false };
+
+                        //rgb to hsv/hsv to rgb methods
+                        //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            'void main() {',
+                            [
+                                'uniform vec3 uHSV;',
+                                'uniform vec2 uHueMask;',
+                                'uniform vec2 uSaturationMask;',
+                                'uniform vec2 uValueMask;',
+                                'uniform bool uMaskInverse;',
+                                '',
+                                'vec3 rgbToHsv(vec3 c)',
+                                '{',
+                                    '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
+                                    '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
+                                    '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
+                                
+                                    '\tfloat d = q.x - min(q.w, q.y);',
+                                    '\tfloat e = 1.0e-10;',
+                                    '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
+                                '}',
+                                '',
+                                'vec3 hsvToRgb(vec3 c)',
+                                '{',
+                                    '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
+                                    '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
+                                    '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
+                                '}',
+                                '',
+                                'void main() {'
+                            ].join('\n')
+                        );
+                        
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            '\t#include <map_fragment>',
+                            [
+                                '\t#ifdef USE_MAP',
+                                    '\t\tvec4 texelColor = texture2D(map, vUv);',
+                                    '\t\ttexelColor = mapTexelToLinear(texelColor);',
+                                    '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
+                                    `\t\tif (hsvColor.x >= uHueMask.x && hsvColor.x <= uHueMask.y && hsvColor.y >= uSaturationMask.x && hsvColor.y <= uSaturationMask.y && hsvColor.z >= uValueMask.x && hsvColor.z <= uValueMask.y) {`,
+                                        '\t\t\thsvColor.x = uHSV.x;',
+                                        '\t\t\thsvColor.y = uHSV.y;',
+                                        '\t\t\thsvColor.z += uHSV.z;',
+                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                    '\t\t}',
+                                    '\t\telse if (uMaskInverse) {',
+                                        '\t\t\thsvColor.y = 0.0;',
+                                        '\t\t\thsvColor.z = 0.0;',
+                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                    '\t\t}',
+                                    '\t\tdiffuseColor *= texelColor;',
+                                '\t#endif'
+                            ].join('\n')
+                        );
+                    }
                 }
 
                 child.material.needsUpdate = true;
@@ -634,30 +641,37 @@ class PlayerObject extends PhysicsObject {
         setupHeavyThruster(this._heavyThrusters.top_right, thrusterPos, thrusterDir);
     }
 
-    #setupGuns = () => {
-        this.#setupLightGuns();
-        this.#setupMediumGuns();
-        this.#setupHeavyGuns();
+    #setupShipGuns = () => {
+        this.#setupLightShipGuns();
+        this.#setupMediumShipGuns();
+        this.#setupHeavyShipGuns();
     }
 
-    #setupLightGuns = () => {
-        let bulletGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
-        let bulletMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        let bullet = new THREE.Mesh(bulletGeo, bulletMat);
-        bullet.castShadow = true;
-        bullet.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+    #setupLightShipGuns = () => {
+        let bullet = window.GameHandler.AssetHandler.LoadedAssets.diamond_bullet;
+        bullet.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC_HIGH);
+                child.material.color = new THREE.Color(0x5eff00);
+            }
+        });
+        bullet.scale.set(0.01, 0.01, 0.2);
+        let bulletParent = new THREE.Object3D();
+        bulletParent.add(bullet);
 
         let gunBulletSpeed = 750;
         let gunFireRate = 15;
-        let projectileDuration = 5;
+        let projectileDuration = 3;
+        let gunDamage = 20.5;
 
-        let gunObjectPos = new THREE.Vector3(0, -0.4, 3);
+        let gunObjectPos = new THREE.Vector3(0, -0.4, 6);
         this._lightGuns.middle.object.position.copy(gunObjectPos);
         this._lightShip.add(this._lightGuns.middle.object);
-        this._lightGuns.middle.gun = new Gun(this._lightGuns.middle.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._lightGuns.middle.gun = new HelixGun(this._lightGuns.middle.object, this, bulletParent, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
-    #setupMediumGuns = () => {
+    #setupMediumShipGuns = () => {
         let bulletGeo = new THREE.SphereBufferGeometry(0.2, 30, 30);
         let bulletMat = new THREE.MeshBasicMaterial({ color: 0x8000ff });
         let bullet = new THREE.Mesh(bulletGeo, bulletMat);
@@ -667,19 +681,20 @@ class PlayerObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 8;
         let projectileDuration = 5;
+        let gunDamage = 0.85;
 
         let gunObjectPos = new THREE.Vector3(-0.38, -0.32, 2.31);
         this._mediumGuns.left.object.position.copy(gunObjectPos);
         this._mediumShip.add(this._mediumGuns.left.object);
-        this._mediumGuns.left.gun = new Gun(this._mediumGuns.left.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._mediumGuns.left.gun = new Gun(this._mediumGuns.left.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
 
         gunObjectPos.x *= -1;
         this._mediumGuns.right.object.position.copy(gunObjectPos);
         this._mediumShip.add(this._mediumGuns.right.object);
-        this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this._mediumGuns.right.gun = new Gun(this._mediumGuns.right.object, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
-    #setupHeavyGuns = () => {
+    #setupHeavyShipGuns = () => {
         let smallBulletGeo = new THREE.SphereBufferGeometry(0.4, 30, 30);
         let smallBulletMat = new THREE.MeshBasicMaterial({ color: 0xff7700 });
         let smallBullet = new THREE.Mesh(smallBulletGeo, smallBulletMat);
@@ -699,21 +714,24 @@ class PlayerObject extends PhysicsObject {
         let bigGunFireRate = 2;
 
         let projectileDuration = 5;
+        
+        let sideGunDamage = 0.85;
+        let centreGunDamage = 5;  
 
         let gunObjectPos = new THREE.Vector3(-2, -0.075, 2.75);
         this._heavyGuns.left.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.left.object);
-        this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
+        this._heavyGuns.left.gun = new Gun(this._heavyGuns.left.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration, sideGunDamage);
 
         gunObjectPos.x *= -1;
         this._heavyGuns.right.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.right.object);
-        this._heavyGuns.right.gun = new Gun(this._heavyGuns.right.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration);
+        this._heavyGuns.right.gun = new Gun(this._heavyGuns.right.object, this, smallBullet, smallGunBulletSpeed, smallGunFireRate, projectileDuration, sideGunDamage);
 
         gunObjectPos.set(0, -1.5, 9.7);
         this._heavyGuns.middle.object.position.copy(gunObjectPos);
         this._heavyShip.add(this._heavyGuns.middle.object);
-        this._heavyGuns.middle.gun = new Gun(this._heavyGuns.middle.object, this, largeBullet, bigGunBulletSpeed, bigGunFireRate, projectileDuration);
+        this._heavyGuns.middle.gun = new Gun(this._heavyGuns.middle.object, this, largeBullet, bigGunBulletSpeed, bigGunFireRate, projectileDuration, centreGunDamage);
     }
 
     #setupCameraPositions = () => {
@@ -832,7 +850,7 @@ class PlayerObject extends PhysicsObject {
 
     #setupEnemyTrackers = () => {
         // this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
-        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker_2;
+        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
         this.#enemyTrackerObject.scale.set(0.003, 0.003, 0.003);
 
         this.#enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
@@ -974,6 +992,7 @@ class PlayerObject extends PhysicsObject {
             this._mainObject.getWorldPosition(this.#orbitControls.target);
             let deltaPos = this.#orbitControlsPositionTracking.new.sub(this.#orbitControlsPositionTracking.old);
             this.#camera.position.add(deltaPos);
+
             this.#orbitControls.update();
         }
     }
@@ -1039,7 +1058,7 @@ class PlayerObject extends PhysicsObject {
         }
         else if (lengthDiff < 0) {
             for (let i = 0; i < -lengthDiff; i++) {
-                window.GameHandler.Scene.remove(trackerObj);
+                window.GameHandler.Scene.remove(this.#enemyTrackerObjects.pop());
             }
         }
 
@@ -1138,6 +1157,10 @@ class PlayerObject extends PhysicsObject {
         this.#handleEnemyTrackerObjects();
 
         this.#currentShield.object.Main(dt);
+
+        if (this.#cameraPosition.name == "FOLLOW" && !this.#cameraTransitioning) {
+            this.#camera.rotation.y = INPUT.KeyPressed("space") ? Math.PI : 0;
+        }
     }
 
     MainNoPause(dt) {
@@ -1189,32 +1212,6 @@ class PlayerObject extends PhysicsObject {
             rotVec.multiplyScalar(0.1);
             scaleAmt *= 0.1;
         }
-
-        if (this.#cameraPosition.name == "FOLLOW") {
-            this.#camera.rotation.y = INPUT.KeyPressed("space") ? Math.PI : 0;
-        }
-
-        // this._mediumThrusters.mid_mid.target.position.add(moveVec);
-        // this._lightThrusters.top.target.position.add(moveVec);
-        
-        // this.testCube.position.x -= moveVec.x;
-        // this.testCube.position.y += moveVec.y;
-        // this.testCube.position.z += moveVec.z;
-
-        // this.testCube2.position.x += moveVec.x;
-        // this.testCube2.position.y += moveVec.y;
-        // this.testCube2.position.z += moveVec.z;
-
-        // this.testCube3.position.x -= moveVec.x;
-        // this.testCube3.position.y += moveVec.y;
-        // this.testCube3.position.z += moveVec.z;
-
-        
-        // this.#thrusterLights.left.light.position.add(moveVec);
-        // this.#thrusterLights.left.light.intensity += intensity;
-        // moveVec.x *= -1;
-        // this.#thrusterLights.right.light.position.add(moveVec);
-        // this.#thrusterLights.right.light.intensity += intensity;
     }
 
     PostPhysicsCallback(dt) {
@@ -1263,8 +1260,9 @@ class PlayerObject extends PhysicsObject {
         this.Class = this._currentClass;
     }
 
-    HitByBullet() {
+    HitByBullet(damage) {
         this.#currentShield.object.Hit();
+        this.#health -= damage; 
     }
 
     get CameraPosition() { return this.#cameraPosition; }
@@ -1305,20 +1303,20 @@ class PlayerObject extends PhysicsObject {
                     this.InputEnabled = true;
                 }
                 else {
+                    this.#cameraTransitioning = false;
+
                     if (this.#orbitControls == undefined) {
                         let canvas = window.GameHandler.Renderer.domElement;
                         this.#orbitControls = new OrbitControls(this.#camera, canvas);
                     }
-                    console.log(this.#camera.position.clone());
+
                     let relativePosGlobal = this._objectGroup.localToWorld(this.#camera.position.clone());
 
                     window.GameHandler.Scene.add(this.#camera);
-                    console.log(this.#camera.position.clone());
 
                     this.#camera.position.copy(relativePosGlobal);
 
                     this.#cameraCurve = undefined;
-                    // this.#cameraTransitioning = true;
                     this.#orbitControls.enabled = true;
 
                     this.InputEnabled = false;
@@ -1450,8 +1448,6 @@ class PlayerObject extends PhysicsObject {
             this.#currentThrusters = this[`_${this._currentClass}Thrusters`];
             this.#updateCurrentThrusterSpeeds();
 
-            // flush the current guns colleciton, and set to the new guns collection
-            Object.values(this.#currentGuns).forEach(gunObj => gunObj.gun.Flush());
             this.#currentGuns = this[`_${this._currentClass}Guns`];
 
             // set the current settings object

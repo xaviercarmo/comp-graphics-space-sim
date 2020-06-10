@@ -9,18 +9,18 @@ class AssetHandler {
     #domLoadingBar;
 
     #fbxAssetPaths = {
-        ship: '../assets/SciFi_Fighter.FBX',
+        // ship: '../assets/SciFi_Fighter.FBX',
         light_ship: '../assets/player_ships/light_ship.fbx',
         medium_ship: '../assets/player_ships/medium_ship.fbx',
         heavy_ship: '../assets/player_ships/heavy_ship.fbx',
-        gattling_gun: '../assets/gattling_gun.fbx',
-        rail_gun: '../assets/rail_gun.fbx',
-        gattling_gun_base_plate: '../assets/guns/gattling_gun/base_plate_origin.fbx',
-        gattling_gun_struts: '../assets/guns/gattling_gun/struts_origin.fbx',
-        gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
+        // gattling_gun: '../assets/gattling_gun.fbx',
+        // rail_gun: '../assets/rail_gun.fbx',
+        // gattling_gun_base_plate: '../assets/guns/gattling_gun/base_plate_origin.fbx',
+        // gattling_gun_struts: '../assets/guns/gattling_gun/struts_origin.fbx',
+        // gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
         enemy_ship: '../assets/enemy_ships/enemy_ship.fbx',
         enemy_tracker: '../assets/enemy_tracker.fbx',
-        enemy_tracker_2: '../assets/enemy_tracker_2.fbx',
+        diamond_bullet: '../assets/diamond_bullet.fbx',
         asteroid1: '../assets/asteroids/asteroid1.fbx',
         asteroid2: '../assets/asteroids/asteroid2.fbx',
         asteroid3: '../assets/asteroids/asteroid3.fbx',
@@ -35,9 +35,7 @@ class AssetHandler {
 
     //not required at the moment
     #glbAssetPaths = {
-        // small_ship: '../assets/player_ships/small_fighter.glb',
-        // medium_ship: '../assets/player_ships/medium_fighter.glb',
-        // heavy_ship: '../assets/player_ships/large_fighter.glb'
+        health_capsule: '../assets/healthboost.glb'
     }
 
     #shaderPaths = {
@@ -201,16 +199,6 @@ class AssetHandler {
         this.#initialiseLoadingBar();
         this.OnComplete = onComplete;
 
-        // let files = [
-        //     'right.png',
-        //     'left.png',
-        //     'top.png',
-        //     'bot.png',
-        //     'front.png',
-        //     'back.png'
-        // ];
-        // this.#downloadCubeMap('sky', 'assets/cube_maps/lightblue/', files);
-
         // download all fbx models
         for (let key in this.#fbxAssetPaths) {
             this.#download3DAsset(this.#fbxAssetPaths[key]);
@@ -303,7 +291,7 @@ class AssetHandler {
 
         for (let key in this.#glbAssetPaths) {
             gltfLoader.load(this.#glbAssetPaths[key], (gltf) => {
-                onAssetLoaded(key, gltf.scene);
+                onAssetLoaded(key, gltf);
             });
         }
     }

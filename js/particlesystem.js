@@ -35,7 +35,6 @@ class ParticleSystem {
         this._texture = texture;
         this._particleAgeLimit = particleAgeLimit;
         this._numParticles = Math.ceil(particleAgeLimit * particlesPerSecond); // rounds up in case of fractional pps
-        this._numParticles += Math.ceil(this._numParticles * 0.5); // buffer for mistimings 
         this._spawnTimeInterval = 1 / particlesPerSecond;
         this._particleSize = particleSize;
 

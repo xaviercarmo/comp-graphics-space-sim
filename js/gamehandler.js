@@ -4,10 +4,10 @@ import * as UTILS from './utils.js';
 
 import AssetHandler from './assethandler.js';
 import GameObject from './gameobject.js';
-import PhysicsObject from './gameobjects/physics.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
+import ArenaHandler from './arenahandler.js';
 import AsteroidField from './gameobjects/physicsobjects/asteroids.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
@@ -36,6 +36,7 @@ class GameHandler {
     #clock = new THREE.Clock();
 
     #gameObjects = [];
+    #projectiles = new Set();
 
     #modes = {
         NONE: 0,
@@ -56,9 +57,10 @@ class GameHandler {
     #sunLight;
 
     #scene = new THREE.Scene();
-
+    
     //publics
     AssetHandler = new AssetHandler();
+    ArenaHandler = new ArenaHandler(10);
 
     //public so that other classes can assign themselves to a layer
     RenderLayers = {
@@ -68,6 +70,7 @@ class GameHandler {
     };
 
     constructor() {
+        // this.testing = this.#arenaHandler; //TESTING
         this.#mode = this.#modes.PRELOADING;
         this.AssetHandler.LoadAllAssets(() => this.#initialise.call(this));
     }
@@ -102,17 +105,9 @@ class GameHandler {
 
         this.#initialiseSun();
 
+        this.ArenaHandler.Initialise();
+
         this.#initialiseAsteroid();
-
-        this.#initialiseGameObjects();
-
-        // a cube for testing bloom
-        // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
-        // let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-        // randomCube.layers.enable(this.RenderLayers.BLOOM_STATIC);
-        // randomCube.position.y += 5;
-        // this.#scene.add(randomCube);
     }
 
     #initialiseRenderer = () => {
@@ -180,18 +175,16 @@ class GameHandler {
 
     #initialisePlayer = () => {
         let playerMeshes = {
-            // ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
-            // ship: this.AssetHandler.LoadedAssets.ship.clone(),
             light_ship: this.AssetHandler.LoadedAssets.light_ship.clone(),
             medium_ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
-            heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone(),
-            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
-            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
-            gattling_gun_new: {
-                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
-                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
-                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
-            }
+            heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone()
+            // gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
+            // rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
+            // gattling_gun_new: {
+            //     base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
+            //     struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
+            //     barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+            // }
         };
 
         let playerTextures = {
@@ -208,18 +201,14 @@ class GameHandler {
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
-        let test = new EnemyObject();
-        this.test = test;
-        this.AddGameObject(test);
+        // this.test1 = new EnemyObject();
+        // this.AddGameObject(this.test1);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // this.test2 = new EnemyObject();
+        // this.AddGameObject(this.test2);
 
-        test = new EnemyObject();
-        this.AddGameObject(test);
-
-        test = new EnemyObject();
-        this.AddGameObject(test);
+        // this.test3 = new EnemyObject();
+        // this.AddGameObject(this.test3);
     }
 
     #initialiseSkyBox = () => {
@@ -244,9 +233,8 @@ class GameHandler {
     #initialiseSun = () => {
         this.#sun = new SunObject();
         this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
-        this.AddGameObject(this.#sun);
-
         this.SkyBox.add(this.#sun.Object); // for debugging purposes
+        this.AddGameObject(this.#sun);
         
         this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.4);
         this.#scene.add(this.#ambientLight);
@@ -272,15 +260,6 @@ class GameHandler {
         // for viewing the shadow camera frustum
         // this.#scene.add(new THREE.CameraHelper(this.#sunLight.shadow.camera));
     }
-
-    #initialiseAsteroid = () => {
-        //Testing method - check if object appears in scene. 
-        //later change to have another class with amount inputted into its new object constructor.
-            let asteroid = new AsteroidField(20);
-            //this.AddGameObject(asteroid);
-        
-    }
-    
 
     #setupMainMenuEvents = () => {
         //need to call this whenever the main menu is accessed...right now the player could create infinite profiles if they could get back
@@ -551,25 +530,17 @@ class GameHandler {
         $('#shipValueMaskSlider').ionRangeSlider(params);
     }
 
-    #initialiseGameObjects = () => {
-        this.#gameObjects.forEach(g => {
-            if (!g.Object.parent) {
-                this.#scene.add(g.Object);
-            }
-        });
-    }
-
     #startMainMenu = () => {
         INPUT.ShouldPreventDefaultEvents(false);
 
         this.#mode = this.#modes.MAINMENU;
 
         $('#mainMenu').css('display', 'flex');
-        this.#player.InputEnabled = false;
 
+        this.#player.InputEnabled = false;
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
-        this.#startGameRunning();
+        // this.#startGameRunning(); //for skipping menu for debug
 
         this.#animate();
     }
@@ -582,6 +553,8 @@ class GameHandler {
         $('#mainMenu').css('opacity', '0');
         window.setTimeout(() => $('#mainMenu').css('display', 'none'), 300);
         this.#mode = this.#modes.GAMERUNNING;
+
+        this.ArenaHandler.StartFirstRound();
     }
 
     #animate = () => {
@@ -604,24 +577,18 @@ class GameHandler {
 
         let playerOldPosition = this.#player.Position;
 
-        //game logic only runs if game isn't paused
-        if (this.#mode == this.#modes.GAMERUNNING) {
-            this.#gameObjects.forEach(g => g.Main(dt));
-    
-            this.#gameObjects.forEach(g => {
-                //physics logic here (later moved to physics handler probably)
-                //[...]
+        //game logic only runs if game is running or in the main menu
+        if (this.#mode == this.#modes.GAMERUNNING || this.#mode == this.#modes.MAINMENU) {
+            this.ArenaHandler.Main(dt);
 
-                if (g instanceof PhysicsObject) {
-                    g.PostPhysicsCallback(dt);
+            this.#gameObjects.forEach(gameObject => gameObject.Main(dt));
+
+            this.#projectiles.forEach(projectile => {
+                projectile.Main(dt);
+                if (projectile.IsExpired) {
+                    this.#projectiles.delete(projectile);
                 }
             });
-
-            //let pos = new THREE.Vector3();
-            
-            //this.Player.Object.localToWorld(pos);
-            //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
-            //console.log(this.Player.Object.position.z - this.randomCube.position.z);
         }
 
         //game logic that runs despite pausing
@@ -700,6 +667,9 @@ class GameHandler {
                     obj.setMaskInverse?.(true);
                 }
             }
+            else if (obj.layers && this.#testRenderLayer(obj.layers.mask, bloomMask)) {
+                console.log(obj);
+            }
         });
     }
 
@@ -741,15 +711,33 @@ class GameHandler {
     #testRenderLayer = (mask, layer) => {
         return mask & Math.pow(2, layer);
     }
+
+    #initialiseAsteroid = () => {
+        let asteroid = new AsteroidField(20);
+    }
+    
     
     //public methods
     AddGameObject(object) {
         if (object instanceof GameObject) {
             this.#gameObjects.push(object);
+
+            if (!object.Object.parent) {
+                this.#scene.add(object.Object);
+            }
         }
         else {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
         }
+    }
+
+    RemoveGameObject(object) {
+        let gameObjectIndex = this.#gameObjects.indexOf(object);
+        this.#gameObjects.splice(gameObjectIndex, 1);
+    }
+
+    AddProjectile(projectile) {
+        this.#projectiles.add(projectile);
     }
 
     //resizes the renderer to fit the screen
@@ -827,14 +815,7 @@ class GameHandler {
     get Camera() { return this.#camera; }
 
     get EnemyObjects() {
-        let result = [];
-        this.#gameObjects.forEach(object => {
-            if (object instanceof EnemyObject) {
-                result.push(object);
-            }
-        });
-
-        return result;
+        return this.#gameObjects.filter(object => object instanceof EnemyObject);
     }
 
     get GameObjects() {

@@ -53,6 +53,7 @@ class EnemyObject extends PhysicsObject {
         SENTRY: 'sentry'
     }
     #currentState;
+    #stateOverride;
 
     #evadeCounter = 0;
     #evadeTimeLimit = 0;
@@ -67,6 +68,13 @@ class EnemyObject extends PhysicsObject {
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     #shield;
+    #maxHealth = 100;
+    #health = this.#maxHealth;
+
+    #isWarping = false;
+    #warpEnd = new THREE.Vector3();
+
+    _didInitialiseShader = false;
 
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
@@ -86,6 +94,7 @@ class EnemyObject extends PhysicsObject {
     #setupModel = () => {
         this._mainObject.scale.set(0.35, 0.35, 0.35);
 
+        let self = this;
         this._mainObject.traverse(function(child) {
             if (child.isMesh) {
                 child.castShadow = true;
@@ -98,61 +107,65 @@ class EnemyObject extends PhysicsObject {
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC_HIGH);
 
                 child.material.onBeforeCompile = function(shader) {
-                    child.setMaskInverse = function(value) {
-                        shader.uniforms.uMaskInverse.value = value;
+                    if (!self._didInitialiseShader) {
+                        self._didInitialiseShader = true;
+                        
+                        child.setMaskInverse = function(value) {
+                            shader.uniforms.uMaskInverse.value = value;
+                        }
+
+                        shader.uniforms.uMaskInverse = { value: false };
+
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            'void main() {',
+                            [
+                                'uniform bool uMaskInverse;',
+                                '',
+                                'vec3 rgbToHsv(vec3 c)',
+                                '{',
+                                    '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
+                                    '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
+                                    '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
+                                
+                                    '\tfloat d = q.x - min(q.w, q.y);',
+                                    '\tfloat e = 1.0e-10;',
+                                    '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
+                                '}',
+                                '',
+                                'vec3 hsvToRgb(vec3 c)',
+                                '{',
+                                    '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
+                                    '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
+                                    '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
+                                '}',
+                                '',
+                                'void main() {'
+                            ].join('\n')
+                        );
+
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            '\t#include <map_fragment>',
+                            [
+                                '\t#ifdef USE_MAP',
+                                    '\t\tvec4 texelColor = texture2D(map, vUv);',
+                                    '\t\ttexelColor = mapTexelToLinear(texelColor);',
+                                    '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
+                                    `\t\tif (hsvColor.y <= 0.163 && hsvColor.z >= 0.395) {`,
+                                        '\t\t\thsvColor.x = 0.98;',
+                                        '\t\t\thsvColor.y = 1.0;',
+                                        '\t\t\thsvColor.z += 1.0;',
+                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                    '\t\t}',
+                                    '\t\telse if (uMaskInverse) {',
+                                        '\t\t\thsvColor.y = 0.0;',
+                                        '\t\t\thsvColor.z = 0.0;',
+                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                    '\t\t}',
+                                    '\t\tdiffuseColor *= texelColor;',
+                                '\t#endif'
+                            ].join('\n')
+                        );
                     }
-
-                    shader.uniforms.uMaskInverse = { value: false };
-
-                    shader.fragmentShader = shader.fragmentShader.replace(
-                        'void main() {',
-                        [
-                            'uniform bool uMaskInverse;',
-                            '',
-                            'vec3 rgbToHsv(vec3 c)',
-                            '{',
-                                '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
-                                '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
-                                '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
-                            
-                                '\tfloat d = q.x - min(q.w, q.y);',
-                                '\tfloat e = 1.0e-10;',
-                                '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
-                            '}',
-                            '',
-                            'vec3 hsvToRgb(vec3 c)',
-                            '{',
-                                '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
-                                '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
-                                '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
-                            '}',
-                            '',
-                            'void main() {'
-                        ].join('\n')
-                    );
-
-                    shader.fragmentShader = shader.fragmentShader.replace(
-                        '\t#include <map_fragment>',
-                        [
-                            '\t#ifdef USE_MAP',
-                                '\t\tvec4 texelColor = texture2D(map, vUv);',
-                                '\t\ttexelColor = mapTexelToLinear(texelColor);',
-                                '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
-                                `\t\tif (hsvColor.y <= 0.163 && hsvColor.z >= 0.395) {`,
-                                    '\t\t\thsvColor.x = 0.98;',
-                                    '\t\t\thsvColor.y = 1.0;',
-                                    '\t\t\thsvColor.z += 1.0;',
-                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                '\t\t}',
-                                '\t\telse if (uMaskInverse) {',
-                                    '\t\t\thsvColor.y = 0.0;',
-                                    '\t\t\thsvColor.z = 0.0;',
-                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                '\t\t}',
-                                '\t\tdiffuseColor *= texelColor;',
-                            '\t#endif'
-                        ].join('\n')
-                    );
                 }
 
                 child.material.needsUpdate = true;
@@ -164,7 +177,7 @@ class EnemyObject extends PhysicsObject {
         let circleTexture = window.GameHandler.AssetHandler.LoadedImages.sprites.enemyCircle;
         let material = new THREE.SpriteMaterial({ map: circleTexture, sizeAttenuation: false });
         material.transparent = true;
-        material.opacity = 1;
+        material.opacity = 0;
 
         this.#circleSprite = new THREE.Sprite(material);
         this.#circleSprite.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
@@ -183,15 +196,16 @@ class EnemyObject extends PhysicsObject {
         let gunBulletSpeed = 750;
         let gunFireRate = 5;
         let projectileDuration = 5;
+        let gunDamage = 1; 
 
         this.#gunObj.position.set(0, -0.04, 5);
         this.Object.add(this.#gunObj);
-        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration);
+        this.#gun = new Gun(this.#gunObj, this, bullet, gunBulletSpeed, gunFireRate, projectileDuration, gunDamage);
     }
 
     #setupThrusters = () => {
-        this.#thrusterLight.position.set(0, 0.68, -5);
-        this.Object.add(this.#thrusterLight);
+        // this.#thrusterLight.position.set(0, 0.68, -5);
+        // this.Object.add(this.#thrusterLight);
 
         let extraOptions = {
             velSpread: new THREE.Vector3(1.5, 1.5, 0),
@@ -218,6 +232,11 @@ class EnemyObject extends PhysicsObject {
     // based on factors like current position, velocity, orientation relative to player etc. determine
     // what state enemy should be in right now
     #determineCurrentState = (dt) => {
+        if (this.#stateOverride != undefined) {
+            this.#currentState = this.#stateOverride;
+            return; 
+        }
+
         // if player already seen, then its easier to keep track of them
         let playerCurrentlyVisible = this.#playerHasBeenSighted
             ? this.#currDistToPlayer <= this.#alreadySightedRadius
@@ -442,6 +461,10 @@ class EnemyObject extends PhysicsObject {
         this._objectGroup.translateZ(this.#currentSpeed * dt);
     }
 
+    #handleIdleState = () => {
+        this.#gun.Firing = false;
+    }
+
     #handleCutoffState = (dt) => {
     }
 
@@ -475,54 +498,112 @@ class EnemyObject extends PhysicsObject {
         return forward.angleTo(dirToPoint);
     }
 
-    Main(dt) {
-        this.#clone.position.copy(this.Position);
-
-        this.#currDistToPlayer = this.#playerRef.Position.sub(this.Position).length();
-        this.#currAngleToPlayer = this.#getAngleToPlayer();
-        this.#currPlayerAngleToEnemy = this.#getPlayerAngleToEnemy();
-        
-        this.#determineCurrentState(dt);
-        
-        //act based on current state
-        //DEBUG
-        // this.#currentState = this.#states.IDLE;
-        //END DEBUG
-        switch (this.#currentState) {
-            case this.#states.IDLE:
-                break;
-            case this.#states.PATROL:
-                this.#handlePatrolState(dt);
-                break;
-            case this.#states.FOLLOW:
-                this.#handleFollowState(dt);
-                break;
-            case this.#states.EVADE:
-                this.#handleEvadeState(dt);
-                break;
-            case this.#states.CUTOFF:
-                this.#handleFollowState(dt); //until cutoff handler implemented
-                // this.#handleCutoffState(dt);
-                break;
-            case this.#states.SENTRY:
-                this.#handleSentryState(dt);
+    #deathHandler = () => {
+        if (this.#health <= 0) {
+            window.GameHandler.RemoveGameObject(this, false);
+            this.Object.visible = false;
+            this.#thrusterLight.intensity = 0;
+            this.#thrusterSystem.speed = 0;
         }
-
-        this.#gun.Main(dt);
-        this.#shield.Main(dt);
-
-        let speedPct = this.#targetSpeed / this.#maxSpeed;
-        this.#thrusterSystem.Speed = speedPct * 50;
-        let newIntensity = speedPct * 7;
-        this.#thrusterLight.intensity = newIntensity;
-        this.#thrusterSystem.Main(dt);
-
-        this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
-        this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
     }
 
-    HitByBullet() {
+    Main(dt) {
+        if (!this.#isWarping) {
+            this.#clone.position.copy(this.Position);
+
+            this.#currDistToPlayer = this.#playerRef.Position.sub(this.Position).length();
+            this.#currAngleToPlayer = this.#getAngleToPlayer();
+            this.#currPlayerAngleToEnemy = this.#getPlayerAngleToEnemy();
+            
+            this.#determineCurrentState(dt);
+            
+            //act based on current state
+            //DEBUG
+            // this.#currentState = this.#states.IDLE;
+            //END DEBUG
+            switch (this.#currentState) {
+                case this.#states.IDLE:
+                    this.#handleIdleState();
+                    break;
+                case this.#states.PATROL:
+                    this.#handlePatrolState(dt);
+                    break;
+                case this.#states.FOLLOW:
+                    this.#handleFollowState(dt);
+                    break;
+                case this.#states.EVADE:
+                    this.#handleEvadeState(dt);
+                    break;
+                case this.#states.CUTOFF:
+                    this.#handleFollowState(dt); //until cutoff handler implemented
+                    // this.#handleCutoffState(dt);
+                    break;
+                case this.#states.SENTRY:
+                    this.#handleSentryState(dt);
+            }
+
+            this.#gun.Main(dt);
+            this.#shield.Main(dt);
+
+            let speedPct = this.#targetSpeed / this.#maxSpeed;
+            this.#thrusterSystem.Speed = speedPct * 50;
+            let newIntensity = speedPct * 7;
+            // this.#thrusterLight.intensity = newIntensity;
+            this.#thrusterSystem.Main(dt);
+
+            this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
+            this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
+        }
+        else {
+            let t = Math.min(1, 15 * dt);
+
+            if (15 * dt >= 1) {
+                console.warn('expensive procedure has impacted smoothness of enemy warp.');
+            }
+            
+            this._objectGroup.position.lerp(this.#warpEnd, t);
+            this.#thrusterSystem.Speed = 50;
+            this.#thrusterLight.intensity = 7;
+            if (this._objectGroup.position.distanceTo(this.#warpEnd) < 10) {
+                this.#isWarping = false;
+            }
+        }
+    }
+
+    HitByBullet(damage) {
         this.#shield.Hit();
+        this.#health -= damage; 
+        this.#deathHandler();
+    }
+
+    Warp(start, end) {
+        this.#isWarping = true;
+        this._objectGroup.position.copy(start);
+        this._objectGroup.lookAt(end);
+        this.#warpEnd = end;
+    }
+
+    OverrideState(state) {
+        if (this.#states[state] != undefined) {
+            this.#stateOverride = this.#states[state];
+        }
+        else {
+            console.warn(`'${state}' is not a valid enemy state.`);
+        }
+    }
+
+    ClearStateOverride() {
+        this.#stateOverride = undefined;
+    }
+
+    Spawn() {
+        this.#health = this.#maxHealth;
+        this.Object.visible = true;
+        window.GameHandler.AddGameObject(this);
+    }
+
+    get IsSpawned() {
+        return this.Object.visible;
     }
 
     get Speed() {
