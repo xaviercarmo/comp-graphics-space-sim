@@ -9,6 +9,8 @@ class GameObject {
     _objectGroup = new THREE.Group();
     _mainObject;
 
+    IsGameObject = true;
+
     constructor(object) {
         this._objectGroup.add(object);
         this._mainObject = object;

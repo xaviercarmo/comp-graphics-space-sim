@@ -172,6 +172,8 @@ class PlayerObject extends PhysicsObject {
         }
     };
 
+    #test = new THREE.PointLight(0xff0000, 0, 40);
+
     //shields
     _lightShield = {
         radius: 4.6,
@@ -271,6 +273,8 @@ class PlayerObject extends PhysicsObject {
     #enemyTrackerMaterial;
     #enemyTrackerObjects = [];
 
+    #healthCapsuleTrackerObject;
+
     //ability fields
     #isCloaked = false;
 
@@ -292,7 +296,8 @@ class PlayerObject extends PhysicsObject {
         this.#setupCamera(camera);
 
         this.#setupCrosshair();
-        this.#setupEnemyTrackers(); // change to match radius of shield, also change their radius for each class
+        this.#setupEnemyTrackers();
+        this.#setupHealthCapsuleTracker();
         
         window.addEventListener("wheel", this.#handleScroll);
 
@@ -389,7 +394,7 @@ class PlayerObject extends PhysicsObject {
             this._heavyShipSettings.vMask
         );
     }
-
+    
     #setupShipMaterial = (object, texture, shadersArray, initialHsv, hueMask, saturationMask = new THREE.Vector2(0.3, 1), valueMask = new THREE.Vector2(0, 1)) => {
         object.traverse(function(child) {
             if (child.isMesh && child.material instanceof THREE.MeshPhongMaterial) {
@@ -404,80 +409,83 @@ class PlayerObject extends PhysicsObject {
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_VARYING);
 
                 child.material.onBeforeCompile = function(shader) {
-                    let shaderName = `shader_${child.uuid}`;
-                    let shaderIndex = shadersArray.findIndex(shader => shader.name == shaderName);
-
+                    let shaderIndex = shadersArray.findIndex(s => s.id == child.uuid);
                     if (shaderIndex == -1) {
-                        shadersArray.push(shader);
-                    
-                        shader.name = shaderName;
-
-                        child.setMaskInverse = function(value) {
-                            shader.uniforms.uMaskInverse.value = value;
-                        };
-
-                        shader.uniforms.uHSV = { value: initialHsv };
-                        shader.uniforms.uHueMask = { value: hueMask };
-                        shader.uniforms.uSaturationMask = { value: saturationMask };
-                        shader.uniforms.uValueMask = { value: valueMask };
-                        shader.uniforms.uMaskInverse = { value: false };
-
-                        //rgb to hsv/hsv to rgb methods
-                        //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            'void main() {',
-                            [
-                                'uniform vec3 uHSV;',
-                                'uniform vec2 uHueMask;',
-                                'uniform vec2 uSaturationMask;',
-                                'uniform vec2 uValueMask;',
-                                'uniform bool uMaskInverse;',
-                                '',
-                                'vec3 rgbToHsv(vec3 c)',
-                                '{',
-                                    '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
-                                    '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
-                                    '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
-                                
-                                    '\tfloat d = q.x - min(q.w, q.y);',
-                                    '\tfloat e = 1.0e-10;',
-                                    '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
-                                '}',
-                                '',
-                                'vec3 hsvToRgb(vec3 c)',
-                                '{',
-                                    '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
-                                    '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
-                                    '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
-                                '}',
-                                '',
-                                'void main() {'
-                            ].join('\n')
-                        );
-                        
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            '\t#include <map_fragment>',
-                            [
-                                '\t#ifdef USE_MAP',
-                                    '\t\tvec4 texelColor = texture2D(map, vUv);',
-                                    '\t\ttexelColor = mapTexelToLinear(texelColor);',
-                                    '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
-                                    `\t\tif (hsvColor.x >= uHueMask.x && hsvColor.x <= uHueMask.y && hsvColor.y >= uSaturationMask.x && hsvColor.y <= uSaturationMask.y && hsvColor.z >= uValueMask.x && hsvColor.z <= uValueMask.y) {`,
-                                        '\t\t\thsvColor.x = uHSV.x;',
-                                        '\t\t\thsvColor.y = uHSV.y;',
-                                        '\t\t\thsvColor.z += uHSV.z;',
-                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                    '\t\t}',
-                                    '\t\telse if (uMaskInverse) {',
-                                        '\t\t\thsvColor.y = 0.0;',
-                                        '\t\t\thsvColor.z = 0.0;',
-                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                    '\t\t}',
-                                    '\t\tdiffuseColor *= texelColor;',
-                                '\t#endif'
-                            ].join('\n')
-                        );
+                        shadersArray.push({ id: child.uuid, shader: shader});
                     }
+                    else {
+                        shadersArray[shaderIndex].shader = shader;
+                    }
+
+                    // console.log(shadersArray[0]?.fragmentShader, shader.fragmentShader);
+
+                    // console.log(child.uuid);
+
+                    child.setMaskInverse = function(value) {
+                        shader.uniforms.uMaskInverse.value = value;
+                    };
+
+                    shader.uniforms.uHSV = { value: initialHsv };
+                    shader.uniforms.uHueMask = { value: hueMask };
+                    shader.uniforms.uSaturationMask = { value: saturationMask };
+                    shader.uniforms.uValueMask = { value: valueMask };
+                    shader.uniforms.uMaskInverse = { value: false };
+
+                    //rgb to hsv/hsv to rgb methods
+                    //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        'void main() {',
+                        [
+                            'uniform vec3 uHSV;',
+                            'uniform vec2 uHueMask;',
+                            'uniform vec2 uSaturationMask;',
+                            'uniform vec2 uValueMask;',
+                            'uniform bool uMaskInverse;',
+                            '',
+                            'vec3 rgbToHsv(vec3 c)',
+                            '{',
+                                '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
+                                '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
+                                '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
+                            
+                                '\tfloat d = q.x - min(q.w, q.y);',
+                                '\tfloat e = 1.0e-10;',
+                                '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
+                            '}',
+                            '',
+                            'vec3 hsvToRgb(vec3 c)',
+                            '{',
+                                '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
+                                '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
+                                '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
+                            '}',
+                            '',
+                            'void main() {'
+                        ].join('\n')
+                    );
+                    
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        '\t#include <map_fragment>',
+                        [
+                            '\t#ifdef USE_MAP',
+                                '\t\tvec4 texelColor = texture2D(map, vUv);',
+                                '\t\ttexelColor = mapTexelToLinear(texelColor);',
+                                '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
+                                `\t\tif (hsvColor.x >= uHueMask.x && hsvColor.x <= uHueMask.y && hsvColor.y >= uSaturationMask.x && hsvColor.y <= uSaturationMask.y && hsvColor.z >= uValueMask.x && hsvColor.z <= uValueMask.y) {`,
+                                    '\t\t\thsvColor.x = uHSV.x;',
+                                    '\t\t\thsvColor.y = uHSV.y;',
+                                    '\t\t\thsvColor.z += uHSV.z;',
+                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                '\t\t}',
+                                '\t\telse if (uMaskInverse) {',
+                                    '\t\t\thsvColor.y = 0.0;',
+                                    '\t\t\thsvColor.z = 0.0;',
+                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                '\t\t}',
+                                '\t\tdiffuseColor *= texelColor;',
+                            '\t#endif'
+                        ].join('\n')
+                    );
                 }
 
                 child.material.needsUpdate = true;
@@ -850,12 +858,28 @@ class PlayerObject extends PhysicsObject {
 
     #setupEnemyTrackers = () => {
         // this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
-        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
-        this.#enemyTrackerObject.scale.set(0.003, 0.003, 0.003);
+        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker.clone();
+        this.#enemyTrackerObject.scale.setScalar(0.003);
 
         this.#enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         this.#enemyTrackerMaterial.depthTest = false;
         this.#enemyTrackerMaterial.transparent = true;
+    }
+
+    #setupHealthCapsuleTracker = () => {
+        this.#healthCapsuleTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker.clone();
+        this.#healthCapsuleTrackerObject.scale.setScalar(0.003);
+
+        let trackerMat = new THREE.MeshBasicMaterial({ color: 0x00ff66, depthTest: false, transparent: true });
+        trackerMat.opacityForBloom = 1;
+        this.#healthCapsuleTrackerObject.traverse(child => {
+            if (child.isMesh) {
+                child.material = trackerMat;
+                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+            }
+        });
+
+        window.GameHandler.Scene.add(this.#healthCapsuleTrackerObject);
     }
 
     #setupShipShields = () => {
@@ -1036,11 +1060,11 @@ class PlayerObject extends PhysicsObject {
     }
 
     #refreshShaderUniformsFromSettings = () => {
-        this.#shipShaders[this._currentClass].forEach(shader => {
-            shader.uniforms.uHSV.value = this.#currentShipSettings.hsv;
-            shader.uniforms.uHueMask.value = this.#currentShipSettings.hMask;
-            shader.uniforms.uSaturationMask.value = this.#currentShipSettings.sMask;
-            shader.uniforms.uValueMask.value = this.#currentShipSettings.vMask;
+        this.#shipShaders[this._currentClass].forEach(shaderGroup => {
+            shaderGroup.shader.uniforms.uHSV.value = this.#currentShipSettings.hsv;
+            shaderGroup.shader.uniforms.uHueMask.value = this.#currentShipSettings.hMask;
+            shaderGroup.shader.uniforms.uSaturationMask.value = this.#currentShipSettings.sMask;
+            shaderGroup.shader.uniforms.uValueMask.value = this.#currentShipSettings.vMask;
         });
     }
 
@@ -1082,6 +1106,34 @@ class PlayerObject extends PhysicsObject {
             this.#enemyTrackerObjects[i].rotateX(Math.PI / 2);
 
             this.#applyOpacityToTracker(this.#enemyTrackerObjects[i], angleToEnemy - 0.5, angleToEnemy - 0.5);
+        }
+    }
+
+    #handleHealthCapsuleTrackerObject = () => {
+        let healthCapsule = window.GameHandler.GameObjects.find(object => object.IsHealthCapsule);
+        if (healthCapsule != undefined) {
+            let currForwardDirection = new THREE.Vector3();
+            this._objectGroup.getWorldDirection(currForwardDirection);
+
+            let mainObjWorldPos = new THREE.Vector3();
+            this._mainObject.getWorldPosition(mainObjWorldPos);
+
+            let dirToCapsule = healthCapsule.Position.sub(mainObjWorldPos);
+            let angleToCapsule = currForwardDirection.angleTo(dirToCapsule);
+
+            dirToCapsule.normalize();
+            dirToCapsule.multiplyScalar(4);
+            let worldPos = mainObjWorldPos.clone();
+            worldPos.add(dirToCapsule);
+
+            this.#healthCapsuleTrackerObject.position.copy(worldPos);
+            this.#healthCapsuleTrackerObject.lookAt(healthCapsule.Position);
+            this.#healthCapsuleTrackerObject.rotateX(Math.PI / 2);
+
+            this.#applyOpacityToTracker(this.#healthCapsuleTrackerObject, angleToCapsule - 0.5, angleToCapsule - 0.5);
+        }
+        else {
+            this.#applyOpacityToTracker(this.#healthCapsuleTrackerObject, 0, 0);
         }
     }
 
@@ -1155,6 +1207,7 @@ class PlayerObject extends PhysicsObject {
         this.#rockParticleCloud.Main(dt);
 
         this.#handleEnemyTrackerObjects();
+        this.#handleHealthCapsuleTrackerObject();
 
         this.#currentShield.object.Main(dt);
 
@@ -1263,6 +1316,10 @@ class PlayerObject extends PhysicsObject {
     HitByBullet(damage) {
         this.#currentShield.object.Hit();
         this.#health -= damage; 
+    }
+
+    ConsumeHealthCapsule(amount) {
+        this.#health += amount;
     }
 
     get CameraPosition() { return this.#cameraPosition; }
@@ -1394,6 +1451,10 @@ class PlayerObject extends PhysicsObject {
         return this.#isCloaked;
     }
 
+    get CurrentShieldRadius() {
+        return this.#currentShield.radius;
+    }
+
     /**
      * @param {string} value
      */
@@ -1416,6 +1477,9 @@ class PlayerObject extends PhysicsObject {
     
                 lightObj.light.position.copy(lightObj[positionKey]);
                 this.#currentShip.add(lightObj.light);
+
+                this.#currentShip.add(this.#test);
+                window.rapeMeSevenTimes = this.#test;
             }
             // this.#thrusterLights.left.light.position.copy(this.#thrusterLights.left[positionKey]);
             // this.#thrusterLights.right.light.position.copy(this.#thrusterLights.right[positionKey]);

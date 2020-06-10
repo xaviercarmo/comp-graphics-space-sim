@@ -234,7 +234,8 @@ class AssetHandler {
             { name: 'sun_texture.png', size: 395, key: 'sunTexture' },
             { name: 'rock.png', size: 87800, key: 'rockSprite' },
             { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' },
-            { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' }
+            { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' },
+            { name: 'health_capsule_circle.png', size: 131000, key: 'healthCapsuleCircle' }
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 

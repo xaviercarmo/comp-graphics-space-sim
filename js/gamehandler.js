@@ -552,6 +552,9 @@ class GameHandler {
         this.#mode = this.#modes.GAMERUNNING;
 
         this.ArenaHandler.StartFirstRound();
+
+        // let test = new THREE.PointLight(0xff0000, 0, 40);
+        // this.#player._lightShip.add(test);
     }
 
     #animate = () => {
@@ -633,8 +636,9 @@ class GameHandler {
 
     #turnOffNonBloomLights = () => {
         this.#scene.traverse(obj => {
-            if (obj instanceof THREE.Light && !this.#bloomLights[obj.uuid]) {
+            if (obj instanceof THREE.Light && this.#bloomLights[obj.uuid] == undefined) {
                 this.#nonBloomLightIntensities[obj.uuid] = obj.intensity;
+                
                 obj.intensity = 0;
             }
         });
@@ -642,8 +646,11 @@ class GameHandler {
 
     #restoreNonBloomLights = () => {
         this.#scene.traverse(obj => {
-            if (this.#nonBloomLightIntensities[obj.uuid]) {
+            if (this.#nonBloomLightIntensities[obj.uuid] != undefined) {
                 obj.intensity = this.#nonBloomLightIntensities[obj.uuid];
+                if (obj.uuid == window.rapeMeSevenTimes) {
+                    console.log({...this.#nonBloomLightIntensities});
+                }
                 delete this.#nonBloomLightIntensities[obj.uuid];
             }
         });
@@ -711,14 +718,14 @@ class GameHandler {
     
     //public methods
     AddGameObject(object) {
-        if (object instanceof GameObject) {
+        if (object.IsGameObject && this.#gameObjects.indexOf(object) == -1) {
             this.#gameObjects.push(object);
 
             if (!object.Object.parent) {
                 this.#scene.add(object.Object);
             }
         }
-        else {
+        else if (!object.IsGameObject) {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
         }
     }
