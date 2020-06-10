@@ -159,9 +159,8 @@ class Projectile {
     _checkForCollisions() {
         for (let object of window.GameHandler.GameObjects) {
             let sphere = object.BoundingSphere;
-            if (object != this._parent && object instanceof PhysicsObject && UTILS.RayIntersectsSphere(this.#oldPos, this._object.position, sphere)) {
+            if (object != this._parent && object.IsPhysicsObject && UTILS.RayIntersectsSphere(this.#oldPos, this._object.position, sphere)) {
                 // on a path towards or away from the enemy object, now just need to detect if moving crossed over the object
-
                 let oldDelta = UTILS.SubVectors(sphere.centre, this.#oldPos);
                 let currDelta = UTILS.SubVectors(sphere.centre, this._object.position);
 

@@ -7,6 +7,9 @@ class PhysicsObject extends GameObject {
 
     _colliderRadius = 0;
 
+    //this is MUCH cheaper than using instanceof checks
+    IsPhysicsObject = true;
+
     constructor(object) {
         super(object);
     }

@@ -73,6 +73,8 @@ class EnemyObject extends PhysicsObject {
     #isWarping = false;
     #warpEnd = new THREE.Vector3();
 
+    _didInitialiseShader = false;
+
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
 
@@ -92,6 +94,7 @@ class EnemyObject extends PhysicsObject {
     #setupModel = () => {
         this._mainObject.scale.set(0.35, 0.35, 0.35);
 
+        let self = this;
         this._mainObject.traverse(function(child) {
             if (child.isMesh) {
                 child.castShadow = true;
@@ -104,61 +107,65 @@ class EnemyObject extends PhysicsObject {
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC_HIGH);
 
                 child.material.onBeforeCompile = function(shader) {
-                    child.setMaskInverse = function(value) {
-                        shader.uniforms.uMaskInverse.value = value;
+                    if (!self._didInitialiseShader) {
+                        self._didInitialiseShader = true;
+                        
+                        child.setMaskInverse = function(value) {
+                            shader.uniforms.uMaskInverse.value = value;
+                        }
+
+                        shader.uniforms.uMaskInverse = { value: false };
+
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            'void main() {',
+                            [
+                                'uniform bool uMaskInverse;',
+                                '',
+                                'vec3 rgbToHsv(vec3 c)',
+                                '{',
+                                    '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
+                                    '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
+                                    '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
+                                
+                                    '\tfloat d = q.x - min(q.w, q.y);',
+                                    '\tfloat e = 1.0e-10;',
+                                    '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
+                                '}',
+                                '',
+                                'vec3 hsvToRgb(vec3 c)',
+                                '{',
+                                    '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
+                                    '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
+                                    '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
+                                '}',
+                                '',
+                                'void main() {'
+                            ].join('\n')
+                        );
+
+                        shader.fragmentShader = shader.fragmentShader.replace(
+                            '\t#include <map_fragment>',
+                            [
+                                '\t#ifdef USE_MAP',
+                                    '\t\tvec4 texelColor = texture2D(map, vUv);',
+                                    '\t\ttexelColor = mapTexelToLinear(texelColor);',
+                                    '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
+                                    `\t\tif (hsvColor.y <= 0.163 && hsvColor.z >= 0.395) {`,
+                                        '\t\t\thsvColor.x = 0.98;',
+                                        '\t\t\thsvColor.y = 1.0;',
+                                        '\t\t\thsvColor.z += 1.0;',
+                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                    '\t\t}',
+                                    '\t\telse if (uMaskInverse) {',
+                                        '\t\t\thsvColor.y = 0.0;',
+                                        '\t\t\thsvColor.z = 0.0;',
+                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                    '\t\t}',
+                                    '\t\tdiffuseColor *= texelColor;',
+                                '\t#endif'
+                            ].join('\n')
+                        );
                     }
-
-                    shader.uniforms.uMaskInverse = { value: false };
-
-                    shader.fragmentShader = shader.fragmentShader.replace(
-                        'void main() {',
-                        [
-                            'uniform bool uMaskInverse;',
-                            '',
-                            'vec3 rgbToHsv(vec3 c)',
-                            '{',
-                                '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
-                                '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
-                                '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
-                            
-                                '\tfloat d = q.x - min(q.w, q.y);',
-                                '\tfloat e = 1.0e-10;',
-                                '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
-                            '}',
-                            '',
-                            'vec3 hsvToRgb(vec3 c)',
-                            '{',
-                                '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
-                                '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
-                                '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
-                            '}',
-                            '',
-                            'void main() {'
-                        ].join('\n')
-                    );
-
-                    shader.fragmentShader = shader.fragmentShader.replace(
-                        '\t#include <map_fragment>',
-                        [
-                            '\t#ifdef USE_MAP',
-                                '\t\tvec4 texelColor = texture2D(map, vUv);',
-                                '\t\ttexelColor = mapTexelToLinear(texelColor);',
-                                '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
-                                `\t\tif (hsvColor.y <= 0.163 && hsvColor.z >= 0.395) {`,
-                                    '\t\t\thsvColor.x = 0.98;',
-                                    '\t\t\thsvColor.y = 1.0;',
-                                    '\t\t\thsvColor.z += 1.0;',
-                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                '\t\t}',
-                                '\t\telse if (uMaskInverse) {',
-                                    '\t\t\thsvColor.y = 0.0;',
-                                    '\t\t\thsvColor.z = 0.0;',
-                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                '\t\t}',
-                                '\t\tdiffuseColor *= texelColor;',
-                            '\t#endif'
-                        ].join('\n')
-                    );
                 }
 
                 child.material.needsUpdate = true;
@@ -170,7 +177,7 @@ class EnemyObject extends PhysicsObject {
         let circleTexture = window.GameHandler.AssetHandler.LoadedImages.sprites.enemyCircle;
         let material = new THREE.SpriteMaterial({ map: circleTexture, sizeAttenuation: false });
         material.transparent = true;
-        material.opacity = 1;
+        material.opacity = 0;
 
         this.#circleSprite = new THREE.Sprite(material);
         this.#circleSprite.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
@@ -197,8 +204,8 @@ class EnemyObject extends PhysicsObject {
     }
 
     #setupThrusters = () => {
-        this.#thrusterLight.position.set(0, 0.68, -5);
-        this.Object.add(this.#thrusterLight);
+        // this.#thrusterLight.position.set(0, 0.68, -5);
+        // this.Object.add(this.#thrusterLight);
 
         let extraOptions = {
             velSpread: new THREE.Vector3(1.5, 1.5, 0),
@@ -492,19 +499,10 @@ class EnemyObject extends PhysicsObject {
     }
 
     #deathHandler = () => {
-        let uuid = this._objectGroup.uuid; 
-        
-        if (this.#health < 0) {
-            //adding and remove point lights are intensive
-            window.GameHandler.Scene.add(this.#thrusterLight);
-
-            window.GameHandler.Scene.remove(this._objectGroup);
-            let gameObjectIndex = window.GameHandler.GameObjects.indexOf(this);
-            window.GameHandler.GameObjects.splice(gameObjectIndex, 1);
-
-            console.log("enemy dead");
+        if (this.#health <= 0) {
+            window.GameHandler.RemoveGameObject(this, false);
+            this.Object.visible = false;
         }
-    
     }
 
     Main(dt) {
@@ -548,14 +546,16 @@ class EnemyObject extends PhysicsObject {
             let speedPct = this.#targetSpeed / this.#maxSpeed;
             this.#thrusterSystem.Speed = speedPct * 50;
             let newIntensity = speedPct * 7;
-            this.#thrusterLight.intensity = newIntensity;
+            // this.#thrusterLight.intensity = newIntensity;
             this.#thrusterSystem.Main(dt);
 
             this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
             this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
         }
         else {
-            this._objectGroup.position.lerp(this.#warpEnd, 15 * dt);
+            let t = Math.min(1, 15 * dt);
+            if (15 * dt >= 1) { console.log("NO NO NO GOD NO WHY NOOOOOOO"); }
+            this._objectGroup.position.lerp(this.#warpEnd, t);
             this.#thrusterSystem.Speed = 50;
             this.#thrusterLight.intensity = 7;
             if (this._objectGroup.position.distanceTo(this.#warpEnd) < 10) {
@@ -588,6 +588,12 @@ class EnemyObject extends PhysicsObject {
 
     ClearStateOverride() {
         this.#stateOverride = undefined;
+    }
+
+    Despawn() {
+        this.#thrusterLight.intensity = 0;
+        this.#thrusterSystem.speed = 0;
+        this.Object.visible = false;
     }
 
     get Speed() {

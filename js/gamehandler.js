@@ -7,6 +7,7 @@ import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
+import ArenaHandler from './arenahandler.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
 import { RenderPass } from '../libraries/RenderPass.js';
@@ -55,9 +56,10 @@ class GameHandler {
     #sunLight;
 
     #scene = new THREE.Scene();
-
+    
     //publics
     AssetHandler = new AssetHandler();
+    ArenaHandler = new ArenaHandler(10);
 
     //public so that other classes can assign themselves to a layer
     RenderLayers = {
@@ -67,6 +69,7 @@ class GameHandler {
     };
 
     constructor() {
+        // this.testing = this.#arenaHandler; //TESTING
         this.#mode = this.#modes.PRELOADING;
         this.AssetHandler.LoadAllAssets(() => this.#initialise.call(this));
     }
@@ -100,6 +103,8 @@ class GameHandler {
         this.#initialiseSkyBox();
 
         this.#initialiseSun();
+
+        this.ArenaHandler.Initialise();
     }
 
     #initialiseRenderer = () => {
@@ -193,14 +198,14 @@ class GameHandler {
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
-        this.test1 = new EnemyObject();
-        this.AddGameObject(this.test1);
+        // this.test1 = new EnemyObject();
+        // this.AddGameObject(this.test1);
 
-        this.test2 = new EnemyObject();
-        this.AddGameObject(this.test2);
+        // this.test2 = new EnemyObject();
+        // this.AddGameObject(this.test2);
 
-        this.test3 = new EnemyObject();
-        this.AddGameObject(this.test3);
+        // this.test3 = new EnemyObject();
+        // this.AddGameObject(this.test3);
     }
 
     #initialiseSkyBox = () => {
@@ -227,7 +232,6 @@ class GameHandler {
         this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
         this.SkyBox.add(this.#sun.Object); // for debugging purposes
         this.AddGameObject(this.#sun);
-
         
         this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.4);
         this.#scene.add(this.#ambientLight);
@@ -533,24 +537,7 @@ class GameHandler {
         this.#player.InputEnabled = false;
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
-        // this.#startGameRunning();
-
-        //make the enemies warp in
-        let forward = new THREE.Vector3();
-        this.#player.Object.getWorldDirection(forward);
-        let startPoint = this.#player.Position.add(forward.clone().multiplyScalar(10000));
-        let endPoint = this.#player.Position.add(forward.clone().multiplyScalar(40));
-        let perpVec = UTILS.SubVectors(endPoint, startPoint).cross(new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(20);
-        
-        this.test1.OverrideState('IDLE');
-        this.test2.OverrideState('IDLE');
-        this.test3.OverrideState('IDLE');
-
-        window.setTimeout(() => {
-            this.test1.Warp(startPoint, endPoint);
-            this.test2.Warp(startPoint, UTILS.AddVectors(endPoint, perpVec));
-            this.test3.Warp(startPoint, UTILS.SubVectors(endPoint, perpVec));
-        }, 3000);
+        // this.#startGameRunning(); //for skipping menu for debug
 
         this.#animate();
     }
@@ -564,9 +551,7 @@ class GameHandler {
         window.setTimeout(() => $('#mainMenu').css('display', 'none'), 300);
         this.#mode = this.#modes.GAMERUNNING;
 
-        this.test1.ClearStateOverride();
-        this.test2.ClearStateOverride();
-        this.test3.ClearStateOverride();
+        this.ArenaHandler.StartFirstRound();
     }
 
     #animate = () => {
@@ -736,6 +721,11 @@ class GameHandler {
         }
     }
 
+    RemoveGameObject(object) {
+        let gameObjectIndex = this.#gameObjects.indexOf(object);
+        this.#gameObjects.splice(gameObjectIndex, 1);
+    }
+
     AddProjectile(projectile) {
         this.#projectiles.add(projectile);
     }
@@ -815,14 +805,7 @@ class GameHandler {
     get Camera() { return this.#camera; }
 
     get EnemyObjects() {
-        let result = [];
-        this.#gameObjects.forEach(object => {
-            if (object instanceof EnemyObject) {
-                result.push(object);
-            }
-        });
-
-        return result;
+        return this.#gameObjects.filter(object => object instanceof EnemyObject);
     }
 
     get GameObjects() {
