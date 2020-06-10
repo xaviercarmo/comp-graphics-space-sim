@@ -10,6 +10,10 @@ class HealthCapsule extends GameObject {
 
         this.#gltfObject = window.GameHandler.AssetHandler.LoadedAssets.health_capsule;
 
+        this._mainObject.traverse(child => {
+            // apply materials here based on child.name (e.g. if child.name starts with Torus, add shiny phong material)
+        })
+        
         //scale down the capsule
         this._mainObject.scale.set(5, 5, 5); //_mainObject == this.#gltfObject.scene, because of the parent's constructor
 
