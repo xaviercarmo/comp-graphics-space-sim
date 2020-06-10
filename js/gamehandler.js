@@ -545,7 +545,7 @@ class GameHandler {
         this.test1.OverrideState('IDLE');
         this.test2.OverrideState('IDLE');
         this.test3.OverrideState('IDLE');
-        
+
         window.setTimeout(() => {
             this.test1.Warp(startPoint, endPoint);
             this.test2.Warp(startPoint, UTILS.AddVectors(endPoint, perpVec));
@@ -563,6 +563,10 @@ class GameHandler {
         $('#mainMenu').css('opacity', '0');
         window.setTimeout(() => $('#mainMenu').css('display', 'none'), 300);
         this.#mode = this.#modes.GAMERUNNING;
+
+        this.test1.ClearStateOverride();
+        this.test2.ClearStateOverride();
+        this.test3.ClearStateOverride();
     }
 
     #animate = () => {
