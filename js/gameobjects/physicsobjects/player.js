@@ -1265,6 +1265,10 @@ class PlayerObject extends PhysicsObject {
         this.#health -= damage; 
     }
 
+    Hit(){
+        this.#currentShield.object.Hit();
+    }
+
     get CameraPosition() { return this.#cameraPosition; }
 
     /**

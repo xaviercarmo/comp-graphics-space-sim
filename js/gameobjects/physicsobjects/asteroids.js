@@ -142,6 +142,9 @@ class AsteroidObject extends PhysicsObject {
             );
             //Change the speed of automovement()
             this.#random = camDire;
+
+            //trigger player shield
+            this.#player.Hit(); 
         } 
 
         //slow down obstacle (reset movement really)
