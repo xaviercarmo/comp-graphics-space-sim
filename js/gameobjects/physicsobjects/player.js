@@ -307,27 +307,27 @@ class PlayerObject extends PhysicsObject {
     }
 
     //these models will be used for auto-turrets on the ship later, for now this is unused
-    #setupGunModels = () => {
-        this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
-        this.#meshes.rail_gun.scale.multiplyScalar(0.1);
+    // #setupGunModels = () => {
+    //     this.#meshes.gattling_gun.scale.multiplyScalar(0.1);
+    //     this.#meshes.rail_gun.scale.multiplyScalar(0.1);
 
-        let gattlingGunGroup = new THREE.Group();
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
-        gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
-        this.#currentGunBarrelGroup = new THREE.Group();
-        this.#currentGunBarrelGroup.position.y = -7.8;
-        this.#meshes.gattling_gun_new.barrel.position.y = 7.8;
-        this.#currentGunBarrelGroup.add(this.#meshes.gattling_gun_new.barrel);
-        gattlingGunGroup.add(this.#currentGunBarrelGroup);
+    //     let gattlingGunGroup = new THREE.Group();
+    //     gattlingGunGroup.add(this.#meshes.gattling_gun_new.base_plate);
+    //     gattlingGunGroup.add(this.#meshes.gattling_gun_new.struts);
+    //     this.#currentGunBarrelGroup = new THREE.Group();
+    //     this.#currentGunBarrelGroup.position.y = -7.8;
+    //     this.#meshes.gattling_gun_new.barrel.position.y = 7.8;
+    //     this.#currentGunBarrelGroup.add(this.#meshes.gattling_gun_new.barrel);
+    //     gattlingGunGroup.add(this.#currentGunBarrelGroup);
 
-        gattlingGunGroup.scale.multiplyScalar(0.1);
-        gattlingGunGroup.position.set(0, -1.88, 4.29);
-        gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
-        this.#currentGunBarrelGroup.rotation.x = -gattlingGunGroup.rotation.x;
+    //     gattlingGunGroup.scale.multiplyScalar(0.1);
+    //     gattlingGunGroup.position.set(0, -1.88, 4.29);
+    //     gattlingGunGroup.quaternion.set(0.052475886136, 0, 0, 0.998622191509004);
+    //     this.#currentGunBarrelGroup.rotation.x = -gattlingGunGroup.rotation.x;
 
-        this.#currentGunObject = gattlingGunGroup;
-        this._mainObject.add(this.#currentGunObject);
-    }
+    //     this.#currentGunObject = gattlingGunGroup;
+    //     this._mainObject.add(this.#currentGunObject);
+    // }
 
     #setupShipClasses = (defaultClass) => {
         this._lightShip.add(this.#meshes.light_ship);
@@ -985,6 +985,7 @@ class PlayerObject extends PhysicsObject {
             this._mainObject.getWorldPosition(this.#orbitControls.target);
             let deltaPos = this.#orbitControlsPositionTracking.new.sub(this.#orbitControlsPositionTracking.old);
             this.#camera.position.add(deltaPos);
+
             this.#orbitControls.update();
         }
     }
@@ -1302,16 +1303,14 @@ class PlayerObject extends PhysicsObject {
                         let canvas = window.GameHandler.Renderer.domElement;
                         this.#orbitControls = new OrbitControls(this.#camera, canvas);
                     }
-                    console.log(this.#camera.position.clone());
+
                     let relativePosGlobal = this._objectGroup.localToWorld(this.#camera.position.clone());
 
                     window.GameHandler.Scene.add(this.#camera);
-                    console.log(this.#camera.position.clone());
 
                     this.#camera.position.copy(relativePosGlobal);
 
                     this.#cameraCurve = undefined;
-                    // this.#cameraTransitioning = true;
                     this.#orbitControls.enabled = true;
 
                     this.InputEnabled = false;

@@ -7,7 +7,6 @@ import GameObject from './gameobject.js';
 import PlayerObject from './gameobjects/physicsobjects/player.js';
 import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
-import HealthCapsule from './gameobjects/healthcapsule.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
 import { RenderPass } from '../libraries/RenderPass.js';
@@ -101,17 +100,6 @@ class GameHandler {
         this.#initialiseSkyBox();
 
         this.#initialiseSun();
-
-        // a cube for testing bloom
-        // let randomCubeGeo = new THREE.BoxGeometry(5, 5, 5);
-        // let randomCubeMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-        // let randomCube = new THREE.Mesh(randomCubeGeo, randomCubeMat);
-        // randomCube.layers.enable(this.RenderLayers.BLOOM_STATIC);
-        // randomCube.position.y += 5;
-        // this.#scene.add(randomCube);
-
-        let testCapsule = new HealthCapsule(new THREE.Vector3(0, 0, 5));
-        this.AddGameObject(testCapsule);
     }
 
     #initialiseRenderer = () => {
@@ -179,18 +167,16 @@ class GameHandler {
 
     #initialisePlayer = () => {
         let playerMeshes = {
-            // ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
-            // ship: this.AssetHandler.LoadedAssets.ship.clone(),
             light_ship: this.AssetHandler.LoadedAssets.light_ship.clone(),
             medium_ship: this.AssetHandler.LoadedAssets.medium_ship.clone(),
-            heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone(),
-            gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
-            rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
-            gattling_gun_new: {
-                base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
-                struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
-                barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
-            }
+            heavy_ship: this.AssetHandler.LoadedAssets.heavy_ship.clone()
+            // gattling_gun: this.AssetHandler.LoadedAssets.gattling_gun.clone(),
+            // rail_gun: this.AssetHandler.LoadedAssets.rail_gun.clone(),
+            // gattling_gun_new: {
+            //     base_plate: this.AssetHandler.LoadedAssets.gattling_gun_base_plate.clone(),
+            //     struts: this.AssetHandler.LoadedAssets.gattling_gun_struts.clone(),
+            //     barrel: this.AssetHandler.LoadedAssets.gattling_gun_barrel.clone()
+            // }
         };
 
         let playerTextures = {
@@ -207,18 +193,14 @@ class GameHandler {
         this.#player = new PlayerObject(playerAssets, this.#camera);
         this.AddGameObject(this.#player);
 
-        // let test = new EnemyObject();
-        // this.test = test;
-        // this.AddGameObject(test);
+        this.test1 = new EnemyObject();
+        this.AddGameObject(this.test1);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        this.test2 = new EnemyObject();
+        this.AddGameObject(this.test2);
 
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
-
-        // test = new EnemyObject();
-        // this.AddGameObject(test);
+        this.test3 = new EnemyObject();
+        this.AddGameObject(this.test3);
     }
 
     #initialiseSkyBox = () => {
@@ -547,11 +529,28 @@ class GameHandler {
         this.#mode = this.#modes.MAINMENU;
 
         $('#mainMenu').css('display', 'flex');
-        this.#player.InputEnabled = false;
 
+        this.#player.InputEnabled = false;
         this.#player.Object.quaternion.set(0.06965684352995981, 0.2830092298553505, -0.027317522035930145, 0.9561942548227021);
 
-        this.#startGameRunning();
+        // this.#startGameRunning();
+
+        //make the enemies warp in
+        let forward = new THREE.Vector3();
+        this.#player.Object.getWorldDirection(forward);
+        let startPoint = this.#player.Position.add(forward.clone().multiplyScalar(10000));
+        let endPoint = this.#player.Position.add(forward.clone().multiplyScalar(40));
+        let perpVec = UTILS.SubVectors(endPoint, startPoint).cross(new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(20);
+        
+        this.test1.OverrideState('IDLE');
+        this.test2.OverrideState('IDLE');
+        this.test3.OverrideState('IDLE');
+        
+        window.setTimeout(() => {
+            this.test1.Warp(startPoint, endPoint);
+            this.test2.Warp(startPoint, UTILS.AddVectors(endPoint, perpVec));
+            this.test3.Warp(startPoint, UTILS.SubVectors(endPoint, perpVec));
+        }, 3000);
 
         this.#animate();
     }
@@ -586,8 +585,8 @@ class GameHandler {
 
         let playerOldPosition = this.#player.Position;
 
-        //game logic only runs if game isn't paused
-        if (this.#mode == this.#modes.GAMERUNNING) {
+        //game logic only runs if game is running or in the main menu
+        if (this.#mode == this.#modes.GAMERUNNING || this.#mode == this.#modes.MAINMENU) {
             this.#gameObjects.forEach(gameObject => gameObject.Main(dt));
 
             this.#projectiles.forEach(projectile => {
@@ -596,21 +595,6 @@ class GameHandler {
                     this.#projectiles.delete(projectile);
                 }
             });
-
-            // this.#gameObjects.forEach(g => {
-            //     //physics logic here (later moved to physics handler probably)
-            //     //[...]
-
-            //     if (g instanceof PhysicsObject) {
-            //         g.PostPhysicsCallback(dt);
-            //     }
-            // });
-
-            //let pos = new THREE.Vector3();
-            
-            //this.Player.Object.localToWorld(pos);
-            //this.randomCube.position.copy(pos.sub(new THREE.Vector3(0, 0, 10)));
-            //console.log(this.Player.Object.position.z - this.randomCube.position.z);
         }
 
         //game logic that runs despite pausing

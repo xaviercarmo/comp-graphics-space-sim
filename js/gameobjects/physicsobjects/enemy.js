@@ -53,6 +53,7 @@ class EnemyObject extends PhysicsObject {
         SENTRY: 'sentry'
     }
     #currentState;
+    #stateOverride;
 
     #evadeCounter = 0;
     #evadeTimeLimit = 0;
@@ -67,7 +68,10 @@ class EnemyObject extends PhysicsObject {
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     #shield;
-    #health; 
+    #health;
+
+    #isWarping = false;
+    #warpEnd = new THREE.Vector3();
 
     constructor() {
         super(window.GameHandler.AssetHandler.LoadedAssets.enemy_ship.clone());
@@ -221,6 +225,11 @@ class EnemyObject extends PhysicsObject {
     // based on factors like current position, velocity, orientation relative to player etc. determine
     // what state enemy should be in right now
     #determineCurrentState = (dt) => {
+        if (this.#stateOverride != undefined) {
+            this.#currentState = this.#stateOverride;
+            return; 
+        }
+
         // if player already seen, then its easier to keep track of them
         let playerCurrentlyVisible = this.#playerHasBeenSighted
             ? this.#currDistToPlayer <= this.#alreadySightedRadius
@@ -445,6 +454,10 @@ class EnemyObject extends PhysicsObject {
         this._objectGroup.translateZ(this.#currentSpeed * dt);
     }
 
+    #handleIdleState = () => {
+        this.#gun.Firing = false;
+    }
+
     #handleCutoffState = (dt) => {
     }
 
@@ -495,55 +508,86 @@ class EnemyObject extends PhysicsObject {
     }
 
     Main(dt) {
-        this.#clone.position.copy(this.Position);
+        if (!this.#isWarping) {
+            this.#clone.position.copy(this.Position);
 
-        this.#currDistToPlayer = this.#playerRef.Position.sub(this.Position).length();
-        this.#currAngleToPlayer = this.#getAngleToPlayer();
-        this.#currPlayerAngleToEnemy = this.#getPlayerAngleToEnemy();
-        
-        this.#determineCurrentState(dt);
-        
-        //act based on current state
-        //DEBUG
-        // this.#currentState = this.#states.IDLE;
-        //END DEBUG
-        switch (this.#currentState) {
-            case this.#states.IDLE:
-                break;
-            case this.#states.PATROL:
-                this.#handlePatrolState(dt);
-                break;
-            case this.#states.FOLLOW:
-                this.#handleFollowState(dt);
-                break;
-            case this.#states.EVADE:
-                this.#handleEvadeState(dt);
-                break;
-            case this.#states.CUTOFF:
-                this.#handleFollowState(dt); //until cutoff handler implemented
-                // this.#handleCutoffState(dt);
-                break;
-            case this.#states.SENTRY:
-                this.#handleSentryState(dt);
+            this.#currDistToPlayer = this.#playerRef.Position.sub(this.Position).length();
+            this.#currAngleToPlayer = this.#getAngleToPlayer();
+            this.#currPlayerAngleToEnemy = this.#getPlayerAngleToEnemy();
+            
+            this.#determineCurrentState(dt);
+            
+            //act based on current state
+            //DEBUG
+            // this.#currentState = this.#states.IDLE;
+            //END DEBUG
+            switch (this.#currentState) {
+                case this.#states.IDLE:
+                    this.#handleIdleState();
+                    break;
+                case this.#states.PATROL:
+                    this.#handlePatrolState(dt);
+                    break;
+                case this.#states.FOLLOW:
+                    this.#handleFollowState(dt);
+                    break;
+                case this.#states.EVADE:
+                    this.#handleEvadeState(dt);
+                    break;
+                case this.#states.CUTOFF:
+                    this.#handleFollowState(dt); //until cutoff handler implemented
+                    // this.#handleCutoffState(dt);
+                    break;
+                case this.#states.SENTRY:
+                    this.#handleSentryState(dt);
+            }
+
+            this.#gun.Main(dt);
+            this.#shield.Main(dt);
+
+            let speedPct = this.#targetSpeed / this.#maxSpeed;
+            this.#thrusterSystem.Speed = speedPct * 50;
+            let newIntensity = speedPct * 7;
+            this.#thrusterLight.intensity = newIntensity;
+            this.#thrusterSystem.Main(dt);
+
+            this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
+            this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
         }
-
-        this.#gun.Main(dt);
-        this.#shield.Main(dt);
-
-        let speedPct = this.#targetSpeed / this.#maxSpeed;
-        this.#thrusterSystem.Speed = speedPct * 50;
-        let newIntensity = speedPct * 7;
-        this.#thrusterLight.intensity = newIntensity;
-        this.#thrusterSystem.Main(dt);
-
-        this.#circleSpriteTargetOpacity = this.#currDistToPlayer <= this.#circleSpriteVisibleDist ? 0 : 1;
-        this.#circleSprite.material.opacity = THREE.Math.lerp(this.#circleSprite.material.opacity, this.#circleSpriteTargetOpacity, dt);
+        else {
+            this._objectGroup.position.lerp(this.#warpEnd, 15 * dt);
+            this.#thrusterSystem.Speed = 50;
+            this.#thrusterLight.intensity = 7;
+            if (this._objectGroup.position.distanceTo(this.#warpEnd) < 10) {
+                this.#isWarping = false;
+            }
+        }
     }
 
     HitByBullet(damage) {
         this.#shield.Hit();
         this.#health -= damage; 
         this.#deathHandler();
+    }
+
+    Warp(start, end) {
+        this.#isWarping = true;
+        this._objectGroup.position.copy(start);
+        this._objectGroup.lookAt(end);
+        this.#warpEnd = end;
+    }
+
+    OverrideState(state) {
+        if (this.#states[state] != undefined) {
+            this.#stateOverride = this.#states[state];
+        }
+        else {
+            console.warn(`'${state}' is not a valid enemy state.`);
+        }
+    }
+
+    ClearStateOverride() {
+        this.#stateOverride = undefined;
     }
 
     get Speed() {
