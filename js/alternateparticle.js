@@ -30,13 +30,12 @@ class AlternateParticle {
         //generat n obstacles
         for (let i = 0; i < numPart; i++) {
             this.#particle[i] = new SpawnParticle(this.#parent, this.#texture); 
-            //console.log(i, "index", this.#obstacle[i].Position);
         } 
     }
     
     #SpawnNewObstacles = () => {
         for (let i = 0; i < this.#particle.length; i++) {
-            //store obstacle position
+            //store particle position
             let x = this.#particle[i].Particle.position.x, 
                 y = this.#particle[i].Particle.position.y, 
                 z = this.#particle[i].Particle.position.z;
@@ -49,30 +48,23 @@ class AlternateParticle {
             let ranPos = new THREE.Vector3(rx, ry, rz);
 
             //set spawn in front of player 
-            //Get direction of camera and add it to player position
             let playerPos = this.#parent.position; 
             let vec = new THREE.Vector3(); 
             let camDir = this.#camera.getWorldDirection(vec);
             
-
             //position in front of player
             let frontPos = new THREE.Vector3; 
-            //multiply by arbitrary number for distance, note: higher it is more vertically displaced it gets. 
-            frontPos.set(playerPos.x + camDir.x *50, playerPos.y + camDir.y*50, playerPos.z + camDir.z *50);
-            //Randomise object spawn
+            //multiply by arbitrary number for distance, note: higher it is, more vertically displaced it gets. 
+            frontPos.set(playerPos.x + camDir.x *100, playerPos.y + camDir.y*100, playerPos.z + camDir.z *100);
             frontPos.add(ranPos);
 
             //determine if current object is within camera view
-            //**Not really checking for objects behind player
-            //try the check if object is within the cloud range. 
-            this.#camera.updateMatrix();
-            this.#camera.updateMatrixWorld(); 
             let frustum = new THREE.Frustum();
             frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.#camera.projectionMatrix, this.#camera.matrixWorldInverse));
 
             //if coordinates of current object is not within camera's view.
-            //and if the object is close enough while the player turns the camera, the object won't move. 
-            if (!frustum.containsPoint(partPos) && playerPos.distanceTo(partPos) > 50){
+            //and if the object is close enough while the player turns the camera, the object won't move.
+            if (!frustum.containsPoint(partPos) && playerPos.distanceTo(partPos) > 50 ){
                 this.#particle[i].Particle.position.copy(frontPos);
             }
         }
