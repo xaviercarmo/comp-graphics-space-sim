@@ -68,7 +68,8 @@ class EnemyObject extends PhysicsObject {
     #thrusterLight = new THREE.PointLight(0xff1000, 0, 15);
 
     #shield;
-    #health;
+    #maxHealth = 100;
+    #health = this.#maxHealth;
 
     #isWarping = false;
     #warpEnd = new THREE.Vector3();
@@ -88,7 +89,6 @@ class EnemyObject extends PhysicsObject {
 
         this._colliderRadius = 6;
         this.#shield = new Shield(this._objectGroup, this._colliderRadius);
-        this.#health = 100; 
     }
 
     #setupModel = () => {
@@ -502,6 +502,8 @@ class EnemyObject extends PhysicsObject {
         if (this.#health <= 0) {
             window.GameHandler.RemoveGameObject(this, false);
             this.Object.visible = false;
+            this.#thrusterLight.intensity = 0;
+            this.#thrusterSystem.speed = 0;
         }
     }
 
@@ -590,10 +592,14 @@ class EnemyObject extends PhysicsObject {
         this.#stateOverride = undefined;
     }
 
-    Despawn() {
-        this.#thrusterLight.intensity = 0;
-        this.#thrusterSystem.speed = 0;
-        this.Object.visible = false;
+    Spawn() {
+        this.#health = this.#maxHealth;
+        this.Object.visible = true;
+        window.GameHandler.AddGameObject(this);
+    }
+
+    get IsSpawned() {
+        return this.Object.visible;
     }
 
     get Speed() {

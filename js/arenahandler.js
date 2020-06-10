@@ -17,7 +17,7 @@ class ArenaHandler {
     #spawnEnemies = (count) => {
         let result = [];
 
-        let availableEnemies = this.#enemyPool.filter(enemy => !enemy.Object.visible);
+        let availableEnemies = this.#enemyPool.filter(enemy => !enemy.IsSpawned);
 
         if (count > availableEnemies.length) {
             console.warn('Not enough enemies in pool.');
@@ -25,18 +25,20 @@ class ArenaHandler {
         }
 
         for (let i = 0; i < count; i++) {
-            availableEnemies[i].Object.visible = true;
-            window.GameHandler.AddGameObject(availableEnemies[i]);
+            availableEnemies[i].Spawn();
             result.push(availableEnemies[i]);
 
             //get a random direction from the player
-            let randDirection = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
-            window.GameHandler.Player.Object.localToWorld(randDirection);
+            let randDirection = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+            // window.GameHandler.Player.Object.localToWorld(randDirection);
+            // console.log(randDirection.clone());
+            randDirection.normalize();
 
             //warp in from 10,000 units away in that direction
             let startPoint = window.GameHandler.Player.Position.add(randDirection.clone().multiplyScalar(10000));
             let endPoint = window.GameHandler.Player.Position.add(randDirection.clone().multiplyScalar(40));
-            // let perpVec = UTILS.SubVectors(endPoint, startPoint).cross(new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(20);
+            // console.log(randDirection, startPoint, endPoint);
+
 
             availableEnemies[i].Warp(startPoint, endPoint);
         }
@@ -55,6 +57,10 @@ class ArenaHandler {
     }
 
     Main(dt) {
+    }
+
+    Test() {
+        this.#spawnEnemies(5);
     }
 
     StartFirstRound() {
