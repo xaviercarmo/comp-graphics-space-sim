@@ -556,7 +556,7 @@ class EnemyObject extends PhysicsObject {
         }
         else {
             let t = Math.min(1, 15 * dt);
-            if (15 * dt >= 1) { console.log("NO NO NO GOD NO WHY NOOOOOOO"); }
+            // if (15 * dt >= 1) { console.log("NO NO NO GOD NO WHY NOOOOOOO"); }
             this._objectGroup.position.lerp(this.#warpEnd, t);
             this.#thrusterSystem.Speed = 50;
             this.#thrusterLight.intensity = 7;

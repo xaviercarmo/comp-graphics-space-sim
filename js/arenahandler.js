@@ -10,6 +10,12 @@ class ArenaHandler {
     #round = 0;
     #enemyPool = [];
 
+    #isNewRound = true;
+    #roundCountdown = 0;
+    #roundCountdownDuration = 3;
+    #countdownBuffer = 0;
+    #countdownBufferDuration = 0.5;
+
     constructor(maxEnemies) {
         this.#maxEnemies = maxEnemies;
     }
@@ -17,7 +23,7 @@ class ArenaHandler {
     #spawnEnemies = (count) => {
         let result = [];
 
-        let availableEnemies = this.#enemyPool.filter(enemy => !enemy.IsSpawned);
+        let availableEnemies = this.#getAvailableEnemies();
 
         if (count > availableEnemies.length) {
             console.warn('Not enough enemies in pool.');
@@ -28,22 +34,22 @@ class ArenaHandler {
             availableEnemies[i].Spawn();
             result.push(availableEnemies[i]);
 
-            //get a random direction from the player
+            //get a random direction
             let randDirection = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
-            // window.GameHandler.Player.Object.localToWorld(randDirection);
-            // console.log(randDirection.clone());
             randDirection.normalize();
 
             //warp in from 10,000 units away in that direction
             let startPoint = window.GameHandler.Player.Position.add(randDirection.clone().multiplyScalar(10000));
-            let endPoint = window.GameHandler.Player.Position.add(randDirection.clone().multiplyScalar(40));
-            // console.log(randDirection, startPoint, endPoint);
-
+            let endPoint = window.GameHandler.Player.Position.add(randDirection.clone().multiplyScalar(50 + Math.random() * 1000));
 
             availableEnemies[i].Warp(startPoint, endPoint);
         }
 
         return result;
+    }
+
+    #getAvailableEnemies = () => {
+        return this.#enemyPool.filter(enemy => !enemy.IsSpawned);
     }
 
     Initialise() {
@@ -57,10 +63,43 @@ class ArenaHandler {
     }
 
     Main(dt) {
-    }
+        if (this.#round > 0) {
+            // if counting down, update the gui
+            if (this.#roundCountdown > 0) {
+                this.#countdownBuffer += dt;
 
-    Test() {
-        this.#spawnEnemies(5);
+                if (this.#countdownBuffer >= this.#countdownBufferDuration){
+                    this.#roundCountdown -= dt;
+                    $('#countDownContent').text(Math.round(this.#roundCountdown));
+                }
+            }
+            // otherwise
+            else {
+                let availableEnemies = this.#getAvailableEnemies();
+                
+                // if there are no enemies currently, then either a round has just ended, or one is about to begin
+                if (availableEnemies.length == this.#maxEnemies) {
+                    // if a round was just completed, start the timer
+                    if (this.#isNewRound) {
+                        this.#isNewRound = false;
+                        this.#countdownBuffer = 0;
+
+                        this.#roundCountdown = this.#roundCountdownDuration;
+                        $('#countDownContainer').removeClass('count-down-base-container-hidden');
+                        $('#countDownContent').text(this.#roundCountdown);
+                    }
+                    // otherwise the timer has just completed, so increment round, remove the timer, and spawn enemies
+                    else {
+                        this.#isNewRound = true;
+                        this.#round++;
+                        $('#countDownContainer').addClass('count-down-base-container-hidden');
+
+                        let numEnemiesToSpawn = Math.min(3 + Math.floor(this.#round / 2), this.#maxEnemies);
+                        this.#spawnEnemies(numEnemiesToSpawn);
+                    }
+                }
+            }
+        }
     }
 
     StartFirstRound() {

@@ -576,6 +576,8 @@ class GameHandler {
 
         //game logic only runs if game is running or in the main menu
         if (this.#mode == this.#modes.GAMERUNNING || this.#mode == this.#modes.MAINMENU) {
+            this.ArenaHandler.Main(dt);
+
             this.#gameObjects.forEach(gameObject => gameObject.Main(dt));
 
             this.#projectiles.forEach(projectile => {

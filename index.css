@@ -413,3 +413,34 @@ canvas {
 [type="range"]:focus {
     outline: none;
 }
+
+.count-down-base-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    width: 300px;
+    height: 150px;
+    top: 0px;
+    right: 0px;
+    filter: drop-shadow(0px 0px 3px rgb(0, 247, 255));
+    transition: 300ms;
+}
+
+.count-down-base-container-hidden {
+    right: -300px;
+}
+
+.count-down-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    font-family: SpaceBodyFont;
+    font-size: 65px;
+    background-color:  #000000b3;
+    color: rgb(160, 228, 222);
+    filter: drop-shadow(0px 0px 10px rgb(0, 247, 255));
+    clip-path: polygon(0% 0%, 0% calc(100% - 14px), 16px 100%, 100% 100%, 100% 0%);
+}
