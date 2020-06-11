@@ -77,7 +77,6 @@ class AsteroidObject extends PhysicsObject {
         asteroid.position.copy(origin);
         
         super(asteroid);
-        this.#asteroid = asteroid; 
         this._objectGroup.frustumCulled = true; 
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
