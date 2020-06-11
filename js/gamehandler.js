@@ -573,9 +573,9 @@ class GameHandler {
         }
 
         //for debug purposes
-        if (INPUT.KeyPressedOnce("t")) {
-            this.SkyBox.visible = !this.SkyBox.visible;
-        }
+        // if (INPUT.KeyPressedOnce("t")) {
+        //     this.SkyBox.visible = !this.SkyBox.visible;
+        // }
 
         let playerOldPosition = this.#player.Position;
 
