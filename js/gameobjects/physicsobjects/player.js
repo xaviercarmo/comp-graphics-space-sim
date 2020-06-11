@@ -200,7 +200,7 @@ class PlayerObject extends PhysicsObject {
         '_mediumShipSettings',
         '_heavyShipSettings'
     ];
-    
+    #useMainCloud = false; 
     //health
     #health = 100; 
 
@@ -296,7 +296,12 @@ class PlayerObject extends PhysicsObject {
         
         window.addEventListener("wheel", this.#handleScroll);
 
-        this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
+        
+        if (this.#useMainCloud) {
+            this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
+        } else {
+            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockTexture, 50, camera);
+        }
         this.#health = 100; 
     }
 
