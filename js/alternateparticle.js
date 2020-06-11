@@ -35,28 +35,29 @@ class AlternateParticle {
     
     #SpawnNewObstacles = () => {
         for (let i = 0; i < this.#particle.length; i++) {
-            let particlePos = this.#particle[i].Position;
-
-            //random spawn range per axis -- for respawning
-            let rx = THREE.MathUtils.randFloat(-50, 50),
-                ry = THREE.MathUtils.randFloat(-50, 50),
-                rz = THREE.MathUtils.randFloat(-50, 50);
-            let ranPos = new THREE.Vector3(rx, ry, rz);
-
-            //set spawn in front of player 
             let playerPos = this.#parent.position; 
-            let vec = new THREE.Vector3(); 
-            let camDir = this.#camera.getWorldDirection(vec);
-
-            //position in front of player
-            let frontPos = new THREE.Vector3; 
-            //multiply by arbitrary number for distance, note: higher it is, more vertically displaced it gets. 
-            frontPos.set(playerPos.x + camDir.x *100, playerPos.y + camDir.y*100, playerPos.z + camDir.z *100);
-            frontPos.add(ranPos);
-
-            //if (!frustum.containsPoint(particlePos) && playerPos.distanceTo(particlePos) > 50 ){
-            //If object is far enough, move it in front of player
+            let particlePos = this.#particle[i].Position;
+            
+            //Only compute if particle is too far; more efficient. 
             if (playerPos.distanceTo(particlePos) > 70 ){
+                //random spawn range per axis -- for respawning
+                let rx = THREE.MathUtils.randFloat(-50, 50),
+                    ry = THREE.MathUtils.randFloat(-50, 50),
+                    rz = THREE.MathUtils.randFloat(-50, 50);
+                let ranPos = new THREE.Vector3(rx, ry, rz);
+
+                //set spawn in front of player 
+                let vec = new THREE.Vector3(); 
+                let camDir = this.#camera.getWorldDirection(vec);
+
+                //position in front of player
+                let frontPos = new THREE.Vector3(); 
+                //multiply by arbitrary number for distance, note: higher it is, more vertically displaced it gets. 
+                frontPos.set(playerPos.x + camDir.x *100, playerPos.y + camDir.y*100, playerPos.z + camDir.z *100);
+                frontPos.add(ranPos);
+
+                //if (!frustum.containsPoint(particlePos) && playerPos.distanceTo(particlePos) > 50 ){
+                //If object is far enough, move it in front of player
                 this.#particle[i].Particle.position.copy(frontPos);
             }
         }
