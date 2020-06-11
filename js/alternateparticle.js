@@ -54,13 +54,9 @@ class AlternateParticle {
             frontPos.set(playerPos.x + camDir.x *100, playerPos.y + camDir.y*100, playerPos.z + camDir.z *100);
             frontPos.add(ranPos);
 
-            //determine if current object is within camera view
-            let frustum = new THREE.Frustum();
-            frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.#camera.projectionMatrix, this.#camera.matrixWorldInverse));
-
-            //if coordinates of current object is not within camera's view.
-            //and if the object is close enough while the player turns the camera, the object won't move.
-            if (!frustum.containsPoint(particlePos) && playerPos.distanceTo(particlePos) > 50 ){
+            //if (!frustum.containsPoint(particlePos) && playerPos.distanceTo(particlePos) > 50 ){
+            //If object is far enough, move it in front of player
+            if (playerPos.distanceTo(particlePos) > 70 ){
                 this.#particle[i].Particle.position.copy(frontPos);
             }
         }
@@ -72,7 +68,6 @@ class AlternateParticle {
 class SpawnParticle {
     #parent;
     #texture;
-    #position
     #part; 
 
     constructor(parent, texture){
@@ -89,11 +84,8 @@ class SpawnParticle {
         let mat = new THREE.MeshLambertMaterial( { map: this.#texture});
         this.#part = new THREE.Mesh(geo, mat);
         this.#part.scale.set(0.03, 0.03, 0.03);
-        //let spriteMaterial = new THREE.SpriteMaterial({map: this.#texture});
-        //this.#part = new THREE.Sprite(spriteMaterial);
 
         //random spawn
-        //Random range via random int per axis.
         let x = THREE.MathUtils.randFloat(-50, 50);
         let y = THREE.MathUtils.randFloat(-50, 50);
         let z = THREE.MathUtils.randFloat(-50, 50);
@@ -106,10 +98,6 @@ class SpawnParticle {
         
         //Set new position and add object to scene
         this.#part.position.copy(newPos); 
-        this.#position = this.#part.position; 
-
-        //console.log(this.#obst.position);
-        //console.log("position of obst",this._mainObject.position, );
         window.GameHandler.Scene.add(this.#part);
     }
     
