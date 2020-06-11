@@ -8,6 +8,7 @@ import PlayerObject from './gameobjects/physicsobjects/player.js';
 import EnemyObject from './gameobjects/physicsobjects/enemy.js';
 import SunObject from './gameobjects/sun.js';
 import ArenaHandler from './arenahandler.js';
+import AsteroidField from './gameobjects/physicsobjects/asteroids.js';
 
 import { EffectComposer } from '../libraries/EffectComposer.js';
 import { RenderPass } from '../libraries/RenderPass.js';
@@ -16,10 +17,9 @@ import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
 import { FXAAShader } from '../libraries/FXAAShader.js';
 
 class GameHandler {
-    
     //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
-    
+
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #bloomEnabled = true;
     #bloomComposer = new EffectComposer(this.#renderer);
@@ -79,7 +79,7 @@ class GameHandler {
     #initialise = () => {
         try {
             this.#mode = this.#modes.INITIALISING;
-            
+
             //later can extend this to animate the cursor
             $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
             this.#initialiseScene();
@@ -105,11 +105,13 @@ class GameHandler {
         this.#initialiseSun();
 
         this.ArenaHandler.Initialise();
+
+        this.#initialiseAsteroid();
     }
 
     #initialiseRenderer = () => {
         window.addEventListener("resize", () => { this.Resize(); });
-        
+
         document.addEventListener("visibilitychange", () => {
             if (document.hidden && this.IsGameRunning) {
                 this.Pause();
@@ -569,7 +571,7 @@ class GameHandler {
         if (INPUT.KeyPressedOnce("p") && !this.IsMainMenu) {
             this.TogglePause();
         }
-        
+
         //for debug purposes
         if (INPUT.KeyPressedOnce("t")) {
             this.SkyBox.visible = !this.SkyBox.visible;
@@ -604,7 +606,7 @@ class GameHandler {
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
-        
+
         if (this.#bloomEnabled) {
             this.#turnOffNonBloomLights();
 
@@ -715,7 +717,11 @@ class GameHandler {
     #testRenderLayer = (mask, layer) => {
         return mask & Math.pow(2, layer);
     }
-    
+
+    #initialiseAsteroid = () => {
+        let asteroid = new AsteroidField(20);
+    }
+
     //public methods
     AddGameObject(object) {
         if (object.IsGameObject && this.#gameObjects.indexOf(object) == -1) {
@@ -769,7 +775,7 @@ class GameHandler {
 
     Pause() {
         this.#mode = this.#modes.GAMEPAUSED;
-            
+
         //release mouse
         document.exitPointerLock();
 
@@ -779,7 +785,7 @@ class GameHandler {
 
     Unpause() {
         this.#mode = this.#modes.GAMERUNNING;
-            
+
         //reclaim mouse
         this.#renderer.domElement.requestPointerLock();
 

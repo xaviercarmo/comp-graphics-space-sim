@@ -20,7 +20,17 @@ class AssetHandler {
         // gattling_gun_barrel: '../assets/guns/gattling_gun/barrel_origin.fbx',
         enemy_ship: '../assets/enemy_ships/enemy_ship.fbx',
         enemy_tracker: '../assets/enemy_tracker.fbx',
-        diamond_bullet: '../assets/diamond_bullet.fbx'
+        diamond_bullet: '../assets/diamond_bullet.fbx',
+        asteroid1: '../assets/asteroids/asteroid1.fbx',
+        asteroid2: '../assets/asteroids/asteroid2.fbx',
+        asteroid3: '../assets/asteroids/asteroid3.fbx',
+        asteroid4: '../assets/asteroids/asteroid4.fbx',
+        asteroid5: '../assets/asteroids/asteroid5.fbx',
+        asteroid6: '../assets/asteroids/asteroid6.fbx',
+        asteroid7: '../assets/asteroids/asteroid7.fbx',
+        asteroid8: '../assets/asteroids/asteroid8.fbx',
+        asteroid9: '../assets/asteroids/asteroid9.fbx',
+        asteroid10: '../assets/asteroids/asteroid10.fbx'
     }
 
     //not required at the moment
@@ -124,7 +134,7 @@ class AssetHandler {
             const assetState = { loaded: 0, total: files[i].size ?? 1, isComplete: false };
             this.#assetLoadingStates[rootPath + files[i].name] = assetState;
 
-            this.LoadedImages[rootKey ?? rootPath][files[i].key ?? files[i].name] = 
+            this.LoadedImages[rootKey ?? rootPath][files[i].key ?? files[i].name] =
                 new THREE.TextureLoader().load(rootPath + files[i].name,
                     () => {
                         //on finished
@@ -172,7 +182,7 @@ class AssetHandler {
 
     #initialiseLoadingBar = () => {
         $('body').append($('<div>', { class: 'pre-downloader' }));
-        
+
         let domPreDownloader = $('.pre-downloader');
 
         domPreDownloader
@@ -235,7 +245,8 @@ class AssetHandler {
             { name: 'rock.png', size: 87800, key: 'rockSprite' },
             { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' },
             { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' },
-            { name: 'health_capsule_circle.png', size: 131000, key: 'healthCapsuleCircle' }
+            { name: 'health_capsule_circle.png', size: 131000, key: 'healthCapsuleCircle' },
+            { name: 'rock_texture.png', size: 87800, key: 'rockTexture' }
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 

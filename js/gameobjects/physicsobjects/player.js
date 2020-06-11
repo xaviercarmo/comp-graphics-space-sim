@@ -6,6 +6,7 @@ import PhysicsObject from '../physics.js';
 import RockParticleCloud from '../../rockparticlecloud.js';
 import Shield from '../../shield.js';
 import HelixGun from '../../guns/helixgun.js'
+import AlternateParticle from '../../alternateparticle.js';
 
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
@@ -51,7 +52,7 @@ class PlayerObject extends PhysicsObject {
     #mouseOffset = new THREE.Vector2();
     #maxMouseOffset = 1000;
     #mouseOffsetPct = new THREE.Vector2();
-    
+
     //rotation vars
     #baseTargetAngles = {
         x: UTILS.Constants.degToRad * 10,
@@ -61,7 +62,7 @@ class PlayerObject extends PhysicsObject {
     #targetEuler = new THREE.Euler();
     #targetQuaternion = new THREE.Quaternion();
     #rotAmt = new THREE.Vector2();
-    
+
     //equipment vars
     #currentGunObject;
     #currentGunBarrelGroup;
@@ -194,6 +195,7 @@ class PlayerObject extends PhysicsObject {
     #textures;
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
+    #useMainCloud = true; //temporary toggle for switching between clouds
     #rockParticleCloud;
     #saveId;
     #savedKeys = [
@@ -298,11 +300,15 @@ class PlayerObject extends PhysicsObject {
         this.#setupCrosshair();
         this.#setupEnemyTrackers();
         this.#setupHealthCapsuleTracker();
-        
+
         window.addEventListener("wheel", this.#handleScroll);
 
-        this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
-        this.#health = 100; 
+        if (!this.#useMainCloud) {
+            this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
+        } else {
+            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockTexture, 70, camera);
+        }
+        this.#health = 100;
     }
 
     #setupCamera = (camera) => {
@@ -629,7 +635,7 @@ class PlayerObject extends PhysicsObject {
                 extraOptions
             );
         }
-        
+
         // top left
         let thrusterPos = new THREE.Vector3(1.4, 1.24, -4.37);
         let thrusterDir = new THREE.Vector3(-0.05, 0, -1);
@@ -955,7 +961,7 @@ class PlayerObject extends PhysicsObject {
             this.#crosshairOrigin.y + this.#mouseOffsetPct.y * maxCrosshairOffset,
             this.#crosshairOrigin.z
         );
-        
+
         this.#crosshairSprites["sometimes/bt"].position.copy(this.#crosshairSprites["always/arcs"].position);
         this.#crosshairSprites["sometimes/tl"].position.copy(this.#crosshairSprites["always/arcs"].position);
         this.#crosshairSprites["sometimes/tr"].position.copy(this.#crosshairSprites["always/arcs"].position);
@@ -983,22 +989,22 @@ class PlayerObject extends PhysicsObject {
             if (this.#cameraCurve) {
                 this.#cameraTransitionProgress = THREE.Math.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
                 this.#cameraTransitionProgress += 0.015 * dt; //minimum amount so it doesn't slow down infinitely
-    
+
                 if (this.#cameraTransitionProgress > 0.9999) {
                     this.#cameraTransitionProgress = 1;
                 }
-    
+
                 let curvePointPct = this.#cameraTransitionDirection == -1
                     ? 1 - this.#cameraTransitionProgress
                     : this.#cameraTransitionProgress;
 
                 this.#cameraCurve.getPointAt(curvePointPct, this.#camera.position);
-    
+
                 this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
-    
+
                 let lookMatrix = this.#cameraLookMatrix.lookAt(this.#camera.position, this.#cameraLookTransition, UTILS.Constants.upVector);
                 this.#camera.quaternion.setFromRotationMatrix(lookMatrix);
-    
+
                 if (this.#cameraTransitionProgress == 1) {
                     this.#cameraTransitionProgress = 0;
                     this.#cameraTransitioning = false;
@@ -1315,7 +1321,11 @@ class PlayerObject extends PhysicsObject {
 
     HitByBullet(damage) {
         this.#currentShield.object.Hit();
-        this.#health -= damage; 
+        this.#health -= damage;
+    }
+
+    Hit(){
+        this.#currentShield.object.Hit();
     }
 
     ConsumeHealthCapsule(amount) {
@@ -1474,7 +1484,7 @@ class PlayerObject extends PhysicsObject {
             let positionKey = `${this._currentClass}_position`;
             for (let lightKey in this.#thrusterLights) {
                 let lightObj = this.#thrusterLights[lightKey];
-    
+
                 lightObj.light.position.copy(lightObj[positionKey]);
                 this.#currentShip.add(lightObj.light);
 
