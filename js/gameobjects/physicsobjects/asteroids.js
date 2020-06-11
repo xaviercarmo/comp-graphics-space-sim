@@ -4,7 +4,7 @@ import * as UTILS from '../../utils.js';
 
 import GameHandler from '../../gamehandler.js';
 import PhysicsObject from '../physics.js';
-import Shield from '../../shield.js';
+import { ThrusterParticleSystemGlobalPos } from '../../particlesystems/thrusterparticlesystem.js';
 
 class AsteroidField {
     //IMPLEMENT THE FIELD GENERATION HERE. 
@@ -17,7 +17,6 @@ class AsteroidField {
         
         this.#Initialise(); 
         
-        
     }
     Main(dt) {
         
@@ -27,6 +26,7 @@ class AsteroidField {
 
     #Initialise = () => {
         this.#SpawnMultipleAsteroids(this.#number);
+        
     }
 
     #SpawnMultipleAsteroids = (num) => {
@@ -39,16 +39,11 @@ class AsteroidField {
 
 }
 class AsteroidObject extends PhysicsObject {
-    //icosaherdon geo
-    //procedurally generate via perlin noise
-    //randomise shape/size of object.
-
-    //temp - not sure if needed yet. 
-    #asteroid;
     #rotDir; 
     #random;
     #player;
     #camera;
+    #hit = false; 
 
     constructor() {
         //random asteroid selection.
@@ -66,19 +61,22 @@ class AsteroidObject extends PhysicsObject {
         
         //radomise size of each asteroid. 
         asteroid.scale.set(200, 200, 200);
-        
-        //location spawn around player with within 400 unit distance. 
-        let spawnPoint = new THREE.Vector3(
-            THREE.MathUtils.randInt(-400, 400),
-            THREE.MathUtils.randInt(-400, 400),
-            THREE.MathUtils.randInt(-400, 400)
-        );
-        let pPos = window.GameHandler.Player.Object.position.clone();
-        let newPos = pPos.add(spawnPoint);
-        asteroid.position.copy(newPos);
+
+        //location spawn around (sphere range) player with within 500 unit distance. 
+        let origin = new THREE.Vector3(0, 0 , 50); //some random point you choose.
+
+        //math.random() returns value between 0 and < 1
+        //convert vector to unit vector 
+        //multiply by random()*500 to generate the xyz positions. 
+        let ranPos = new THREE.Vector3(
+            Math.random() - 0.5,
+            Math.random() - 0.5,
+            Math.random() - 0.5
+        ).normalize().multiplyScalar(Math.random() * 500); 
+        origin.add(ranPos);
+        asteroid.position.copy(origin);
         
         super(asteroid);
-        this.#asteroid = asteroid; 
         this._objectGroup.frustumCulled = true; 
         this.#camera = window.GameHandler.Camera;
         this.#player = window.GameHandler.Player;
@@ -90,8 +88,7 @@ class AsteroidObject extends PhysicsObject {
         super.Main(dt);
         this.#AsteroidRotation(); 
         this.#AutoMovement();
-        this.#collisionDetection();
-        
+        this.#collisionDetection(); 
     }
     
     #AsteroidRotation = () => {
@@ -100,13 +97,13 @@ class AsteroidObject extends PhysicsObject {
 
     #AutoMovement = () => {
         //increment positional changes
+        //let change = this.#random; 
         this._mainObject.position.add(this.#random);
     }
 
     #ParameterSetup = () => {
-        //
         //object rotation
-        this.#rotDir = THREE.MathUtils.randFloat(-0.005, 0.005);;
+        this.#rotDir = THREE.MathUtils.randFloat(-0.005, 0.005);
 
         //object movement along xyz
         this.#random = new THREE.Vector3(
@@ -118,55 +115,48 @@ class AsteroidObject extends PhysicsObject {
     
 
     #collisionDetection = () => {
-        //console.log(this._mainObject.position);
-        //console.log(playerPos);
         let vec = new THREE.Vector3();
         let camDir = this.#camera.getWorldDirection(vec);
         let distance = 80; 
         let playerToAst = this.#player.Position.distanceToSquared(this._mainObject.position); 
-        //console.log(playerToAst);
         let playerPos = this.#player.Object.position.clone();
         let pSpeed = this.#player.Speed;
-        /*
-        this.#player.Object.geometry.computeBoundingSphere(); 
-        this._mainObject.geometry.computeBoundingSphere()
-        this.#player.updateMatrixWorld();
-        this._mainObject.updateMatrixWorld();
-        */
+        let travelDist = Math.pow(distance, 2) * (pSpeed * 2);
 
         if(playerToAst < distance) {
             let camDire = new THREE.Vector3(
-                camDir.x*pSpeed * 0.02,
-                camDir.y*pSpeed * 0.02,
-                camDir.z*pSpeed * 0.02
+                camDir.x*pSpeed * 0.017,
+                camDir.y*pSpeed * 0.017,
+                camDir.z*pSpeed * 0.017
             );
             //Change the speed of automovement()
             this.#random = camDire;
 
             //trigger player shield
             this.#player.Hit(); 
-        } 
-
-        //slow down obstacle (reset movement really)
-        let travelDist = Math.pow(distance, 2) * (pSpeed * 0.25);
-        if(playerToAst > travelDist) {
+            this.#hit = true; 
+        } else if (playerToAst > travelDist && this.#hit) {
+            //reset speed of asteroid. 
+            console.log("asteroid far");
             this.#random = new THREE.Vector3(
                 THREE.MathUtils.randFloat(-0.05, 0.05),
                 THREE.MathUtils.randFloat(-0.05, 0.05),
                 THREE.MathUtils.randFloat(-0.05, 0.05)
             );
+            this.#hit = false; 
         }
+        
 
         //move asteroid if far enough
         if (playerToAst > distance * 20000) { //since distance squared is so large. 
             console.log(playerToAst);
             
             let spawnPoint = new THREE.Vector3(
-                THREE.MathUtils.randFloat(-400, 400),
-                THREE.MathUtils.randFloat(-400, 400),
-                THREE.MathUtils.randFloat(-400, 400)
-            );
-            spawnPoint.clampLength(-400, 400);
+                Math.random() - 0.5,
+                Math.random() - 0.5,
+                Math.random() - 0.5
+            ).normalize().multiplyScalar(Math.random() * 500);
+        
             let frontPos = new THREE.Vector3; 
             //multiply by arbitrary number for distance, note: higher it is more vertically displaced it gets. 
             frontPos.set(playerPos.x + camDir.x *800, playerPos.y + camDir.y*800, playerPos.z + camDir.z *800);
@@ -180,6 +170,14 @@ class AsteroidObject extends PhysicsObject {
     
     get Asteroid(){
         return this._mainObject;
+    }
+
+    get Position(){
+        return this._mainObject.position; 
+    }
+
+    set Position(Vector3){
+        this._mainObject.position.copy(Vector3); 
     }
 
 }
