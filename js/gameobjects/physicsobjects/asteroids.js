@@ -136,9 +136,9 @@ class AsteroidObject extends PhysicsObject {
 
         if(playerToAst < distance) {
             let camDire = new THREE.Vector3(
-                camDir.x*pSpeed * 0.01,
-                camDir.y*pSpeed * 0.01,
-                camDir.z*pSpeed * 0.01
+                camDir.x*pSpeed * 0.02,
+                camDir.y*pSpeed * 0.02,
+                camDir.z*pSpeed * 0.02
             );
             //Change the speed of automovement()
             this.#random = camDire;
@@ -162,9 +162,9 @@ class AsteroidObject extends PhysicsObject {
             console.log(playerToAst);
             
             let spawnPoint = new THREE.Vector3(
-            UTILS.RandomFloatInRange(-400, 400),
-            UTILS.RandomFloatInRange(-400, 400),
-            UTILS.RandomFloatInRange(-400, 400)
+                THREE.MathUtils.randFloat(-400, 400),
+                THREE.MathUtils.randFloat(-400, 400),
+                THREE.MathUtils.randFloat(-400, 400)
             );
             spawnPoint.clampLength(-400, 400);
             let frontPos = new THREE.Vector3; 
