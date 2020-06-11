@@ -17,10 +17,10 @@ import { UnrealBloomPass } from '../libraries/UnrealBloomPass.js';
 import { FXAAShader } from '../libraries/FXAAShader.js';
 
 class GameHandler {
-    
+
     //privates
     #camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100_000);
-    
+
     #renderer = new THREE.WebGLRenderer({ antialias: true });
     #bloomEnabled = true;
     #bloomComposer = new EffectComposer(this.#renderer);
@@ -57,7 +57,7 @@ class GameHandler {
     #sunLight;
 
     #scene = new THREE.Scene();
-    
+
     //publics
     AssetHandler = new AssetHandler();
     ArenaHandler = new ArenaHandler(10);
@@ -80,7 +80,7 @@ class GameHandler {
     #initialise = () => {
         try {
             this.#mode = this.#modes.INITIALISING;
-            
+
             //later can extend this to animate the cursor
             $("body").css({ "cursor": "url(assets/cursors/scifi.png), auto" });
             this.#initialiseScene();
@@ -112,7 +112,7 @@ class GameHandler {
 
     #initialiseRenderer = () => {
         window.addEventListener("resize", () => { this.Resize(); });
-        
+
         document.addEventListener("visibilitychange", () => {
             if (document.hidden && this.IsGameRunning) {
                 this.Pause();
@@ -125,14 +125,14 @@ class GameHandler {
         this.#renderer.setSize(window.innerWidth, window.innerHeight);
         this.#renderer.shadowMap.enabled = true;
         this.#renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        
+
         this.#bloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#bloomHighComposer.setSize(window.innerWidth, window.innerHeight);
         this.#variableBloomComposer.setSize(window.innerWidth, window.innerHeight);
         this.#finalComposer.setSize(window.innerWidth, window.innerHeight);
 
         let renderScene = new RenderPass(this.#scene, this.#camera);
-        
+
         let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.6, 0.0);
         //setup this composer to copy the scene as a texture, pass it to the bloom pass and then process bloom
         this.#bloomComposer.renderToScreen = false;
@@ -235,7 +235,7 @@ class GameHandler {
         this.#sun.Position = new THREE.Vector3(0, 0, 49_000);
         this.SkyBox.add(this.#sun.Object); // for debugging purposes
         this.AddGameObject(this.#sun);
-        
+
         this.#ambientLight = new THREE.AmbientLight(0xabfff8, 0.4);
         this.#scene.add(this.#ambientLight);
         this.RegisterBloomLight(this.#ambientLight);
@@ -278,7 +278,7 @@ class GameHandler {
                 $(event.target).removeClass('menu-button-hover');
             }
         );
-        
+
         $('#newGame').click(() => {
             if (!this.#isMainMenuTransitioning && !$('#newGame').is('.menu-button-disabled')) {
                 this.#transitionMainMenu(true, '#menuItems');
@@ -394,13 +394,13 @@ class GameHandler {
 
         let fromMenu = $(fromSelector);
         let fromButtons = fromMenu.children() ?? [];
-        
+
         let toMenu = $(toSelector);
         let toButtons = toMenu.children() ?? [];
 
         let fromInterval = fromButtons.length > 5 ? 10 : 30;
         let toInterval = toButtons.length > 5 ? 10 : 30;
-        
+
         //fade the old buttons out
         fromButtons.each((i, button) => {
             let time = !forwards
@@ -442,7 +442,7 @@ class GameHandler {
                 else {
                     $(button).removeClass('menu-button-left');
                 }
-    
+
                 window.setTimeout(() => {
                     if (i == toButtons.length - 1 && toButtons.length >= fromButtons.length) {
                         this.#isMainMenuTransitioning = false;
@@ -555,6 +555,9 @@ class GameHandler {
         this.#mode = this.#modes.GAMERUNNING;
 
         this.ArenaHandler.StartFirstRound();
+
+        // let test = new THREE.PointLight(0xff0000, 0, 40);
+        // this.#player._lightShip.add(test);
     }
 
     #animate = () => {
@@ -569,7 +572,7 @@ class GameHandler {
         if (INPUT.KeyPressedOnce("p") && !this.IsMainMenu) {
             this.TogglePause();
         }
-        
+
         //for debug purposes
         if (INPUT.KeyPressedOnce("t")) {
             this.SkyBox.visible = !this.SkyBox.visible;
@@ -604,7 +607,7 @@ class GameHandler {
 
         //must be done AFTER all other main logic has run
         INPUT.FlushKeyPressedOnce();
-        
+
         if (this.#bloomEnabled) {
             this.#turnOffNonBloomLights();
 
@@ -636,8 +639,9 @@ class GameHandler {
 
     #turnOffNonBloomLights = () => {
         this.#scene.traverse(obj => {
-            if (obj instanceof THREE.Light && !this.#bloomLights[obj.uuid]) {
+            if (obj instanceof THREE.Light && this.#bloomLights[obj.uuid] == undefined) {
                 this.#nonBloomLightIntensities[obj.uuid] = obj.intensity;
+
                 obj.intensity = 0;
             }
         });
@@ -645,8 +649,11 @@ class GameHandler {
 
     #restoreNonBloomLights = () => {
         this.#scene.traverse(obj => {
-            if (this.#nonBloomLightIntensities[obj.uuid]) {
+            if (this.#nonBloomLightIntensities[obj.uuid] != undefined) {
                 obj.intensity = this.#nonBloomLightIntensities[obj.uuid];
+                if (obj.uuid == window.rapeMeSevenTimes) {
+                    console.log({...this.#nonBloomLightIntensities});
+                }
                 delete this.#nonBloomLightIntensities[obj.uuid];
             }
         });
@@ -715,18 +722,17 @@ class GameHandler {
     #initialiseAsteroid = () => {
         let asteroid = new AsteroidField(20);
     }
-    
-    
+
     //public methods
     AddGameObject(object) {
-        if (object instanceof GameObject) {
+        if (object.IsGameObject && this.#gameObjects.indexOf(object) == -1) {
             this.#gameObjects.push(object);
 
             if (!object.Object.parent) {
                 this.#scene.add(object.Object);
             }
         }
-        else {
+        else if (!object.IsGameObject) {
             console.log(`GameHandler rejected object: ${object} as it was not a GameObject`, object);
         }
     }
@@ -770,7 +776,7 @@ class GameHandler {
 
     Pause() {
         this.#mode = this.#modes.GAMEPAUSED;
-            
+
         //release mouse
         document.exitPointerLock();
 
@@ -780,7 +786,7 @@ class GameHandler {
 
     Unpause() {
         this.#mode = this.#modes.GAMERUNNING;
-            
+
         //reclaim mouse
         this.#renderer.domElement.requestPointerLock();
 

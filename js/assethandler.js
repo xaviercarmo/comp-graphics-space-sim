@@ -134,7 +134,7 @@ class AssetHandler {
             const assetState = { loaded: 0, total: files[i].size ?? 1, isComplete: false };
             this.#assetLoadingStates[rootPath + files[i].name] = assetState;
 
-            this.LoadedImages[rootKey ?? rootPath][files[i].key ?? files[i].name] = 
+            this.LoadedImages[rootKey ?? rootPath][files[i].key ?? files[i].name] =
                 new THREE.TextureLoader().load(rootPath + files[i].name,
                     () => {
                         //on finished
@@ -182,7 +182,7 @@ class AssetHandler {
 
     #initialiseLoadingBar = () => {
         $('body').append($('<div>', { class: 'pre-downloader' }));
-        
+
         let domPreDownloader = $('.pre-downloader');
 
         domPreDownloader
@@ -244,7 +244,9 @@ class AssetHandler {
             { name: 'sun_texture.png', size: 395, key: 'sunTexture' },
             { name: 'rock.png', size: 87800, key: 'rockSprite' },
             { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' },
-            { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' }
+            { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' },
+            { name: 'health_capsule_circle.png', size: 131000, key: 'healthCapsuleCircle' },
+            { name: 'rock_texture.png', size: 87800, key: 'rockTexture' }
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 
@@ -255,7 +257,7 @@ class AssetHandler {
             { name: 'heavy_ship_texture.jpg', size: 375000, key: 'heavyShipTexture' }
         ];
         this.#downloadImages('assets/player_ships/', 'playerShipTextures', shipTextureFiles);
-        
+
         let enemyShipTextureFiles = [
             { name: 'enemy_ship_texture.jpg', size: 228000, key: 'enemyShipTexture' }
         ];

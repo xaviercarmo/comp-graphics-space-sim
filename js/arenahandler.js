@@ -3,8 +3,11 @@ import * as INPUT from './input.js';
 import * as UTILS from './utils.js';
 
 import EnemyObject from './gameobjects/physicsobjects/enemy.js';
+import HealthCapsule from './gameobjects/healthcapsule.js';
 
 //handles the arena logic (spawning of enemies and items, round management etc.)
+//this gets created before the GameHandler is initialised, so most constructor
+//activities are deferred to the Initialise() method.
 class ArenaHandler {
     #maxEnemies;
     #round = 0;
@@ -15,6 +18,8 @@ class ArenaHandler {
     #roundCountdownDuration = 3;
     #countdownBuffer = 0;
     #countdownBufferDuration = 0.5;
+    
+    #healthCapsule;
 
     constructor(maxEnemies) {
         this.#maxEnemies = maxEnemies;
@@ -47,6 +52,13 @@ class ArenaHandler {
         return result;
     }
 
+    #spawnHealthCapsule = () => {
+        let randDirection = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+        let spawnPos = window.GameHandler.Player.Position.add(randDirection.multiplyScalar(50 + Math.random() * 150));
+
+        this.#healthCapsule.Spawn(spawnPos);
+    }
+
     #getAvailableEnemies = () => {
         return this.#enemyPool.filter(enemy => !enemy.IsSpawned);
     }
@@ -59,6 +71,8 @@ class ArenaHandler {
 
             this.#enemyPool.push(newEnemy);
         }
+
+        this.#healthCapsule = new HealthCapsule();
     }
 
     Main(dt) {
@@ -87,7 +101,7 @@ class ArenaHandler {
                         $('#countDownContainer').removeClass('count-down-base-container-hidden');
                         $('#countDownContent').text(this.#roundCountdown);
                     }
-                    // otherwise the timer has just completed, so increment round, remove the timer, and spawn enemies
+                    // otherwise the timer has just completed, so increment round, remove the timer, and spawn enemies/health capsule
                     else {
                         this.#isNewRound = true;
                         this.#round++;
@@ -95,8 +109,16 @@ class ArenaHandler {
 
                         let numEnemiesToSpawn = Math.min(3 + Math.floor(this.#round / 2), this.#maxEnemies);
                         this.#spawnEnemies(numEnemiesToSpawn);
+
+                        if (this.#round % 5 == 0 && !this.#healthCapsule.IsSpawned) {
+                            this.#spawnHealthCapsule();
+                        }
                     }
                 }
+            }
+
+            if (this.#healthCapsule.IsSpawned) {
+                this.#healthCapsule.Main(dt);
             }
         }
     }

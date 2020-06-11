@@ -6,6 +6,7 @@ import PhysicsObject from '../physics.js';
 import RockParticleCloud from '../../rockparticlecloud.js';
 import Shield from '../../shield.js';
 import HelixGun from '../../guns/helixgun.js'
+import AlternateParticle from '../../alternateparticle.js';
 
 import { OrbitControls } from '../../../libraries/OrbitControls.js';
 import { ThrusterParticleSystemLocalPos } from '../../particlesystems/thrusterparticlesystem.js';
@@ -51,7 +52,7 @@ class PlayerObject extends PhysicsObject {
     #mouseOffset = new THREE.Vector2();
     #maxMouseOffset = 1000;
     #mouseOffsetPct = new THREE.Vector2();
-    
+
     //rotation vars
     #baseTargetAngles = {
         x: UTILS.Constants.degToRad * 10,
@@ -61,7 +62,7 @@ class PlayerObject extends PhysicsObject {
     #targetEuler = new THREE.Euler();
     #targetQuaternion = new THREE.Quaternion();
     #rotAmt = new THREE.Vector2();
-    
+
     //equipment vars
     #currentGunObject;
     #currentGunBarrelGroup;
@@ -98,7 +99,7 @@ class PlayerObject extends PhysicsObject {
         }
     };
     #currentGuns = {};
-    
+
     //thrusters
     _lightThrusters = {
         left: {
@@ -172,6 +173,8 @@ class PlayerObject extends PhysicsObject {
         }
     };
 
+    #test = new THREE.PointLight(0xff0000, 0, 40);
+
     //shields
     _lightShield = {
         radius: 4.6,
@@ -192,6 +195,7 @@ class PlayerObject extends PhysicsObject {
     #textures;
     #crosshairSprites = {};
     #crosshairOrigin = new THREE.Vector3(0, 3, 0);
+    #useMainCloud = true;
     #rockParticleCloud;
     #saveId;
     #savedKeys = [
@@ -200,9 +204,9 @@ class PlayerObject extends PhysicsObject {
         '_mediumShipSettings',
         '_heavyShipSettings'
     ];
-    #useMainCloud = false; 
+
     //health
-    #health = 100; 
+    #health = 100;
 
     //classes
     #classes = {
@@ -271,15 +275,17 @@ class PlayerObject extends PhysicsObject {
     #enemyTrackerMaterial;
     #enemyTrackerObjects = [];
 
+    #healthCapsuleTrackerObject;
+
     //ability fields
     #isCloaked = false;
 
     //publics
     InputEnabled = true;
-    
+
     //statics
     static SaveGamePrefix = 'playerSave-';
-    
+
     constructor(assets, camera) {
         super(assets.meshes.heavy_ship);
 
@@ -292,17 +298,17 @@ class PlayerObject extends PhysicsObject {
         this.#setupCamera(camera);
 
         this.#setupCrosshair();
-        this.#setupEnemyTrackers(); // change to match radius of shield, also change their radius for each class
-        
+        this.#setupEnemyTrackers();
+        this.#setupHealthCapsuleTracker();
+
         window.addEventListener("wheel", this.#handleScroll);
 
-        
-        if (this.#useMainCloud) {
+        if (!this.#useMainCloud) {
             this.#rockParticleCloud = new RockParticleCloud(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockSprite, 600);
         } else {
-            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockTexture, 50, camera);
+            this.#rockParticleCloud = new AlternateParticle(this._objectGroup, window.GameHandler.AssetHandler.LoadedImages.sprites.rockTexture, 70, camera);
         }
-        this.#health = 100; 
+        this.#health = 100;
     }
 
     #setupCamera = (camera) => {
@@ -409,80 +415,83 @@ class PlayerObject extends PhysicsObject {
                 child.layers.enable(window.GameHandler.RenderLayers.BLOOM_VARYING);
 
                 child.material.onBeforeCompile = function(shader) {
-                    let shaderName = `shader_${child.uuid}`;
-                    let shaderIndex = shadersArray.findIndex(shader => shader.name == shaderName);
-
+                    let shaderIndex = shadersArray.findIndex(s => s.id == child.uuid);
                     if (shaderIndex == -1) {
-                        shadersArray.push(shader);
-                    
-                        shader.name = shaderName;
-
-                        child.setMaskInverse = function(value) {
-                            shader.uniforms.uMaskInverse.value = value;
-                        };
-
-                        shader.uniforms.uHSV = { value: initialHsv };
-                        shader.uniforms.uHueMask = { value: hueMask };
-                        shader.uniforms.uSaturationMask = { value: saturationMask };
-                        shader.uniforms.uValueMask = { value: valueMask };
-                        shader.uniforms.uMaskInverse = { value: false };
-
-                        //rgb to hsv/hsv to rgb methods
-                        //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            'void main() {',
-                            [
-                                'uniform vec3 uHSV;',
-                                'uniform vec2 uHueMask;',
-                                'uniform vec2 uSaturationMask;',
-                                'uniform vec2 uValueMask;',
-                                'uniform bool uMaskInverse;',
-                                '',
-                                'vec3 rgbToHsv(vec3 c)',
-                                '{',
-                                    '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
-                                    '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
-                                    '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
-                                
-                                    '\tfloat d = q.x - min(q.w, q.y);',
-                                    '\tfloat e = 1.0e-10;',
-                                    '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
-                                '}',
-                                '',
-                                'vec3 hsvToRgb(vec3 c)',
-                                '{',
-                                    '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
-                                    '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
-                                    '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
-                                '}',
-                                '',
-                                'void main() {'
-                            ].join('\n')
-                        );
-                        
-                        shader.fragmentShader = shader.fragmentShader.replace(
-                            '\t#include <map_fragment>',
-                            [
-                                '\t#ifdef USE_MAP',
-                                    '\t\tvec4 texelColor = texture2D(map, vUv);',
-                                    '\t\ttexelColor = mapTexelToLinear(texelColor);',
-                                    '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
-                                    `\t\tif (hsvColor.x >= uHueMask.x && hsvColor.x <= uHueMask.y && hsvColor.y >= uSaturationMask.x && hsvColor.y <= uSaturationMask.y && hsvColor.z >= uValueMask.x && hsvColor.z <= uValueMask.y) {`,
-                                        '\t\t\thsvColor.x = uHSV.x;',
-                                        '\t\t\thsvColor.y = uHSV.y;',
-                                        '\t\t\thsvColor.z += uHSV.z;',
-                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                    '\t\t}',
-                                    '\t\telse if (uMaskInverse) {',
-                                        '\t\t\thsvColor.y = 0.0;',
-                                        '\t\t\thsvColor.z = 0.0;',
-                                        '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
-                                    '\t\t}',
-                                    '\t\tdiffuseColor *= texelColor;',
-                                '\t#endif'
-                            ].join('\n')
-                        );
+                        shadersArray.push({ id: child.uuid, shader: shader});
                     }
+                    else {
+                        shadersArray[shaderIndex].shader = shader;
+                    }
+
+                    // console.log(shadersArray[0]?.fragmentShader, shader.fragmentShader);
+
+                    // console.log(child.uuid);
+
+                    child.setMaskInverse = function(value) {
+                        shader.uniforms.uMaskInverse.value = value;
+                    };
+
+                    shader.uniforms.uHSV = { value: initialHsv };
+                    shader.uniforms.uHueMask = { value: hueMask };
+                    shader.uniforms.uSaturationMask = { value: saturationMask };
+                    shader.uniforms.uValueMask = { value: valueMask };
+                    shader.uniforms.uMaskInverse = { value: false };
+
+                    //rgb to hsv/hsv to rgb methods
+                    //source: https://gamedev.stackexchange.com/questions/59797/glsl-shader-change-hue-saturation-brightness
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        'void main() {',
+                        [
+                            'uniform vec3 uHSV;',
+                            'uniform vec2 uHueMask;',
+                            'uniform vec2 uSaturationMask;',
+                            'uniform vec2 uValueMask;',
+                            'uniform bool uMaskInverse;',
+                            '',
+                            'vec3 rgbToHsv(vec3 c)',
+                            '{',
+                                '\tvec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);',
+                                '\tvec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));',
+                                '\tvec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));',
+
+                                '\tfloat d = q.x - min(q.w, q.y);',
+                                '\tfloat e = 1.0e-10;',
+                                '\treturn vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);',
+                            '}',
+                            '',
+                            'vec3 hsvToRgb(vec3 c)',
+                            '{',
+                                '\tvec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);',
+                                '\tvec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);',
+                                '\treturn c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);',
+                            '}',
+                            '',
+                            'void main() {'
+                        ].join('\n')
+                    );
+
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        '\t#include <map_fragment>',
+                        [
+                            '\t#ifdef USE_MAP',
+                                '\t\tvec4 texelColor = texture2D(map, vUv);',
+                                '\t\ttexelColor = mapTexelToLinear(texelColor);',
+                                '\t\tvec3 hsvColor = rgbToHsv(texelColor.rgb);',
+                                `\t\tif (hsvColor.x >= uHueMask.x && hsvColor.x <= uHueMask.y && hsvColor.y >= uSaturationMask.x && hsvColor.y <= uSaturationMask.y && hsvColor.z >= uValueMask.x && hsvColor.z <= uValueMask.y) {`,
+                                    '\t\t\thsvColor.x = uHSV.x;',
+                                    '\t\t\thsvColor.y = uHSV.y;',
+                                    '\t\t\thsvColor.z += uHSV.z;',
+                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                '\t\t}',
+                                '\t\telse if (uMaskInverse) {',
+                                    '\t\t\thsvColor.y = 0.0;',
+                                    '\t\t\thsvColor.z = 0.0;',
+                                    '\t\t\ttexelColor = vec4(hsvToRgb(hsvColor), texelColor.w);',
+                                '\t\t}',
+                                '\t\tdiffuseColor *= texelColor;',
+                            '\t#endif'
+                        ].join('\n')
+                    );
                 }
 
                 child.material.needsUpdate = true;
@@ -626,7 +635,7 @@ class PlayerObject extends PhysicsObject {
                 extraOptions
             );
         }
-        
+
         // top left
         let thrusterPos = new THREE.Vector3(1.4, 1.24, -4.37);
         let thrusterDir = new THREE.Vector3(-0.05, 0, -1);
@@ -719,9 +728,9 @@ class PlayerObject extends PhysicsObject {
         let bigGunFireRate = 2;
 
         let projectileDuration = 5;
-        
+
         let sideGunDamage = 0.85;
-        let centreGunDamage = 5;  
+        let centreGunDamage = 5;
 
         let gunObjectPos = new THREE.Vector3(-2, -0.075, 2.75);
         this._heavyGuns.left.object.position.copy(gunObjectPos);
@@ -855,12 +864,28 @@ class PlayerObject extends PhysicsObject {
 
     #setupEnemyTrackers = () => {
         // this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
-        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker;
-        this.#enemyTrackerObject.scale.set(0.003, 0.003, 0.003);
+        this.#enemyTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker.clone();
+        this.#enemyTrackerObject.scale.setScalar(0.003);
 
         this.#enemyTrackerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         this.#enemyTrackerMaterial.depthTest = false;
         this.#enemyTrackerMaterial.transparent = true;
+    }
+
+    #setupHealthCapsuleTracker = () => {
+        this.#healthCapsuleTrackerObject = window.GameHandler.AssetHandler.LoadedAssets.enemy_tracker.clone();
+        this.#healthCapsuleTrackerObject.scale.setScalar(0.003);
+
+        let trackerMat = new THREE.MeshBasicMaterial({ color: 0x00ff66, depthTest: false, transparent: true });
+        trackerMat.opacityForBloom = 1;
+        this.#healthCapsuleTrackerObject.traverse(child => {
+            if (child.isMesh) {
+                child.material = trackerMat;
+                child.layers.enable(window.GameHandler.RenderLayers.BLOOM_STATIC);
+            }
+        });
+
+        window.GameHandler.Scene.add(this.#healthCapsuleTrackerObject);
     }
 
     #setupShipShields = () => {
@@ -936,11 +961,11 @@ class PlayerObject extends PhysicsObject {
             this.#crosshairOrigin.y + this.#mouseOffsetPct.y * maxCrosshairOffset,
             this.#crosshairOrigin.z
         );
-        
+
         this.#crosshairSprites["sometimes/bt"].position.copy(this.#crosshairSprites["always/arcs"].position);
         this.#crosshairSprites["sometimes/tl"].position.copy(this.#crosshairSprites["always/arcs"].position);
         this.#crosshairSprites["sometimes/tr"].position.copy(this.#crosshairSprites["always/arcs"].position);
-        
+
         this.#crosshairSprites["halo"].position.set(
             this.#crosshairOrigin.x + (this.#rotAmt.x / this.#currentShipStats.maxTurnSpeedMultiplier) * maxCrosshairOffset,
             this.#crosshairOrigin.y + (this.#rotAmt.y / this.#currentShipStats.maxTurnSpeedMultiplier) * maxCrosshairOffset,
@@ -964,22 +989,22 @@ class PlayerObject extends PhysicsObject {
             if (this.#cameraCurve) {
                 this.#cameraTransitionProgress = THREE.Math.lerp(this.#cameraTransitionProgress, 1, (1 + this.#cameraTransitionProgress) * dt);
                 this.#cameraTransitionProgress += 0.015 * dt; //minimum amount so it doesn't slow down infinitely
-    
+
                 if (this.#cameraTransitionProgress > 0.9999) {
                     this.#cameraTransitionProgress = 1;
                 }
-    
+
                 let curvePointPct = this.#cameraTransitionDirection == -1
                     ? 1 - this.#cameraTransitionProgress
                     : this.#cameraTransitionProgress;
 
                 this.#cameraCurve.getPointAt(curvePointPct, this.#camera.position);
-    
+
                 this.#cameraLookTransition.lerpVectors(this.#oldCameraPosition.lookTarg, this.#cameraPosition.lookTarg, this.#cameraTransitionProgress);
-    
+
                 let lookMatrix = this.#cameraLookMatrix.lookAt(this.#camera.position, this.#cameraLookTransition, UTILS.Constants.upVector);
                 this.#camera.quaternion.setFromRotationMatrix(lookMatrix);
-    
+
                 if (this.#cameraTransitionProgress == 1) {
                     this.#cameraTransitionProgress = 0;
                     this.#cameraTransitioning = false;
@@ -1001,7 +1026,7 @@ class PlayerObject extends PhysicsObject {
             this.#orbitControls.update();
         }
     }
-    
+
     //disabled for now, actual turret models has been delayed
     #handleGunModelSwitching = () => {
         if (INPUT.KeyPressedOnce("ArrowRight")) {
@@ -1041,11 +1066,11 @@ class PlayerObject extends PhysicsObject {
     }
 
     #refreshShaderUniformsFromSettings = () => {
-        this.#shipShaders[this._currentClass].forEach(shader => {
-            shader.uniforms.uHSV.value = this.#currentShipSettings.hsv;
-            shader.uniforms.uHueMask.value = this.#currentShipSettings.hMask;
-            shader.uniforms.uSaturationMask.value = this.#currentShipSettings.sMask;
-            shader.uniforms.uValueMask.value = this.#currentShipSettings.vMask;
+        this.#shipShaders[this._currentClass].forEach(shaderGroup => {
+            shaderGroup.shader.uniforms.uHSV.value = this.#currentShipSettings.hsv;
+            shaderGroup.shader.uniforms.uHueMask.value = this.#currentShipSettings.hMask;
+            shaderGroup.shader.uniforms.uSaturationMask.value = this.#currentShipSettings.sMask;
+            shaderGroup.shader.uniforms.uValueMask.value = this.#currentShipSettings.vMask;
         });
     }
 
@@ -1072,7 +1097,7 @@ class PlayerObject extends PhysicsObject {
 
         let mainObjWorldPos = new THREE.Vector3();
         this._mainObject.getWorldPosition(mainObjWorldPos);
-            
+
         for (let i = 0; i < enemyObjects.length; i++) {
             let dirToEnemy = enemyObjects[i].Position.sub(mainObjWorldPos);
             let angleToEnemy = currForwardDirection.angleTo(dirToEnemy);
@@ -1081,12 +1106,40 @@ class PlayerObject extends PhysicsObject {
             dirToEnemy.multiplyScalar(4);
             let worldPos = mainObjWorldPos.clone();
             worldPos.add(dirToEnemy);
-            
+
             this.#enemyTrackerObjects[i].position.copy(worldPos);
             this.#enemyTrackerObjects[i].lookAt(enemyObjects[i].Position);
             this.#enemyTrackerObjects[i].rotateX(Math.PI / 2);
 
             this.#applyOpacityToTracker(this.#enemyTrackerObjects[i], angleToEnemy - 0.5, angleToEnemy - 0.5);
+        }
+    }
+
+    #handleHealthCapsuleTrackerObject = () => {
+        let healthCapsule = window.GameHandler.GameObjects.find(object => object.IsHealthCapsule);
+        if (healthCapsule != undefined) {
+            let currForwardDirection = new THREE.Vector3();
+            this._objectGroup.getWorldDirection(currForwardDirection);
+
+            let mainObjWorldPos = new THREE.Vector3();
+            this._mainObject.getWorldPosition(mainObjWorldPos);
+
+            let dirToCapsule = healthCapsule.Position.sub(mainObjWorldPos);
+            let angleToCapsule = currForwardDirection.angleTo(dirToCapsule);
+
+            dirToCapsule.normalize();
+            dirToCapsule.multiplyScalar(4);
+            let worldPos = mainObjWorldPos.clone();
+            worldPos.add(dirToCapsule);
+
+            this.#healthCapsuleTrackerObject.position.copy(worldPos);
+            this.#healthCapsuleTrackerObject.lookAt(healthCapsule.Position);
+            this.#healthCapsuleTrackerObject.rotateX(Math.PI / 2);
+
+            this.#applyOpacityToTracker(this.#healthCapsuleTrackerObject, angleToCapsule - 0.5, angleToCapsule - 0.5);
+        }
+        else {
+            this.#applyOpacityToTracker(this.#healthCapsuleTrackerObject, 0, 0);
         }
     }
 
@@ -1160,6 +1213,7 @@ class PlayerObject extends PhysicsObject {
         this.#rockParticleCloud.Main(dt);
 
         this.#handleEnemyTrackerObjects();
+        this.#handleHealthCapsuleTrackerObject();
 
         this.#currentShield.object.Main(dt);
 
@@ -1267,11 +1321,15 @@ class PlayerObject extends PhysicsObject {
 
     HitByBullet(damage) {
         this.#currentShield.object.Hit();
-        this.#health -= damage; 
+        this.#health -= damage;
     }
 
     Hit(){
         this.#currentShield.object.Hit();
+    }
+
+    ConsumeHealthCapsule(amount) {
+        this.#health += amount;
     }
 
     get CameraPosition() { return this.#cameraPosition; }
@@ -1373,7 +1431,7 @@ class PlayerObject extends PhysicsObject {
     set ShipLuminosity(luminosity) {
         this.#currentShipSettings.luminosity = UTILS.LimitToRange(luminosity, 0, 3);
     }
-    
+
     set ShipHueMask(mask) {
         if (mask instanceof THREE.Vector2) {
             this.#currentShipSettings.hMask = mask;
@@ -1403,6 +1461,10 @@ class PlayerObject extends PhysicsObject {
         return this.#isCloaked;
     }
 
+    get CurrentShieldRadius() {
+        return this.#currentShield.radius;
+    }
+
     /**
      * @param {string} value
      */
@@ -1422,9 +1484,12 @@ class PlayerObject extends PhysicsObject {
             let positionKey = `${this._currentClass}_position`;
             for (let lightKey in this.#thrusterLights) {
                 let lightObj = this.#thrusterLights[lightKey];
-    
+
                 lightObj.light.position.copy(lightObj[positionKey]);
                 this.#currentShip.add(lightObj.light);
+
+                this.#currentShip.add(this.#test);
+                window.rapeMeSevenTimes = this.#test;
             }
             // this.#thrusterLights.left.light.position.copy(this.#thrusterLights.left[positionKey]);
             // this.#thrusterLights.right.light.position.copy(this.#thrusterLights.right[positionKey]);
