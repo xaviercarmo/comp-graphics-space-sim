@@ -51,12 +51,20 @@ class AsteroidObject extends PhysicsObject {
         let asteroid; 
         if (indexNo == 1) {
             asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid1.clone(); 
+            asteroid.children[0].material.map = window.GameHandler.AssetHandler.LoadedImages.sprites.asteroid1;
+            asteroid.children[0].material.needsUpdate = true; 
         }else if (indexNo == 2) {
             asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid2.clone(); 
+            asteroid.children[0].material.map = window.GameHandler.AssetHandler.LoadedImages.sprites.asteroid2;
+            asteroid.children[0].material.needsUpdate = true; 
         }else if (indexNo == 3) {
             asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid8.clone(); 
+            asteroid.children[0].material.map = window.GameHandler.AssetHandler.LoadedImages.sprites.asteroid3;
+            asteroid.children[0].material.needsUpdate = true; 
         }else if (indexNo == 4) {
             asteroid = window.GameHandler.AssetHandler.LoadedAssets.asteroid9.clone(); 
+            asteroid.children[0].material.map = window.GameHandler.AssetHandler.LoadedImages.sprites.asteroid4;
+            asteroid.children[0].material.needsUpdate = true; 
         }
         
         //radomise size of each asteroid. 

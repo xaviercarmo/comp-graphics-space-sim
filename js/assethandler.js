@@ -246,7 +246,18 @@ class AssetHandler {
             { name: 'enemy_circle.png', size: 133000, key: 'enemyCircle' },
             { name: 'shield_texture.png', size: 2960, key: 'shieldTexture' },
             { name: 'health_capsule_circle.png', size: 131000, key: 'healthCapsuleCircle' },
-            { name: 'rock_texture.png', size: 87800, key: 'rockTexture' }
+            { name: 'rock_texture.png', size: 87800, key: 'rockTexture' },
+            { name: 'Asteroid1.png', size: 342000, key: 'asteroid1' },
+            { name: 'Asteroid2.png', size: 342000, key: 'asteroid2' },
+            { name: 'Asteroid3.png', size: 342000, key: 'asteroid3' },
+            { name: 'Asteroid4.png', size: 342000, key: 'asteroid4' },
+            { name: 'Asteroid5.png', size: 394000, key: 'asteroid5' },
+            { name: 'Asteroid6.png', size: 342000, key: 'asteroid6' },
+            { name: 'Asteroid7.png', size: 342000, key: 'asteroid7' },
+            { name: 'Asteroid8.png', size: 342000, key: 'asteroid8' },
+            { name: 'Asteroid9.png', size: 342000, key: 'asteroid9' },
+            { name: 'Asteroid10.png', size: 342000, key: 'asteroid10' }
+            
         ];
         this.#downloadImages('assets/sprites/', 'sprites', spriteFiles);
 
